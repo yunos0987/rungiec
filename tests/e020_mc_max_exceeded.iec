@@ -1,0 +1,27 @@
+(* @expect pp-error PP91: .RUNGIEC BEGIN_MC nesting exceeds 2 *)
+(* @cycles 1 *)
+(* Purpose: With RUNGIEC_MC_MAX 2, a third nested BEGIN_MC is a preprocessing error that names the limit. *)
+{#define RUNGIEC_MC_MAX 2}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(MC)--|   depth 1  *)
+BEGIN_MC(CONTACT(A))
+(*  |--| A |--(MC)--|   depth 2  *)
+BEGIN_MC(CONTACT(A))
+(*  |--| A |--(MC)--|   depth 3 exceeds the limit  *)
+BEGIN_MC(CONTACT(A))
+(*  |--( Y )--|  *)
+RUNG(COIL(Y))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--(MCR)--|  *)
+END_MC()
+END_RUNGIEC()
+end_program

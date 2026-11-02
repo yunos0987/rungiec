@@ -1,0 +1,14 @@
+(* @expect run-error array index 17 out of bounds *)
+(* @cycles 1 *)
+(* Purpose: Nesting depth 17 exceeds the stack and faults at run time. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--+--+--+--+--+--+--+--+--| A |--( Y )--|   nested 17 levels deep  *)
+RUNG(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(CONTACT(A), COIL(Y))))))))))))))))))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,2 @@
+tests/e024_begin_mc_inside_net.iec:14.0: error: PP91: 'RUNGIEC BEGIN_MC inside BEGIN_NET and END_NET'
+tests/e024_begin_mc_inside_net.iec:15.0: error: PP91: 'RUNGIEC END_MC inside BEGIN_NET and END_NET'

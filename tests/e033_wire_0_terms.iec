@@ -1,0 +1,17 @@
+(* @expect pp-error PP91: .RUNGIEC WIRE has 0 elements *)
+(* @cycles 1 *)
+(* Purpose: WIRE with no element is a preprocessing error (WIRE checks its own arity). *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--(1)--( Y )--|   the first WIRE has no element  *)
+BEGIN_NET()
+WIRE(0, 1)
+WIRE(1, 2, COIL(Y))
+END_NET()
+END_RUNGIEC()
+end_program

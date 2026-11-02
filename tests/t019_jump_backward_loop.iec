@@ -1,0 +1,29 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: JMP(L) after LABEL(L) jumps back, so the rungs between them run again in the same scan until the jump condition is off. The loop count is bounded by the comparison contact, and the work variables are idle after the loop. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t019_jump_backward_loop))
+TEST_M(t019_jump_backward_loop)
+var
+    N, Lim: dint;
+    Cyc: dint;
+    InLim: array[1..4] of dint := [1, 3, 5, 0];
+    ExpN: array[1..4] of dint := [1, 3, 5, 1];
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Lim := InLim[Cyc];
+(*  |--[[ ST: N := 0; ]]--|  *)
+RUNG(ST_EXEC(N := 0;))
+(*  Again:  *)
+LABEL(Again)
+(*  |--[[ ST: N := N + 1; ]]--|   runs once per pass  *)
+RUNG(ST_EXEC(N := N + 1;))
+(*  |--| N < Lim |-->>Again  *)
+RUNG(LT_CONTACT(N, Lim), JMP(Again))
+EXPECT_TRUE(N = ExpN[Cyc], 'n_counts_the_passes');
+T_EXPECT_IDLE(idle_after_loop);
+END_RUNGIEC()
+END_TEST_M

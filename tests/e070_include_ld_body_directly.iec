@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC rungiec_ld.iec is the LD mode part of rungiec.iec; include rungiec.iec instead *)
+(* @cycles 1 *)
+(* Purpose: The LD mode body rungiec_ld.iec included directly, not through rungiec.iec, stops preprocessing even in the LD mode (it needs the common part of rungiec.iec). *)
+{#define RUNGIEC_LD 1}
+{#include 'rungiec_ld.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

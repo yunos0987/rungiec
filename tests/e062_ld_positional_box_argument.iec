@@ -1,0 +1,17 @@
+(* @expect pp-error PP81: No .:=. or .=>. in the argument of a built-in macro *)
+(* @cycles 1 *)
+(* Purpose: In the LD mode a box takes named arguments only; the positional argument of FB_EXEC(Tm, Start) is the jiepp error PP81 of __arg_dir. *)
+(* @lint-allow LN25 *)
+{#define RUNGIEC_LD 1}
+{#include 'rungiec.iec'}
+program __main__
+var
+    Start, Y: bool;
+    Tm: TON;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--[ Tm(Start) ]--( Y )--|  *)
+RUNG(FB_EXEC(Tm, Start), COIL(Y))
+END_RUNGIEC()
+end_program

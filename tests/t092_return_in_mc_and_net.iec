@@ -1,0 +1,61 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: RETURN() inside two nested MC zones (in a RUNG, and in a WIRE of a network) of a function block. The scan that returns leaves the rail, the stack and the nodes as they were; BEGIN_RUNGIEC() and BEGIN_NET() set them again on the next scan: the RUNG before the zones runs with the rail ON, and a node does not keep the value of the scan that returned. The WIRE with RETURN() is the last of its network, so N1 is written on the scan that returns in the network; the coils after the RETURN keep their values on the scan that returns. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t092_return_in_mc_and_net))
+function_block RetFb
+var_input C1, C2, R, Rn, A, B: bool; end_var
+var_output Post, N1, Out: bool; end_var
+var_in_out Pre: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--( Pre )--|   before the zones  *)
+RUNG(COIL(Pre))
+(*  |--| C1 |--(MC)--|   depth 1  *)
+BEGIN_MC(CONTACT(C1))
+(*  |--| C2 |--(MC)--|   depth 2  *)
+BEGIN_MC(CONTACT(C2))
+(*  |--| R |--<RETURN>  *)
+RUNG(CONTACT(R), RETURN())
+(*  |--| A |--( Post )--|  *)
+RUNG(CONTACT(A), COIL(Post))
+(*  |--| B |--(1)--( N1 )--|  *)
+(*  |         (1)--| Rn |--<RETURN>  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(B))
+WIRE(1, 2, COIL(N1))
+WIRE(1, 3, CONTACT(Rn), RETURN())
+END_NET()
+(*  |--(MCR)--|   closes depth 2  *)
+END_MC()
+(*  |--(MCR)--|   closes depth 1  *)
+END_MC()
+(*  |--| A |--( Out )--|   outside the zones  *)
+RUNG(CONTACT(A), COIL(Out))
+END_RUNGIEC()
+end_function_block
+TEST_M(t092_return_in_mc_and_net)
+var
+    W: RetFb;
+    Pre: bool;
+    InC1: array[1..6] of bool := [true, true, true, true, true, false];
+    InC2: array[1..6] of bool := [true, true, true, true, true, true];
+    InR: array[1..6] of bool := [false, true, false, false, false, true];
+    InRn: array[1..6] of bool := [false, false, false, true, false, true];
+    InA: array[1..6] of bool := [true, false, false, true, true, true];
+    InB: array[1..6] of bool := [true, false, false, true, false, true];
+    ExpPost: array[1..6] of bool := [true, true, false, true, true, false];
+    ExpN1: array[1..6] of bool := [true, true, false, true, false, false];
+    ExpOut: array[1..6] of bool := [true, true, false, false, true, true];
+    Cyc: dint;
+end_var
+T_BEGIN()
+(*  Pre is cleared before each call, so TRUE after the call means the first RUNG ran with the rail ON  *)
+Pre := false;
+W(C1 := InC1[Cyc], C2 := InC2[Cyc], R := InR[Cyc], Rn := InRn[Cyc], A := InA[Cyc], B := InB[Cyc], Pre := Pre);
+EXPECT_TRUE(Pre, 'rung_before_zones_runs_with_rail_on');
+EXPECT_TRUE(W.Post = ExpPost[Cyc], 'coil_in_zone_held_on_return_scan');
+EXPECT_TRUE(W.N1 = ExpN1[Cyc], 'n1_written_before_return_and_node_not_kept');
+EXPECT_TRUE(W.Out = ExpOut[Cyc], 'coil_after_zones_held_on_return_scan');
+END_TEST_M

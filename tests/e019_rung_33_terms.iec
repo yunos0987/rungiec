@@ -1,0 +1,14 @@
+(* @expect pp-error PP91: .RUNGIEC RUNG has 33 elements, allowed 1 to 16 *)
+(* @cycles 1 *)
+(* Purpose: RUNG with 33 terms (above the table size 32) is a preprocessing error that names the macro and the count. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |-- ... --| A |--( Y )--|   32 contacts and a coil, 33 terms  *)
+RUNG(CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

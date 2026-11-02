@@ -1,0 +1,26 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Check for examples/interlock.iec: feeds inputs and verifies the ladder. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_interlock))
+{#include 'interlock.iec'}
+TEST_M(x_interlock)
+var
+    Ctl: interlock;
+    Fwd, Rev, Stop: bool;
+    InFwd: array[1..8] of bool := [false, true, false, false, false, false, true, false];
+    InRev: array[1..8] of bool := [false, false, false, true, false, true, false, false];
+    InStop: array[1..8] of bool := [false, false, false, false, true, false, false, true];
+    ExpF: array[1..8] of bool := [false, true, true, true, false, false, false, false];
+    ExpR: array[1..8] of bool := [false, false, false, false, false, true, true, false];
+    Cyc: dint;
+end_var
+T_BEGIN()
+Fwd := InFwd[Cyc]; Rev := InRev[Cyc]; Stop := InStop[Cyc];
+Ctl(Fwd := Fwd, Rev := Rev, Stop := Stop);
+EXPECT_TRUE(Ctl.RunF = ExpF[Cyc], 'forward_follows_expected_sequence');
+EXPECT_TRUE(Ctl.RunR = ExpR[Cyc], 'reverse_follows_expected_sequence');
+EXPECT_TRUE((Cyc <> 4) or (Ctl.RunF and (not Ctl.RunR)), 'reverse_blocked_while_forward_runs');
+EXPECT_TRUE((Cyc <> 7) or (Ctl.RunR and (not Ctl.RunF)), 'forward_blocked_while_reverse_runs');
+EXPECT_TRUE(((Cyc <> 5) and (Cyc <> 8)) or ((not Ctl.RunF) and (not Ctl.RunR)), 'stop_releases_both');
+END_TEST_M

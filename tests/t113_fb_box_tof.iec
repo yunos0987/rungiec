@@ -1,0 +1,29 @@
+(* @expect pass *)
+(* @cycles 10 *)
+(* Purpose: FB_BOX with a TOF: after IN falls, Q stays TRUE for PT and the power after the box stays TRUE with it, although the power before the box is OFF (scans 3, 4, 8 and 9). FB_IN followed by CONTACT(Tg.Q) is the series of both and is OFF in those scans. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t113_fb_box_tof))
+{#include 't_stdfb.iec'}
+TEST_M(t113_fb_box_tof)
+var
+    Hold, Fan, FanSeries: bool;
+    Tf, Tg: TOF;
+    InHold: array[1..10] of bool := [true, true, false, false, false, false, true, false, false, false];
+    ExpQ: array[1..10] of bool := [true, true, true, true, false, false, true, true, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Hold := InHold[Cyc];
+(*  |--| Hold |--[ Tf(PT := T#200ms) IN Q ]--( Fan )--|   TOF: PT = 200 ms  *)
+RUNG(CONTACT(Hold), FB_BOX(Tf, IN, Q, PT := T#200ms), COIL(Fan))
+(*  |--| Hold |--[ Tg(PT := T#200ms) IN ]--| Tg.Q |--( FanSeries )--|   the pass-through box and a contact  *)
+RUNG(CONTACT(Hold), FB_IN(Tg, IN, PT := T#200ms), CONTACT(Tg.Q), COIL(FanSeries))
+EXPECT_TRUE(Tf.Q = ExpQ[Cyc], 'tof_q');
+EXPECT_TRUE(Fan = ExpQ[Cyc], 'power_after_box_is_q_without_input_power');
+EXPECT_TRUE(FanSeries = (Hold and ExpQ[Cyc]), 'fb_in_and_contact_is_the_series');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

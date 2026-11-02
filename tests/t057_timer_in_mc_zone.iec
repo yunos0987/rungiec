@@ -1,0 +1,58 @@
+(* @expect pass *)
+(* @cycles 14 *)
+(* Purpose: inside an MC zone, a timer called by FB_SCAN is called on every scan whatever the zone, so it keeps timing on its IN argument while the zone is OFF. A timer called by FB_IN behind a contact gets IN = FALSE while the zone is OFF, so it resets (ET = 0, Q = FALSE). *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t057_timer_in_mc_zone))
+(* Stand-in for the standard TON (the built-in timers of jiecc run on wall-clock time): ET advances by a fixed 250 ms per call, so the result does not depend on the speed of the machine and PT = T#1s elapses on the 4th scan with IN = TRUE. *)
+function_block TON
+var_input IN: bool; PT: time; end_var
+var_output Q: bool; ET: time; end_var
+if not IN then
+    ET := T#0ms;
+elsif ET < PT then
+    if ET < T#250ms then ET := T#250ms;
+    elsif ET < T#500ms then ET := T#500ms;
+    elsif ET < T#750ms then ET := T#750ms;
+    elsif ET < T#1000ms then ET := T#1000ms;
+    elsif ET < T#1250ms then ET := T#1250ms;
+    elsif ET < T#1500ms then ET := T#1500ms;
+    else ET := PT;
+    end_if;
+end_if;
+Q := IN and (ET >= PT);
+end_function_block
+TEST_M(t057_timer_in_mc_zone)
+var
+    Z, Start, Lamp: bool;
+    TmScan, TmPwr: TON;
+    InZ: array[1..14] of bool := [true, true, false, false, true, true, true, false, true, true, true, true, true, true];
+    InStart: array[1..14] of bool := [true, true, true, true, true, true, true, true, true, false, true, true, true, true];
+    ExpScanEt: array[1..14] of time := [T#250ms, T#500ms, T#750ms, T#1000ms, T#1000ms, T#1000ms, T#1000ms, T#1000ms, T#1000ms, T#0ms, T#250ms, T#500ms, T#750ms, T#1000ms];
+    ExpScanQ: array[1..14] of bool := [false, false, false, true, true, true, true, true, true, false, false, false, false, true];
+    ExpPwrEt: array[1..14] of time := [T#250ms, T#500ms, T#0ms, T#0ms, T#250ms, T#500ms, T#750ms, T#0ms, T#250ms, T#0ms, T#250ms, T#500ms, T#750ms, T#1000ms];
+    ExpPwrQ: array[1..14] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Z := InZ[Cyc]; Start := InStart[Cyc];
+(*  |--| Z |--(MC)--|  *)
+BEGIN_MC(CONTACT(Z))
+(*  |--[ TmScan(IN := Start, PT := T#1s) ]--|   inside the zone: called every scan, keeps timing while the zone is OFF  *)
+RUNG(FB_SCAN(TmScan, IN := Start, PT := T#1s))
+(*  |--| Start |--[ TmPwr(PT := T#1s) IN ]--| TmPwr.Q |--( Lamp )--|   inside the zone: IN = FALSE while the zone is OFF, the timer resets  *)
+RUNG(CONTACT(Start), FB_IN(TmPwr, IN, PT := T#1s), CONTACT(TmPwr.Q), COIL(Lamp))
+(*  |--(MCR)--|  *)
+END_MC()
+EXPECT_TRUE(TmScan.ET = ExpScanEt[Cyc], 'scan_timer_elapsed_time');
+EXPECT_TRUE(TmScan.Q = ExpScanQ[Cyc], 'scan_timer_q');
+EXPECT_TRUE((Cyc <> 8) or (TmScan.Q and not Z), 'scan_timer_q_on_while_zone_off');
+EXPECT_TRUE(TmPwr.ET = ExpPwrEt[Cyc], 'pwr_timer_elapsed_time');
+EXPECT_TRUE(TmPwr.Q = ExpPwrQ[Cyc], 'pwr_timer_q');
+EXPECT_TRUE((Cyc <> 8) or (not TmPwr.Q and not Z), 'pwr_timer_q_false_while_zone_off');
+EXPECT_TRUE(Lamp = ExpPwrQ[Cyc], 'lamp_follows_pwr_timer');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

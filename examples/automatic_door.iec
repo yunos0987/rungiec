@@ -1,0 +1,23 @@
+{#include 'rungiec.iec'}
+(* Example: automatic door. Sensor (a person is detected) opens the door, and OpenLimit stops the opening. The door stays open *)
+(* while a person is detected; 3 s after the last detection at the open limit it closes, and ClosedLimit stops the closing. *)
+(* A person detected while the door closes stops the closing and opens the door again in the same scan. The two motor outputs *)
+(* are interlocked by NOT_CONTACT, so MotorOpen and MotorClose are never TRUE together. *)
+function_block automatic_door
+var_input Sensor, OpenLimit, ClosedLimit: bool; end_var
+var_output MotorOpen, MotorClose: bool; end_var
+var HoldTm: TON; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| OpenLimit |--|/Sensor |--[ HoldTm:TON(PT := T#3s) IN Q ]--|   hold-open time; a detection restarts it  *)
+RUNG(CONTACT(OpenLimit), NOT_CONTACT(Sensor), FBT_BOX(HoldTm, TON, IN, Q, PT := T#3s))
+(*  |--+--| HoldTm.Q |---+--|/Sensor |--|/ClosedLimit |--|/MotorOpen |--( MotorClose )--|  *)
+(*  |  |                 |                                                             |  *)
+(*  |  +--| MotorClose |-+                                                             |  *)
+RUNG(PARALLEL(CONTACT(HoldTm.Q), CONTACT(MotorClose)), NOT_CONTACT(Sensor), NOT_CONTACT(ClosedLimit), NOT_CONTACT(MotorOpen), COIL(MotorClose))
+(*  |--+--| Sensor |-----+--|/OpenLimit |--|/MotorClose |--( MotorOpen )--|   after the closing rung, so a detection reopens at once  *)
+(*  |  |                 |                                                |  *)
+(*  |  +--| MotorOpen |--+                                                |  *)
+RUNG(PARALLEL(CONTACT(Sensor), CONTACT(MotorOpen)), NOT_CONTACT(OpenLimit), NOT_CONTACT(MotorClose), COIL(MotorOpen))
+END_RUNGIEC()
+end_function_block

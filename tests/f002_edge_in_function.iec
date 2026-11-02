@@ -1,0 +1,21 @@
+(* @expect run-error RungiecPrev; UNDEFINED_SYMBOL *)
+(* @cycles 1 *)
+(* Purpose: An edge contact inside a FUNCTION has no static previous value and fails to compile. *)
+{#include 'rungiec.iec'}
+function EdgeFn : bool
+var_input x: bool; end_var
+RUNGIEC_VAR_NOEDGE()
+BEGIN_RUNGIEC()
+(*  |--|P x |--( EdgeFn )--|  *)
+RUNG(RISE_CONTACT(x), COIL(EdgeFn))
+END_RUNGIEC()
+end_function
+program __main__
+var
+    A, Y: bool;
+end_var
+
+(*  |--| A |--[ EdgeFn ]--( Y )--|  *)
+A := true;
+Y := EdgeFn(x := A);
+end_program

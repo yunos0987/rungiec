@@ -1,0 +1,44 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: Every top-level network is RUNG(...) without a trailing ';'. RUNG(a, b) is RUNG(SERIES(a, b)); a single element and a SERIES-wrapped element both work; a parallel branch with two coils follows the RUNG rail. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t053_rung_forms))
+TEST_M(t053_rung_forms)
+var
+    A, B, C, Y, Y0, Y1, Y1b, Y2, Yd1, Yd2: bool;
+    InA: array[1..8] of bool := [false, true, false, true, false, true, false, true];
+    InB: array[1..8] of bool := [false, false, true, true, false, false, true, true];
+    InC: array[1..8] of bool := [false, false, false, false, true, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc];
+(*  |--+--| A |--+--( Y )--|  *)
+(*  |  |         |         |  *)
+(*  |  +--| B |--+         |  *)
+RUNG(PARALLEL(CONTACT(A), CONTACT(B)), COIL(Y))
+(*  |--| A |--( Y0 )--|  *)
+RUNG(CONTACT(A), COIL(Y0))
+(*  |--| A |--( Y1 )--|   SERIES inside RUNG  *)
+RUNG(SERIES(CONTACT(A), COIL(Y1)))
+(*  |--( Y1b )--|   SERIES inside RUNG with one element  *)
+RUNG(SERIES(COIL(Y1b)))
+(*  |--( Y2 )--|   single element  *)
+RUNG(COIL(Y2))
+(*  |--| A |--+--| B |--( Yd1 )--|  *)
+(*  |         |                  |  *)
+(*  |         +--| C |--( Yd2 )--|  *)
+RUNG(CONTACT(A), PARALLEL(SERIES(CONTACT(B), COIL(Yd1)), SERIES(CONTACT(C), COIL(Yd2))))
+EXPECT_TRUE(Y = (A or B), 'y_eq_a_or_b');
+EXPECT_TRUE(Y0 = A, 'y0_eq_a');
+EXPECT_TRUE(Y1 = A, 'y1_eq_a');
+EXPECT_TRUE(Y1b, 'y1b_always_on');
+EXPECT_TRUE(Y2, 'y2_always_on');
+EXPECT_TRUE(Yd1 = (A and B), 'yd1_eq_a_and_b');
+EXPECT_TRUE(Yd2 = (A and C), 'yd2_eq_a_and_c');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

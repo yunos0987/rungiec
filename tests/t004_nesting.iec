@@ -1,0 +1,39 @@
+(* @expect pass *)
+(* @cycles 16 *)
+(* Purpose: Nested SERIES/PARALLEL, restored accumulators, stack idle after each network. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t004_nesting))
+TEST_M(t004_nesting)
+var
+    A, B, C, D, Y1, Y2, Y3: bool;
+    InA: array[1..16] of bool := [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true];
+    InB: array[1..16] of bool := [false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true];
+    InC: array[1..16] of bool := [false, false, false, false, true, true, true, true, false, false, false, false, true, true, true, true];
+    InD: array[1..16] of bool := [false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc]; D := InD[Cyc];
+(*  |--+--| A |--| B |--+--( Y1 )--|  *)
+(*  |  |                |          |  *)
+(*  |  +--| C |--| D |--+          |  *)
+RUNG(PARALLEL(SERIES(CONTACT(A), CONTACT(B)), SERIES(CONTACT(C), CONTACT(D))), COIL(Y1))
+EXPECT_TRUE(Y1 = ((A and B) or (C and D)), 'y1_and_or_nest');
+T_EXPECT_IDLE(idle_after_y1);
+(*  |--| A |--+--| B |--+--| D |--( Y2 )--|  *)
+(*  |         |         |                 |  *)
+(*  |         +--| C |--+                 |  *)
+RUNG(CONTACT(A), PARALLEL(CONTACT(B), CONTACT(C)), CONTACT(D), COIL(Y2))
+EXPECT_TRUE(Y2 = (A and (B or C) and D), 'y2_element_after_nest_uses_restored_acc');
+T_EXPECT_IDLE(idle_after_y2);
+(*  |--+--| A |---------+--+--| D |--+--( Y3 )--|  *)
+(*  |  |                |  |         |          |  *)
+(*  |  +--| B |--| C |--+  +--| A |--+          |  *)
+RUNG(PARALLEL(CONTACT(A), SERIES(CONTACT(B), CONTACT(C))), PARALLEL(CONTACT(D), CONTACT(A)), COIL(Y3))
+EXPECT_TRUE(Y3 = ((A or (B and C)) and (D or A)), 'y3_two_parallels_in_series');
+T_EXPECT_IDLE(idle_after_y3);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,16 @@
+(* @expect run-error array index 0 out of bounds *)
+(* @cycles 1 *)
+(* Purpose: An END_MC nested inside a RUNG cannot be seen by the preprocessor (the argument is expanded first, so the zone count is already back to 0), so the nesting trap at the start of END_MC faults at run time (RungiecStIn[1 - RungiecSp] with RungiecSp = 1). *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y, Z: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Z |--(MC)--|  *)
+BEGIN_MC(CONTACT(Z))
+(*  |--| A |--(MCR)--( Y )--|   END_MC is deliberately written inside a RUNG  *)
+RUNG(CONTACT(A), END_MC(), COIL(Y))
+END_RUNGIEC()
+end_program

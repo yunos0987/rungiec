@@ -1,0 +1,47 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: With RUNGIEC_ARITY_MAX 32, a 32-term SERIES (31 contacts + coil) and a 32-term PARALLEL work. Cycle 1: all ON, 2: only X[17] OFF, 3: only X[32] ON, 4: all OFF. *)
+{#define RUNGIEC_ARITY_MAX 32}
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t042_arity_max_32))
+TEST_M(t042_arity_max_32)
+var
+    X: array[1..32] of bool;
+    Y1, Y2, ExpAnd, ExpOr: bool;
+    Idx: dint;
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+for Idx := 1 to 32 do
+    if Cyc = 1 then
+        X[Idx] := true;
+    elsif Cyc = 2 then
+        X[Idx] := (Idx <> 17);
+    elsif Cyc = 3 then
+        X[Idx] := (Idx = 32);
+    else
+        X[Idx] := false;
+    end_if;
+end_for;
+ExpAnd := true;
+for Idx := 1 to 31 do
+    ExpAnd := ExpAnd and X[Idx];
+end_for;
+ExpOr := false;
+for Idx := 1 to 32 do
+    ExpOr := ExpOr or X[Idx];
+end_for;
+(*  |--| X[1] |-- ... --| X[31] |--( Y1 )--|   32-term SERIES  *)
+RUNG(CONTACT(X[1]), CONTACT(X[2]), CONTACT(X[3]), CONTACT(X[4]), CONTACT(X[5]), CONTACT(X[6]), CONTACT(X[7]), CONTACT(X[8]), CONTACT(X[9]), CONTACT(X[10]), CONTACT(X[11]), CONTACT(X[12]), CONTACT(X[13]), CONTACT(X[14]), CONTACT(X[15]), CONTACT(X[16]), CONTACT(X[17]), CONTACT(X[18]), CONTACT(X[19]), CONTACT(X[20]), CONTACT(X[21]), CONTACT(X[22]), CONTACT(X[23]), CONTACT(X[24]), CONTACT(X[25]), CONTACT(X[26]), CONTACT(X[27]), CONTACT(X[28]), CONTACT(X[29]), CONTACT(X[30]), CONTACT(X[31]), COIL(Y1))
+(*  |--+--| X[1] |--+--( Y2 )--|   32-term PARALLEL  *)
+(*  |  :            :          |  *)
+(*  |  +--| X[32] |-+          |  *)
+RUNG(PARALLEL(CONTACT(X[1]), CONTACT(X[2]), CONTACT(X[3]), CONTACT(X[4]), CONTACT(X[5]), CONTACT(X[6]), CONTACT(X[7]), CONTACT(X[8]), CONTACT(X[9]), CONTACT(X[10]), CONTACT(X[11]), CONTACT(X[12]), CONTACT(X[13]), CONTACT(X[14]), CONTACT(X[15]), CONTACT(X[16]), CONTACT(X[17]), CONTACT(X[18]), CONTACT(X[19]), CONTACT(X[20]), CONTACT(X[21]), CONTACT(X[22]), CONTACT(X[23]), CONTACT(X[24]), CONTACT(X[25]), CONTACT(X[26]), CONTACT(X[27]), CONTACT(X[28]), CONTACT(X[29]), CONTACT(X[30]), CONTACT(X[31]), CONTACT(X[32])), COIL(Y2))
+EXPECT_TRUE(Y1 = ExpAnd, 'y1_thirty_one_contacts_and_coil_series');
+EXPECT_TRUE(Y2 = ExpOr, 'y2_thirty_two_term_parallel');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

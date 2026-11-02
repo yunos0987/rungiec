@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC needs a jiepp with the built-in assert *)
+(* @cycles 1 *)
+(* Purpose: With the built-in assert undefined before the include, the feature detection of rungiec.iec stops preprocessing (there is no fallback). *)
+{#undef __assert}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

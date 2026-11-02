@@ -1,0 +1,32 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: FB_BOX with a TOF inside an MC zone. While the zone is OFF (scans 3 and 4) the box is called with IN FALSE and Q stays TRUE for PT, but the power after the box is FALSE, so the coil writes FALSE (a coil of an OFF zone is OFF). *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t114_fb_box_mc_zone_off))
+{#include 't_stdfb.iec'}
+TEST_M(t114_fb_box_mc_zone_off)
+var
+    Zone, Hold, Fan: bool;
+    Tf: TOF;
+    InZone: array[1..6] of bool := [true, true, false, false, true, true];
+    InHold: array[1..6] of bool := [true, true, true, true, false, true];
+    ExpQ: array[1..6] of bool := [true, true, true, true, false, true];
+    ExpFan: array[1..6] of bool := [true, true, false, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Zone := InZone[Cyc]; Hold := InHold[Cyc];
+(*  |--| Zone |--(MC)--|   the zone is OFF in scans 3 and 4  *)
+BEGIN_MC(CONTACT(Zone))
+(*  |--| Hold |--[ Tf(PT := T#200ms) IN Q ]--( Fan )--|   TOF: PT = 200 ms  *)
+RUNG(CONTACT(Hold), FB_BOX(Tf, IN, Q, PT := T#200ms), COIL(Fan))
+(*  |--(MCR)--|  *)
+END_MC()
+EXPECT_TRUE(Tf.Q = ExpQ[Cyc], 'tof_q_also_in_the_off_zone');
+EXPECT_TRUE(Fan = ExpFan[Cyc], 'coil_is_off_in_the_off_zone');
+T_EXPECT_IDLE(idle_after_zone);
+END_RUNGIEC()
+END_TEST_M

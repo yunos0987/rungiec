@@ -1,0 +1,36 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: Forward/reverse interlock: opposite start is ignored, stop clears both, simultaneous start lets the earlier rung win. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t015_interlock))
+TEST_M(t015_interlock)
+var
+    StF, StR, Stop, Fw, Rv: bool;
+    InStF: array[1..8] of bool := [true, false, false, false, false, true, false, true];
+    InStR: array[1..8] of bool := [false, false, true, false, true, false, false, true];
+    InStop: array[1..8] of bool := [false, false, false, true, false, false, true, false];
+    ExpFw: array[1..8] of bool := [true, true, true, false, false, false, false, true];
+    ExpRv: array[1..8] of bool := [false, false, false, false, true, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+StF := InStF[Cyc]; StR := InStR[Cyc]; Stop := InStop[Cyc];
+(*  |--+--| StF |--+--|/Stop |--|/Rv |--( Fw )--|  *)
+(*  |  |           |                            |  *)
+(*  |  +--| Fw |---+                            |  *)
+RUNG(PARALLEL(CONTACT(StF), CONTACT(Fw)), NOT_CONTACT(Stop), NOT_CONTACT(Rv), COIL(Fw))
+(*  |--+--| StR |--+--|/Stop |--|/Fw |--( Rv )--|  *)
+(*  |  |           |                            |  *)
+(*  |  +--| Rv |---+                            |  *)
+RUNG(PARALLEL(CONTACT(StR), CONTACT(Rv)), NOT_CONTACT(Stop), NOT_CONTACT(Fw), COIL(Rv))
+EXPECT_TRUE(Fw = ExpFw[Cyc], 'fw_matches_expected');
+EXPECT_TRUE(Rv = ExpRv[Cyc], 'rv_matches_expected');
+EXPECT_TRUE(not (Fw and Rv), 'never_both_on');
+EXPECT_TRUE((Cyc <> 3) or (Fw and (not Rv)), 'reverse_start_ignored_while_forward');
+EXPECT_TRUE((Cyc <> 8) or (Fw and (not Rv)), 'simultaneous_start_first_rung_wins');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

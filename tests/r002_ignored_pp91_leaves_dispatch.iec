@@ -1,0 +1,15 @@
+(* @expect residual _RUNGIEC_SERIES_0\( *)
+(* @cycles 1 *)
+(* Purpose: With the ignore directive for PP91 the arity check of RUNG() is silenced and the dispatch leaves _RUNGIEC_SERIES_0( (there is no entry for 0); the runner must still see it as a residual. *)
+{#ignore PP91}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|   0 terms are an arity error that PP91 would report  *)
+RUNG()
+END_RUNGIEC()
+end_program

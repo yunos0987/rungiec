@@ -1,0 +1,45 @@
+(* @expect pass *)
+(* @cycles 25 *)
+(* Purpose: storage-area level lamps from an up/down counter and comparison contacts: packages in count up, packages out count down; lamps for empty / not empty / 50% / 90% / full. Scaled to a store of 10 packages. *)
+(* Source: https://cache.industry.siemens.com/dl/files/822/45523822/att_82001/v1/s7kop__b.pdf, Appendix B.4, p.208-210 -- an up/down counter keeps the number of packages in a store and comparison operations light the level lamps *)
+(* Source: IEC 61131-3 Ed. 4.0 (CDV), 6.6.3.5.4 Table 46 -- CTUD: CU counts up, CD counts down, QU = CV >= PV, QD = CV <= 0 *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t066_storage_up_down_counter))
+TEST_M(t066_storage_up_down_counter)
+var
+    PkgIn, PkgOut, Reset, Empty, NotEmpty, Half, Nearly, Full: bool;
+    Ud: CTUD;
+    InIn: array[1..25] of bool := [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, false, false, false, false];
+    InOut: array[1..25] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false];
+    InReset: array[1..25] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+PkgIn := InIn[Cyc]; PkgOut := InOut[Cyc]; Reset := InReset[Cyc];
+(*  |--[ Ud(CU := PkgIn, CD := PkgOut, R := Reset, LD := false, PV := 10) ]--|  *)
+RUNG(FB_SCAN(Ud, CU := PkgIn, CD := PkgOut, R := Reset, LD := false, PV := 10))
+(*  |--| Ud.CV > 0 |--( NotEmpty )--|  *)
+RUNG(GT_CONTACT(Ud.CV, 0), COIL(NotEmpty))
+(*  |--|/NotEmpty |--( Empty )--|  *)
+RUNG(NOT_CONTACT(NotEmpty), COIL(Empty))
+(*  |--| Ud.CV >= 5 |--( Half )--|  *)
+RUNG(GE_CONTACT(Ud.CV, 5), COIL(Half))
+(*  |--| Ud.CV >= 9 |--( Nearly )--|  *)
+RUNG(GE_CONTACT(Ud.CV, 9), COIL(Nearly))
+(*  |--| Ud.QU |--( Full )--|  *)
+RUNG(CONTACT(Ud.QU), COIL(Full))
+EXPECT_TRUE((Cyc <> 1) or (Empty and (not NotEmpty) and (Ud.CV = 0)), 'empty_lamp_before_first_package');
+EXPECT_TRUE((Cyc <> 2) or (NotEmpty and (not Empty) and (Ud.CV = 1)), 'not_empty_after_first_package');
+EXPECT_TRUE((Empty = (Ud.CV = 0)) and (NotEmpty = (Ud.CV > 0)) and (Half = (Ud.CV >= 5)) and (Nearly = (Ud.CV >= 9)) and (Full = (Ud.CV >= 10)), 'lamps_match_count');
+EXPECT_TRUE((Cyc <> 10) or (Half and (not Nearly)), 'half_lamp_at_five');
+EXPECT_TRUE((Cyc <> 20) or (Full and Nearly and (Ud.CV = 10)), 'full_at_ten');
+EXPECT_TRUE((Cyc <> 18) or (Nearly and (not Full)), 'nearly_full_at_nine');
+EXPECT_TRUE((Cyc <> 22) or ((Ud.CV = 9) and (not Full)), 'one_package_out_counts_down');
+EXPECT_TRUE((Cyc <> 24) or (Empty and (Ud.CV = 0)), 'reset_empties_store');
+EXPECT_TRUE((Cyc <> 25) or (Empty and (not NotEmpty) and (not Half) and (not Full)), 'empty_lamp_on_again_after_reset');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

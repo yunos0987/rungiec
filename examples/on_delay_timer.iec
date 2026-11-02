@@ -1,0 +1,14 @@
+{#include 'rungiec.iec'}
+(* Example: on-delay timer. A stateful function block (timer) must see its IN every scan, so it is placed with FBT_BOX: *)
+(* FBT_BOX calls it on every scan with the power on IN, and the power after the box is its output Q. *)
+function_block on_delay_timer
+var_input Start: bool; end_var
+var_output Lamp: bool; end_var
+var Tm: TON; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Start |--[ Tm:TON(PT := T#1s) IN Q ]--( Lamp )--|   FBT_BOX calls the timer on every scan, so it sees IN = FALSE and resets  *)
+RUNG(CONTACT(Start), FBT_BOX(Tm, TON, IN, Q, PT := T#1s), COIL(Lamp))
+(* Wrong: RUNG(CONTACT(Start), FB_EXEC(Tm, IN := Start, PT := T#1s)); the box is not executed while Start is OFF, so the timer never sees IN = FALSE and never resets. *)
+END_RUNGIEC()
+end_function_block

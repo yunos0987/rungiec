@@ -1,0 +1,17 @@
+(* @expect run-error array index 0 out of bounds *)
+(* @cycles 1 *)
+(* Purpose: An END_NET nested inside a RUNG cannot be seen by the preprocessor (the argument is expanded first, so the network is already closed when the RUNG checks it), so the nesting trap at the start of END_NET faults at run time (RungiecStIn[1 - RungiecSp] with RungiecSp = 1). *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(1)  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+(*  END_NET is deliberately written inside a RUNG  *)
+RUNG(END_NET(), COIL(Y))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,17 @@
+(* @expect run-error INVALID_SYNTAX *)
+(* @cycles 1 *)
+(* Purpose: A combinator followed by a coil without a comma is a jiecc syntax error. *)
+{#include 'rungiec.iec'}
+function_block Fb0
+end_function_block
+program __main__
+var
+    A, B, Y, Y2: bool;
+    Fb0: Fb0;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--+--| A |--+--( Y )--|   comma missing after PARALLEL  *)
+RUNG(PARALLEL(CONTACT(A), CONTACT(B)) COIL(Y))
+END_RUNGIEC()
+end_program

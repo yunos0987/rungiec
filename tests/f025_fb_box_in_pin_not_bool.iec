@@ -1,0 +1,16 @@
+(* @expect run-error InterpreterFault: assignment type mismatch: cannot store value of type BOOL in declared type TIME *)
+(* @cycles 1 *)
+(* Purpose: The input pin of FB_BOX gets the power, so it is a BOOL input. PT of a TON (TIME) as the input pin is a type mismatch that jiecc reports when the call runs. *)
+{#include 'rungiec.iec'}
+{#include 't_stdfb.iec'}
+program __main__
+var
+    A, Y: bool;
+    Tm: TON;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--[ Tm PT Q ]--( Y )--|   PT is a TIME input  *)
+RUNG(CONTACT(A), FB_BOX(Tm, PT, Q), COIL(Y))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,52 @@
+(* @expect pass *)
+(* @cycles 34 *)
+(* Purpose: SERIES and PARALLEL arity boundaries: 1 term and 16 terms, the default limit (16-term SERIES = 15 contacts + coil). Cycle 1: all OFF, 2..17: only X[k] ON, 18: all ON, 19..34: only X[k] OFF. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t007_arity_1_and_16))
+TEST_M(t007_arity_1_and_16)
+var
+    X: array[1..16] of bool;
+    Y1, Y2, Y3, Y4, ExpAnd, ExpOr: bool;
+    Idx: dint;
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+for Idx := 1 to 16 do
+    if Cyc = 1 then
+        X[Idx] := false;
+    elsif Cyc <= 17 then
+        X[Idx] := (Idx = Cyc - 1);
+    elsif Cyc = 18 then
+        X[Idx] := true;
+    else
+        X[Idx] := (Idx <> Cyc - 18);
+    end_if;
+end_for;
+ExpAnd := true;
+for Idx := 1 to 15 do
+    ExpAnd := ExpAnd and X[Idx];
+end_for;
+ExpOr := false;
+for Idx := 1 to 16 do
+    ExpOr := ExpOr or X[Idx];
+end_for;
+(*  |--| X[1] |--( Y1 )--|   one-term SERIES  *)
+RUNG(SERIES(CONTACT(X[1])), COIL(Y1))
+(*  |--+--| X[1] |--+--( Y2 )--|   one-term PARALLEL  *)
+RUNG(PARALLEL(CONTACT(X[1])), COIL(Y2))
+(*  |--| X[1] |-- ... --| X[15] |--( Y3 )--|   16-term SERIES  *)
+RUNG(CONTACT(X[1]), CONTACT(X[2]), CONTACT(X[3]), CONTACT(X[4]), CONTACT(X[5]), CONTACT(X[6]), CONTACT(X[7]), CONTACT(X[8]), CONTACT(X[9]), CONTACT(X[10]), CONTACT(X[11]), CONTACT(X[12]), CONTACT(X[13]), CONTACT(X[14]), CONTACT(X[15]), COIL(Y3))
+(*  |--+--| X[1] |--+--( Y4 )--|   16-term PARALLEL  *)
+(*  |  :            :          |  *)
+(*  |  +--| X[16] |-+          |  *)
+RUNG(PARALLEL(CONTACT(X[1]), CONTACT(X[2]), CONTACT(X[3]), CONTACT(X[4]), CONTACT(X[5]), CONTACT(X[6]), CONTACT(X[7]), CONTACT(X[8]), CONTACT(X[9]), CONTACT(X[10]), CONTACT(X[11]), CONTACT(X[12]), CONTACT(X[13]), CONTACT(X[14]), CONTACT(X[15]), CONTACT(X[16])), COIL(Y4))
+EXPECT_TRUE(Y1 = X[1], 'y1_one_term_series');
+EXPECT_TRUE(Y2 = X[1], 'y2_one_term_parallel');
+EXPECT_TRUE(Y3 = ExpAnd, 'y3_fifteen_contacts_and_coil_series');
+EXPECT_TRUE(Y4 = ExpOr, 'y4_sixteen_term_parallel');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

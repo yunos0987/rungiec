@@ -1,0 +1,31 @@
+(* @expect pass *)
+(* @cycles 20 *)
+(* Purpose: flicker (blinking lamp) circuit made of two on-delay timers that reset each other. While Run is ON the lamp is OFF for 4 scans and ON for 3 scans (a period of 7 scans = 700 ms); the first OFF time after Run turns ON is 3 scans. Each timer counts PT from the scan where its IN rises (ET = 0 on that scan, IEC Figure 17), so TOff (PT = 300 ms) turns the lamp ON on the 4th scan of Gate and TOn (PT = 200 ms) cuts Gate on the 3rd scan of Lamp; the OFF time also includes the scan where Gate is cut to reset TOff. When Run goes OFF the lamp goes OFF at once and the timers reset. *)
+(* Source: https://cache.industry.siemens.com/dl/files/822/45523822/att_82001/v1/s7kop__b.pdf, Appendix B.3 clock pulse, p.204-207 -- a timer that restarts itself builds a clock pulse with a fixed period; here two timers give independent ON and OFF times *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t062_flicker_two_timers))
+{#include 't_stdfb.iec'}
+TEST_M(t062_flicker_two_timers)
+var
+    Run, Gate, Lamp: bool;
+    TOff, TOn: TON;
+    InRun: array[1..20] of bool := [false, true, true, true, true, true, true, true, true, true, true, true, true, false, false, true, true, true, true, true];
+    ExpLamp: array[1..20] of bool := [false, false, false, false, true, true, true, false, false, false, false, true, true, false, false, false, false, false, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Run := InRun[Cyc];
+(*  |--| Run |--|/TOn.Q |--( Gate )--|   TOn.Q resets the off-time timer  *)
+RUNG(CONTACT(Run), NOT_CONTACT(TOn.Q), COIL(Gate))
+(*  |--[ TOff(IN := Gate, PT := T#300ms) ]--| TOff.Q |--( Lamp )--|  *)
+RUNG(FB_SCAN(TOff, IN := Gate, PT := T#300ms), CONTACT(TOff.Q), COIL(Lamp))
+(*  |--[ TOn(IN := Lamp, PT := T#200ms) ]--|  *)
+RUNG(FB_SCAN(TOn, IN := Lamp, PT := T#200ms))
+EXPECT_TRUE(Lamp = ExpLamp[Cyc], 'lamp_matches_flicker_pattern');
+EXPECT_TRUE(Run or (not Lamp), 'lamp_off_while_run_off');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,1 @@
+tests/e050_st_exec_directive.iec:14.0: error: PP02: Operation not allowed; 'control directive inside macro argument'

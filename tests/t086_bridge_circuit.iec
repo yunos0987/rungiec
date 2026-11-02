@@ -1,0 +1,38 @@
+(* @expect pass *)
+(* @cycles 32 *)
+(* Purpose: a bridge circuit, which no series-parallel tree can express, written with BEGIN_NET / WIRE / END_NET. All 32 combinations of A to E. E conducts one way only, from node 1 to node 2 (IEC power flow from left to right), so Y = A and C or B and D or A and E and D; B, E and C in that order do not conduct. The state after the network is idle. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t086_bridge_circuit))
+TEST_M(t086_bridge_circuit)
+var
+    A, B, C, D, E, Y: bool;
+    InA: array[1..32] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true];
+    InB: array[1..32] of bool := [false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true];
+    InC: array[1..32] of bool := [false, false, false, false, true, true, true, true, false, false, false, false, true, true, true, true, false, false, false, false, true, true, true, true, false, false, false, false, true, true, true, true];
+    InD: array[1..32] of bool := [false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true];
+    InE: array[1..32] of bool := [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true];
+    ExpY: array[1..32] of bool := [false, false, false, false, false, false, false, false, false, false, true, true, false, false, true, true, false, false, false, true, true, true, true, true, false, false, true, true, true, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc]; D := InD[Cyc]; E := InE[Cyc];
+(*  |--| A |--(1)--| C |--(3)--( Y )--|  *)
+(*  |          |           |             *)
+(*  |        | E |         |   (1 -> 2)  *)
+(*  |          |           |             *)
+(*  |--| B |--(2)--| D |---+             *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(0, 2, CONTACT(B))
+WIRE(1, 2, CONTACT(E))
+WIRE(1, 3, CONTACT(C))
+WIRE(2, 3, CONTACT(D))
+WIRE(3, 4, COIL(Y))
+END_NET()
+EXPECT_TRUE(Y = ExpY[Cyc], 'bridge_truth_table');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

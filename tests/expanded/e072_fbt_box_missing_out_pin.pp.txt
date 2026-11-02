@@ -1,0 +1,1 @@
+tests/e072_fbt_box_missing_out_pin.iec:13.0: error: PP34: Argument count mismatch; 'FBT_BOX: expected 4-16777215, got 3'

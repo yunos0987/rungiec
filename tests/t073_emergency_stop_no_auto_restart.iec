@@ -1,0 +1,42 @@
+(* @expect pass *)
+(* @cycles 12 *)
+(* Purpose: emergency stop with MC / MCR. The E-stop is a normally closed button wired as EStopOk (FALSE = pressed). The motor circuit sits in the MC zone: pressing the E-stop turns the motor coil OFF, which also drops its self-holding contact, so releasing the E-stop does NOT restart the motor; Start has to be pressed again, and Start pressed while the E-stop is pressed is ignored. The Stop button is also normally closed and wired as StopOk (FALSE = pressed), written as a normal contact | StopOk |: a broken wire stops the motor instead of leaving it without a working stop button (fail-safe). The E-stop lamp is outside the zone and works in any state. Note: the emergency stop itself must stop the machine in hardware (ISO 13850 / IEC 60204-1: a safety relay or a safety PLC opens the power circuit); this ladder is only the monitoring and restart-prevention logic. *)
+(* Source: https://cache.industry.siemens.com/dl/files/822/45523822/att_82001/v1/s7kop__b.pdf, 10.9-10.11 MCR, p.123-126 -- while the MCR zone is OFF, coils in the zone are written with 0 and set/reset coils keep their state *)
+(* Source: https://dl.mitsubishielectric.com/dl/fa/document/manual/plc/sh081266eng/sh081266engae.pdf, MC / MCR, p.201 -- the master control zone between MC and MCR *)
+(* Source: https://en.wikipedia.org/wiki/Ladder_logic, "Industrial STOP/START" -- a self-holding start/stop circuit; the safe version puts the emergency stop in series so the motor needs a new start *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t073_emergency_stop_no_auto_restart))
+TEST_M(t073_emergency_stop_no_auto_restart)
+var
+    EStopOk, Start, StopOk, Motor, Lamp: bool;
+    InEStopOk: array[1..12] of bool := [true, true, true, true, false, false, true, true, true, true, true, true];
+    InStart: array[1..12] of bool := [false, true, false, false, false, true, false, false, true, false, false, false];
+    InStopOk: array[1..12] of bool := [true, true, true, true, true, true, true, true, true, true, false, true];
+    ExpMotor: array[1..12] of bool := [false, true, true, true, false, false, false, false, true, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+EStopOk := InEStopOk[Cyc]; Start := InStart[Cyc]; StopOk := InStopOk[Cyc];
+(*  |--| EStopOk |--(MC)--|   while the E-stop is pressed the zone is OFF  *)
+BEGIN_MC(CONTACT(EStopOk))
+(*  |--+--| Start |--+--| StopOk |--( Motor )--|   self-holding start/stop inside the zone; Stop is an NC button: a normal contact  *)
+(*  |  |             |                         |  *)
+(*  |  +--| Motor |--+                         |  *)
+RUNG(PARALLEL(CONTACT(Start), CONTACT(Motor)), CONTACT(StopOk), COIL(Motor))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--|/EStopOk |--( Lamp )--|   outside the zone  *)
+RUNG(NOT_CONTACT(EStopOk), COIL(Lamp))
+EXPECT_TRUE(Motor = ExpMotor[Cyc], 'motor_matches_expected');
+EXPECT_TRUE((Cyc <> 5) or (not Motor), 'estop_stops_running_motor');
+EXPECT_TRUE((Cyc <> 6) or (not Motor), 'start_ignored_while_estop_pressed');
+EXPECT_TRUE(((Cyc <> 7) and (Cyc <> 8)) or (not Motor), 'no_automatic_restart_after_estop_release');
+EXPECT_TRUE((Cyc <> 9) or Motor, 'start_after_release_runs_motor');
+EXPECT_TRUE((Cyc <> 11) or (not Motor), 'stop_button_stops_motor');
+EXPECT_TRUE(Lamp = (not EStopOk), 'estop_lamp_follows_button');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

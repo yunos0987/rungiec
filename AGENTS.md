@@ -1,0 +1,135 @@
+# AGENTS.md (RUNGIEC プロジェクト AI ルール)
+
+マクロの記述規則とテストの書き方の規則は、人の開発者にも同じく当てはまる（[CONTRIBUTING.md](CONTRIBUTING.md) から参照する）。
+
+IEC 61131-3 のラダー図 (LD) を jiepp マクロで表現し、ST 言語に展開する DSL。名前は RUNGIEC。展開には jiepp だけを使い、このリポジトリのテストは jiecc で実行する。詳細設計は `docs/DESIGN.md`。
+
+## ツールのパス
+
+- 対象のリリース版は jiepp 1.2.0 と Jiecc 9.2.0。jiepp は `__has_builtin` と `-Werror=undef` と `__nosplit` のある版が必要である。LD モードには `__xmlattr` / `__xmltext` / `__arg_lhs` / `__arg_rhs` / `__arg_dir` のある jiepp が必要で、この版にある。古い jiepp で使えるのは ST モードだけ（LD モードは `rungiec.iec` の `{#error}` の PP91 になる）。どちらのモードも Jiecc 9.2.0 が必要である（ST モードの文は POU の本体に囲まずに書く形で、それより古い jiecc では `rungiec.iec` の `{#error}` の PP91 `RUNGIEC needs Jiecc 9.2.0 or later`。jiecc が定義する `_JIECC_FULL_VER` で検査し、単体の jiepp では検査しない。`e071`）。
+- 入手先: jiepp は GitHub の Releases（https://github.com/yunos0987/jiepp/releases 、v1.2.0 の `jiepp-v1.2.0-windows-x64.zip` / `jiepp-v1.2.0-linux-x64.tar.gz`）。jiecc はホームページ（https://www.graviness.com/iec_61131-3/jiecc.html）の配布アーカイブで、jiecc と jiepp の両方が入っている（CI はこのアーカイブから両方を取得する）。Windows は `jiecc.zip`（`jiecc.exe` / `jiepp.exe`）、Linux は `jiecc.tgz`（`jiecc` / `jiepp`）。実行環境は README の「ツールの入手」。
+- 置き場所はリポジトリの `tools/`。Windows は `tools/jiepp.exe` / `tools/jiecc.exe`、Linux は `tools/jiepp` / `tools/jiecc`。ランナーの既定は `tools/jiepp` / `tools/jiecc` で、無ければ `.exe` を付けた名前を使う。
+  - PATH 上の `jiepp` は使わない（古い jiecc の配布物のものだと古い版のことがある）。ランナーも PATH フォールバックしない。
+- `tools/*.exe` と `tools/jiepp` / `tools/jiecc` は Git で追跡しない（`.gitignore`）。
+- ランナーは jiepp に `-Werror=undef` を付ける（`{#if}` / `__assert` の条件の中の未定義の識別子が前処理エラー PP54 になる）。残す理由は設定値（`RUNGIEC_NEST_MAX` など）の `{#if}` に名前を書いた誤りをエラーにするため。`WIRE` の節点番号の変数・式は `-Werror=undef` が無くても節点表の検査（PP91）でエラーになる（付けると内部名 `_RUNGIEC_IS_NODE_K0` などの PP54 も出る）。
+- 環境変数 `RUNGIEC_JIEPP` / `RUNGIEC_JIECC` または `--jiepp` / `--jiecc` で上書き可能。
+- jiecunit（jiecc 用の単体テストの枠組み）は git submodule の `vendor/jiecunit`（https://github.com/yunos0987/jiecunit.git 、v6.0.0 = ba5e55a に固定）。clone は `git clone --recursive`、済んだ clone では `git submodule update --init`。無ければランナーは「`git submodule update --init` を実行せよ」と出して終了コード 2。`--jiecunit DIR` で別の場所を使える。submodule の中は編集しない。
+- jiecc の `--run` は `_JIER` / `_OMRON` などの対象の macro を定義済みにするが、単体の jiepp は定義しないので、jiecunit の `{#if}` が `-Werror=undef` の PP54 になる。ランナーは起動時に 1 回 `jiecc --run -E -dM`（空のファイル）で定義済みの macro の一覧を作り、t / x のテストの jiepp に `-include` で渡す（jiecc の版に追従する。作れなければ終了コード 2）。
+
+## テスト
+
+リポジトリルートで実行する。
+
+```
+python tools/run_tests.py
+python tools/run_tests.py --no-lint
+python tools/run_tests.py --lint-only
+python tools/run_tests.py --lint-selftest
+python tools/run_tests.py --only "t001*"
+```
+
+- 展開後 ST と実行ログは `tests/expanded/` に出力される (`<name>.st` / `.run.txt` / `.pp.txt`)。Git で追跡するのは e / f / r の出力と例題の LD モードの期待値ファイル（`<例題>.ld.xml`）で、t / x の出力（`tests/expanded/t[0-9]*`、`tests/expanded/x_*`）は `.gitignore` で除く（jiecunit の展開で大きく、差分が読めないため）。ランナーは jiepp / jiecc の出力のパスからリポジトリルートを除いてから保存と `@expect` の照合をする（`tests/e041_wire_variable_node.iec:16.0: error: ...`）。
+- `jiecc --run` の終了コードは合否を表さない。ランナーが出力文字列で判定する。`ir-audit: [ERROR]` が出力にあれば成功を期待するテストは失敗になる。
+- t / x のテストは jiecunit の 1 テストとして実行する。ランナーは `-D T_CYCLES=N`（`(* @cycles N *)` の値）を渡し、`jiecc --run --max-cycles N+2` で実行する。合格は、出力に `error:` / `InterpreterFault` / `Traceback` / `ir-audit: [ERROR]` が無く、`[========] 1 tests ran.` がちょうど 1 行、`[ PASSED ] 1 tests.` と `[     OK ] <ファイル名の語幹>` があり、`[ FAILED ]` と `[  ERROR ]` が無いこと（`[ PASSED ] 0 tests.` は失敗しても出るので見ない）。実行の前にソース（コメントを除く）を検査する: `EXPECT_` / `ASSERT_` が 1 個以上、`T_BEGIN()` がちょうど 1 個、`TEST_M` と `_JIEC_TESTNAMES_LIST_` の名前がファイル名の語幹と一致、`program __main__` が無い（configuration の下では警告なしに実行されない）、`EOT(` / `SKIP_TEST(` を自分で書かない。e / f / r は jiecunit を使わず、`@expect` の照合で判定する。
+- `--only` なしのとき、ランナーは全例題を LD モード（`jiecc examples/<名前>.iec -I . -D RUNGIEC_LD -P -nC -t <t> -o <xml>`）でも 4 ターゲットで変換し、最初の LD の本文を期待値ファイル `tests/expanded/<名前>.ld.xml`（omron の XML。Git で追跡）と比べ、`tools/xml2rungiec.py` で断片に戻した往復も確認する（`docs/TESTING.md`）。期待値ファイルは書き換えず、違えば `tests/expanded/<名前>.ld.xml.new` に書くので、確認してから置き換える。往復できない例題は理由を付けて `tools/run_tests.py` の `LD_ROUNDTRIP_SKIP` に並べる。
+- LD モードの `e` テストは、`{#include 'rungiec.iec'}` の前に `{#define RUNGIEC_LD 1}` を書く（`e060`〜`e068`、`e073`）。PP91 のメッセージの中の設定の名前は値に置き換わる（`RUNGIEC LD: nesting exceeds 16`）。本体を直接 include する誤りを試す `e069`（`rungiec_st.iec`）と `e070`（`{#define RUNGIEC_LD 1}` の後の `rungiec_ld.iec`）は、`rungiec.iec` の代わりに本体を include する。jiecc の版の検査を試す `e071` は、include の前に `{#define _JIECC_FULL_VER 80000}` を書く（単体の jiepp は `_JIECC_FULL_VER` を定義しない）。
+- lint（`tools/lint_rungiec.py`。規則 LN0〜LN25 は `docs/DESIGN.md` の「lint の規則」）は、ランナーがテストの前に実行する。ライブラリとして LN0〜LN9 を適用するのは入口 `rungiec.iec` と ST モードの本体 `rungiec_st.iec` で、LD モードの本体 `rungiec_ld.iec` は LN7 が定義する公開名の集合だけを読む。指摘があってもテストは続け、lint かテストが失敗すれば終了コード 1。`--no-lint` と `--only` のときは実行しない。`--lint-only` は lint だけ、`--lint-selftest` は lint の自己検査だけ（どちらも jiepp / jiecc は不要）。
+- 意図して誤りを含むテストは、先頭の `(* Purpose: ... *)` の次の行に `(* @lint-allow LNxx *)` を書く（今は `f007` が LN10、`e057` / `e058` が LN13、`f017` / `e044` / `e045` / `e047` / `e048` が LN16、`e050` / `f021` が LN17、`e063` / `e066` が LN14、`e062` が LN25、`e068` が LN22）。何も抑制しない指定と存在しない規則は LN0 になる。
+- lint の規則を追加する・変えるときは、`SELFTEST_CASES` に指摘する例と指摘しない例を 1 つ以上ずつ置き、`docs/DESIGN.md` の規則の表を直す。
+
+## マクロ記述規則 (rungiec.iec / rungiec_st.iec / rungiec_ld.iec を編集する場合)
+
+マクロは 3 ファイルにある。入口 `rungiec.iec`（共通部を定義し、末尾でモードの本体を include する。公開マクロは本体だけが定義する）、ST モードの本体 `rungiec_st.iec`、LD モードの本体 `rungiec_ld.iec`。利用者が include するのは `rungiec.iec` だけ。
+
+1. jiepp は実引数を呼び出し 1 回につき最大 1 回だけ展開し、その結果を仮引数のすべての出現に入れる（jiepp 仕様 §3.2。`__counter` を渡しても値は 1 回しか進まない）。それでも、各子・各オペランドの仮引数は本体中で 1 回だけ使う（ST では出現ごとに式が評価され、副作用と評価回数が増えるため）。例外は値が整数リテラルになる仮引数（`_RUNGIEC_*_I`（`_RUNGIEC_RISE_I` など）の `n`、`WIRE` の `from_node` / `to_node`）、`__assert` のメッセージで値を示すための出現、前処理で値になるだけの出現（`WIRE` の `_RUNGIEC_COUNT(__VA_ARGS__)`、`JMP` / `LABEL` の `label` を `_RUNGIEC_CAT_X` でカウンタ名に連結する出現など、ST に出ない 2 回目）、`FB_BOX` / `FBT_BOX` の `inst`（呼び出しと出力の `inst.out_pin` で 2 回出る。インスタンスの名前で式ではないので、評価回数は増えない）。LD モードの `rungiec_ld.iec` では、要素の出力マクロの `id`（`__counter(_rungiec_ld_id)` の値の整数リテラルで、XML と ID の集合の更新に使う）、`_RUNGIEC_LD_EV<L>(node)` の `node`（本体で 2 回、タグの表の検査とトークン連結に使う。どちらも前処理で値になるだけの出現）、集合の操作の仮引数（カウンタ名と ID）も例外。ボックスの出力マクロ（`_RUNGIEC_LD_FB_IN_E` など）の呼び出しの引数（`__VA_ARGS__`）も例外で、XML の順に並べるため引数を 4 回走査するので本体に 4 回出るが、XML に出るのは各引数の左辺と右辺が 1 回ずつ（`docs/DESIGN.md` の「LD モードの構造」の「ボックスの引数」）。ボックスの名前の検査（`_RUNGIEC_LD_NAME_CHECK`）に渡す名前の出現と、要素・`JMP` / `LABEL` の空のオペランド・ラベルの検査（`_RUNGIEC_LD_EMPTY_CHECK`）に渡すオペランドの出現は、前処理で値になるだけの出現に当たる。
+2. `@@` のオペランドに `__VA_ARGC__` / `__counter(...)` / `__counter_peek(...)` を直接置かない（`@@` の被演算子は展開されない）。`_RUNGIEC_CAT_X` を一段かませる。3 つを連結する `_RUNGIEC_CAT3_X(a, b, c)` は、`a` を `b` の最初の字句に、`c` を `b` の最後の字句に連結する（`WIRE` の節点表の検査が使う。`b` が `1 + K` なら `_RUNGIEC_IS_NODE_1 + K0`）。
+3. 子の展開結果に括弧外の裸のカンマを出さない。利用者の文を入れる `ST_EXEC` は `__VA_ARGS__` をそのまま置かず `__nosplit(__VA_ARGS__)` で入れる（文の中のカンマが外側の `RUNG` などの引数の区切りにならない。`docs/DESIGN.md` の X40）。
+4. define 本体に `{#`、`//`、`(* *)` を入れない。`$` は使わない（`${` と `$}` のエスケープも、`$` の行継続も使わない）。`rungiec.iec` と `rungiec_st.iec` には `$` が 1 つも無い（lint の LN1 が指摘する。ST モードは文を POU の本体に囲まずに出すので、ディレクティブを出さない）。例外は LD モードの `rungiec_ld.iec` で、`BEGIN_RUNGIEC` の本体の `${ld$}` と `END_RUNGIEC` の本体の `${end$}`（LD の本文を囲むディレクティブ `{ld}` / `{end}` を出す。jiepp SPECIFICATION §2。jiepp は `(*{ld}*)` / `(*{end}*)` の形で出し、jiecc はこの形も読む）と、XML の行を分ける改行の `$n` を使う。`$n` は本体の字句の間にだけ書く（本体の先頭と末尾の `$n` は jiepp が捨てるので、行の始めには空に展開されるマクロを先に置く）。`rungiec_ld.iec` の本体には `<` / `>` を含む XML のテキストも書く。`ST_EXEC` の XML の名前空間の文字列 `"https://www.ia.omron.com/Smc"` は `//` を含むが、文字列リテラルの中なのでコメントにならない。IEC キーワードは小文字。
+5. 接点を `Y := A and B` のように 1 つの式にまとめない。接点系の要素（接点・エッジ接点・比較接点）は自分の入力パワーを含めた値を `RungiecVal := RungiecEn and RungiecTmp`（`not` やエッジの形も `RungiecEn and ...`）で出し、直列は `RungiecAcc := RungiecVal;` で写し、並列は `RungiecAcc := RungiecAcc or RungiecVal;` で合わせる。`*_BOX` だけが `RungiecVal := RungiecRail and inst.out_pin` でパワーを置き換える（入力パワーを含めない。どの深さでも後段のパワーは出力になる）。`WIRE` の節点への合流 `RungiecNode[t] := RungiecNode[t] or RungiecVal;` も許す。
+6. 作業変数は `Rungiec*` の固定 13 名（`RungiecEn` / `RungiecIn` / `RungiecAcc` / `RungiecVal` / `RungiecTmp` / `RungiecRail` / `RungiecSp` / `RungiecStIn` / `RungiecStAcc` / `RungiecPrev` / `RungiecNode` / `RungiecI` / `RungiecMcSt`）で、`rungiec_st.iec` だけが宣言して使う（`rungiec.iec` には書かない）。`LdT` は使わない。内部マクロ接頭辞は `_RUNGIEC_`（規則 13）。前処理のカウンタは `rungiec_edge` / `rungiec_net` / `rungiec_node` / `rungiec_mc` / `rungiec_open` / `rungiec_seg` / `rungiec_pou` / `rungiec_exit` の 8 つと、ラベルごとの `rungiec_label_<ラベル>` / `rungiec_jump_<ラベル>`（`_RUNGIEC_CAT_X` で連結した名前を仮引数で `__counter_peek` / `__counter_set` に渡す。カウンタ名はマクロ展開されないので、トークン連結を直接書くと PP39）。`rungiec_seg` は MC 区間の番号で、`BEGIN_RUNGIEC()` / `BEGIN_MC` / `END_MC` が 1 増やし、戻さない。`rungiec_exit` は一般形のネットワークの中の `JMP()` / `RETURN()` が 2 を足し、`WIRE` が偶数であることを検査してから 0 か 1 に戻す（`BEGIN_NET()` が 0 にする。実引数は本体より先に展開されるため）。`BEGIN_RUNGIEC()`（`_RUNGIEC_START()`）は、最初の `__counter_set` より前に、前の POU の一般形のネットワーク・MC 領域・`BEGIN_RUNGIEC()` が閉じていること（`rungiec_net` / `rungiec_mc` / `rungiec_open` が 0）を検査し、`rungiec_open` を 1 にして残りを POU ごとに初期化する。`END_RUNGIEC()` は `rungiec_open` が 1 であることと一般形のネットワーク・MC 領域の閉じ忘れを検査し、`rungiec_open` / `rungiec_net` / `rungiec_mc` を 0 に戻す（同じ誤りを次の POU で重ねて報告しないため）。LD モード（`rungiec_ld.iec`）は、さらに `_rungiec_ld_id`（次の ID）/ `_rungiec_ld_rung`（次の `evaluationOrder`）/ `_rungiec_ld_t`（式の値を整数の字句にする作業用）/ `_rungiec_ld_a` / `_rungiec_ld_b`（ボックスの引数の走査で ID を振り直す作業用）と、ID の集合のカウンタ `_rungiec_ld_i<L>_*` / `_rungiec_ld_o<L>_*`（深さ L の入力・出力）/ `_rungiec_ld_n<K>_*`（ネットワークの節点 K）/ `_rungiec_ld_r_*`（ネットワークの右レール）、節点 K を読んだ記録 `_rungiec_ld_nr<K>` を使う。文マクロの前処理の検査とカウンタの更新は、両モードで共有する内部マクロ（`_RUNGIEC_BEGIN_NET_CHECKS` / `_RUNGIEC_WIRE_CHECKS` / `_RUNGIEC_WIRE_DONE` / `_RUNGIEC_END_NET_CHECKS` / `_RUNGIEC_BEGIN_MC_CHECKS` / `_RUNGIEC_END_MC_CHECKS` / `_RUNGIEC_END_MC_DONE` / `_RUNGIEC_JMP_CHECKS` / `_RUNGIEC_LABEL_CHECKS` / `_RUNGIEC_RETURN_CHECKS`）にまとめて入口 `rungiec.iec` に置き、ST モードの本体 `rungiec_st.iec` と LD モードの本体 `rungiec_ld.iec` がどちらも呼ぶ。
+7. 項数は `_RUNGIEC_ARITY_CHECK`（`__assert`）が 1〜`RUNGIEC_ARITY_MAX` を検査し、外れたら PP91（マクロ名と項数が出る）。`SERIES` / `PARALLEL` / `RUNG` / `WIRE` / `BEGIN_MC` が使う。項数表（`_RUNGIEC_SERIES_N` / `_RUNGIEC_PARALLEL_N`）は `rungiec_st.iec` にある N = 1〜32 の本物の定義だけで、`python tools/gen_arity_table.py` で生成する（`--check` で `rungiec_st.iec` と一致を確認、不一致は終了コード 1）。表を直接編集せず、本体の形を変えるときはスクリプトの `arity_body()` を直してから生成し直す。`rungiec.iec` の節点表（`_RUNGIEC_IS_NODE_<K>0`、K = 0〜64 の 65 行）も同じスクリプトが生成する（`--nodes`）。LD モードの `rungiec_ld.iec` の生成部分（目印のコメント `(* BEGIN GENERATED by tools/gen_arity_table.py --ld *)` と `(* END GENERATED *)` の間）も同じスクリプトが生成し（`--ld`。本体の形はスクリプトの `generate_ld()`）、`--check` は項数表・節点表・LD の生成部分の 3 つを確認する（出力は 3 行）。節点表の上限 64 を変えるときは、`rungiec.iec` の `{#if RUNGIEC_NODE_MAX > 64}`、`WIRE` のメッセージ（`is not an integer literal from 0 to 64`）、スクリプトの `NODE_TABLE_MAX` をそろえる。
+8. 展開後 ST に `{#` を残さない。
+9. DSL を使う POU は「利用者の `var` ブロック → `RUNGIEC_VAR()` → `BEGIN_RUNGIEC()` → ネットワーク → `END_RUNGIEC()`」の順に書く。文は POU の本体に直接書く。DSL を使う POU には `{st}` / `{end}`（`(*{st}*)` / `(*{end}*)` も）を書かない（POU のどこに書いても lint の LN16 が指摘する。`RUNGIEC_VAR()` と `BEGIN_RUNGIEC()` の間の `{st}` は閉じないブロックになり jiecc の構文エラー `INVALID_SYNTAX_FOR_CODEBLOCK`。`f017`）。POU の本体のコメントにも `{st}` / `{end}` と書かない（`(* {st} *)` も jiecc がディレクティブとして読み、構文エラーになる）。DSL を使う POU では、`RUNGIEC_VAR*()` の前と `END_RUNGIEC()` の後に利用者の文を置かない（置けるのは `var*` の宣言のブロック、pragma、コメント、`using`、入れ子の function / method / action / transition。1 つの POU は 1 つの言語。lint の LN24。LD モードではその文が `{ld}` の外の ST の本文になり、jiecc は LD と ST の本文が混ざった XML を警告なしに出す）。`RUNGIEC_VAR()` は作業変数の `var` ブロックを展開し、`BEGIN_RUNGIEC()` の直前に置く（間に書けるのはコメントだけ。lint の LN16）。FB の作業変数を `var_temp` にするなら `RUNGIEC_VAR_TEMP()`、FUNCTION・METHOD は `RUNGIEC_VAR_NOEDGE()`（`RUNGIEC_VAR()` / `RUNGIEC_VAR_TEMP()` は不可。lint の LN15）。`BEGIN_RUNGIEC()` は 1 回書き、前処理の検査と初期化文を出す（宣言しない）。`END_RUNGIEC()` は前処理の検査だけで、ST を出さない。`BEGIN_RUNGIEC()` と `END_RUNGIEC()` は 3 種の `RUNGIEC_VAR*()` に共通。ST モードでは、`BEGIN_RUNGIEC()` の初期化文から POU の終わりまでが 1 つの ST の並びになる。この形は LD モードでも同じで、LD モードでは `RUNGIEC_VAR*()` は何も出さず、`BEGIN_RUNGIEC()` は初期化文の代わりに `{ld}` を、`END_RUNGIEC()` は `{end}` を出す（`docs/DESIGN.md` の D42）。ファイルの先頭で include するのは入口 `rungiec.iec` だけ（本体 `rungiec_st.iec` / `rungiec_ld.iec` を直接 include すると PP91。`e069`、`e070`）。
+10. 要素・結合子の本体は、展開後の ST が代入で始まり代入で終わる形にし、末尾に `;` を付けない。`if` で始めない・`end_if` で終えない（カンマ忘れを jiecc の構文エラーで検出するため）。本体の先頭に置く検査（`__assert`、`_RUNGIEC_EDGE_CHECK`、`_RUNGIEC_ARITY_CHECK`、`__counter_set`。展開結果は空）は数えない。`if` が必要な要素は `RungiecTmp := RungiecEn; if RungiecTmp then ...; end_if; RungiecVal := RungiecTmp` の形にする。文を自分で閉じるマクロ（`RUNG` / `WIRE` / `BEGIN_NET` / `END_NET` / `BEGIN_MC` / `END_MC` / `LABEL`）はこの規則の対象外で、末尾に `;` を付ける。
+11. バージョン: 互換性のない変更・機能の追加は `RUNGIEC_VERSION_MINOR` を上げ、不具合の修正は `RUNGIEC_VERSION_REVISION` を上げる。4 個の define（`RUNGIEC_VERSION_MAJOR` / `_MINOR` / `_REVISION` / `RUNGIEC_VERSION`）は一緒に変える。一致は `rungiec.iec` の `{#if}` が検査する。
+12. 対になる公開マクロは `BEGIN_` / `END_` を名前の先頭に置く（`BEGIN_RUNGIEC` / `END_RUNGIEC`。`RUNGIEC_BEGIN` のように後ろに置かない）。
+13. 利用者が普通は書かないマクロ（内部マクロ。項数表・結合子・トークン連結・エッジ接点の中継など）は名前を `_` で始める（`_RUNGIEC_` 接頭辞）。利用者が書く、または設定・参照するマクロ（要素、`RUNGIEC_VAR*` / `BEGIN_RUNGIEC` / `END_RUNGIEC`、`RUNGIEC_NEST_MAX` などの設定、`RUNGIEC_VERSION*`）は `_` で始めない。作業変数は ST の識別子として残るので `_` で始めない（`Rungiec*`）。
+14. 名前の末尾の `_` は「公開マクロだが、普通は使わない」を表す。今は該当する公開マクロは無い。それ以外の目的で末尾に `_` を付けない。先頭の `_` は内部マクロ（規則 13）。
+15. `__assert` の書き方: 条件は `{#if}` と同じ表記（`=` / `<>` / `\and\` / `\or\`。`&&` / `==` は PP51。整数どうしの素の `and` / `or` はビット演算）。メッセージは `RUNGIEC ` で始め、アポストロフィと対にならない括弧を書かない。メッセージの中で仮引数名と同じ語は置換されるので、値を示すとき以外は書かない。関数形マクロ名の直後に `(` を書かない（展開される）。偽なら PP91 で、展開は続き、終了コード 1、`-o` のファイルは作られない。
+16. 文マクロのうち `RUNG` / `WIRE` / `BEGIN_MC` / `END_MC` / `END_NET` は、検査（`__assert`）の後、ST の先頭に入れ子の実行時トラップ `RungiecStIn[1 - RungiecSp] := RungiecIn;` を置く（最上位では添字 1 で無害、要素の中では添字 0 以下で実行時フォールト。`f013`〜`f015`、`f018`、`f019`）。`LABEL` はラベルの直後に置く（`f024`）。`BEGIN_NET` は置かない（`RUNG` / `WIRE` / `BEGIN_MC` の子に書くと一般形のネットワークの検査で PP91 になる）。一般形のネットワークの中で使えない文マクロ（`RUNG` / `BEGIN_MC` / `END_MC` / `LABEL` / `BEGIN_NET`）は `__counter_peek(rungiec_net) = 0` を検査する。実行時トラップは ST モードだけに置き、LD モードの文マクロは置かない（要素の中の文マクロはタグの検査の PP91。`docs/DESIGN.md` の D49）。
+17. 展開後の ST を jiecc の対象で変えるときは、jiecc が定義する対象のマクロ（`_CODESYS` など。値は `true` / `false`）を `{#if defined(_CODESYS) \and\ _CODESYS}` の形で読む（単体の jiepp は定義しないので、`defined` で守らないと `-Werror=undef` の PP54）。選んだ結果は内部マクロに入れ、選び方を 1 か所にまとめる（ジャンプのキーワードは `_RUNGIEC_JUMP_KW`: CODESYS は `jmp`、ほかは `goto`。ジャンプを使えるかは `_RUNGIEC_JUMP_OK`: `_OMRON` / `_KEYENCE` / `_MITSUBISHI` が TRUE なら 0 で、`JMP` / `LABEL` が `__assert` の PP91）。`BEGIN_RUNGIEC()` / `END_RUNGIEC()` はトラップを置かず、対と閉じ忘れを `rungiec_open` などのカウンタで前処理で検査する（規則 6）。利用者が定義する LD モードの切り替え `RUNGIEC_LD` も同じ形（`{#if defined(RUNGIEC_LD) \and\ RUNGIEC_LD}`）で読み、結果を内部マクロ `_RUNGIEC_LD`（1 か 0）に入れる。入口 `rungiec.iec` は末尾で `_RUNGIEC_LD` により本体を 1 つ選んで include する（1 なら `rungiec_ld.iec`、0 なら `rungiec_st.iec`）。対象のマクロによる `_RUNGIEC_JUMP_KW` / `_RUNGIEC_JUMP_OK` の選択は `rungiec_st.iec` の先頭近くにあり、`rungiec_ld.iec` は `_RUNGIEC_JUMP_OK` を 1 にする（`rungiec.iec` の `_RUNGIEC_JMP_CHECKS` / `_RUNGIEC_LABEL_CHECKS` は呼び出しのときに展開されるので、本体の定義が使われる）。公開マクロは両方の本体がすべて定義し、`rungiec.iec` は定義しない（lint の LN7）。本体は直接 include を `{#if \not\ (defined(_RUNGIEC_LD) \and\ _RUNGIEC_LD = 0)}`（`rungiec_ld.iec` は `= 1`）の `{#error}` でエラーにし、本体全体を `{#else}` の中に置く。
+
+## テストを追加するとき
+
+- 名前は `tNNN_*`（成功）/ `eNNN_*`（前処理エラー）/ `rNNN_*`（残留）/ `fNNN_*`（jiecc 段階のエラー。コンパイルまたは実行）。先頭に `(* @expect ... *)` と `(* @cycles N *)`。t / x は `(* @expect pass *)` だけ（`pass` は t / x にしか使えない）。`@cycles N` は、t / x ではテストの本体を実行するスキャン数（`Cyc` = 1〜N。N + 1 スキャン目の `T_BEGIN()` がテストを終える）で、必須かつ N は 1 以上（無い・0 はランナーが失敗にする）。e / f / r では `jiecc --run --max-cycles N`。
+- t / x のテストは jiecunit（`tests/support/t_jiecunit.iec`）で書く。形は次のとおり（テスト名 = ファイル名の語幹。テストが使う FUNCTION / FUNCTION_BLOCK は `TEST_M` より前に置く。DSL を使わない x は `RUNGIEC_VAR()` / `BEGIN_RUNGIEC()` / `END_RUNGIEC()` を書かず、`T_BEGIN()` を利用者の最後の `end_var` の直後に置く）。
+
+  ```
+  (* @expect pass *)
+  (* @cycles 4 *)
+  (* Purpose: ... *)
+  {#include 'rungiec.iec'}
+  {#include 't_jiecunit.iec'}
+  DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t001_series_and))
+  TEST_M(t001_series_and)
+  var
+      A, B, Y: bool;
+      Cyc: dint;
+      InA: array[1..4] of bool := [false, true, false, true];
+  end_var
+  RUNGIEC_VAR()
+  BEGIN_RUNGIEC()
+  T_BEGIN()
+  A := InA[Cyc];
+  RUNG(CONTACT(A), CONTACT(B), COIL(Y))
+  EXPECT_TRUE(Y = (A and B), 'y_eq_a_and_b');
+  T_EXPECT_IDLE(idle_after_net1);
+  END_RUNGIEC()
+  END_TEST_M
+  ```
+
+  - `T_BEGIN()` は `BEGIN_RUNGIEC()` の直後（DSL を使わない x は利用者の最後の `end_var` の直後）に 1 回書く。`CURRENT_CYCLE() >= T_CYCLES` なら `EOT()` でテストを終え、そうでなければ `Cyc := CURRENT_CYCLE() + 1`。後ろの `RETURN()` がテストの終わりを飛ばすことはない。`Cyc: dint;` は利用者の `var` に書く。`EOT()` / `SKIP_TEST()` は書かない。
+  - 確認は jiecunit の `EXPECT_*` / `ASSERT_*` で書き、メッセージに確認の名前を `'snake_case'` で渡す（`EXPECT_TRUE(cond, 'name');`）。`T_EXPECT_IDLE(name);` は作業変数が最上位の待機の値（`RungiecSp = 0`、`RungiecEn` / `RungiecIn` / `RungiecAcc` / `RungiecRail` が TRUE）であることを確認する。どちらも末尾に `;` を書く。
+- DSL を使う POU は、利用者の `var` ブロックの後に `RUNGIEC_VAR()`（FB の `var_temp` 版は `RUNGIEC_VAR_TEMP()`、FUNCTION は `RUNGIEC_VAR_NOEDGE()`）、`BEGIN_RUNGIEC()` を書き、ネットワークの後を `END_RUNGIEC()` で終える（規則 9。`{st}` / `{end}` は書かない）。ラダーのアスキーアートを `(* *)` で書く。DSL を使わない POU も、文を POU の本体に直接書く（`{st}` / `{end}` で囲まない）。書き忘れ・位置違いを意図して試すテストは `e048`（`BEGIN_RUNGIEC()` の付け忘れ。`END_RUNGIEC()` の PP91）/ `f012`（`RUNGIEC_VAR()` の付け忘れ。`UNDEFINED_SYMBOL`）/ `f017`（`RUNGIEC_VAR()` と `BEGIN_RUNGIEC()` の間に利用者が `{st}` を書く。閉じないブロックになり jiecc の `INVALID_SYNTAX_FOR_CODEBLOCK`）/ `e047`（`BEGIN_RUNGIEC()` を 2 回。PP91）。`END_RUNGIEC()` は ST を展開しない。付け忘れは、次の POU の `BEGIN_RUNGIEC()` が PP91 にする（`e044` / `e045`。一般形のネットワークか MC 領域も開いたままの形）。ファイルの最後の POU の付け忘れは、前処理でも jiecc でもエラーにならず、lint の LN16（`BEGIN_RUNGIEC() has no END_RUNGIEC()`）が指摘する（`-D RUNGIEC_LD` で変換すると、閉じない `{ld}` で jiecc の `INVALID_SYNTAX_FOR_CODEBLOCK` になる）。そのとき一般形のネットワークか MC 領域も開いたままだと、閉じ忘れの検査（`END_RUNGIEC()` の PP91）も働かず、後ろのラングが MC 領域に入ったまま動く。次の POU が DSL を使わない場合、次の POU も `BEGIN_RUNGIEC()` を忘れた場合なども前処理では検出しない。
+- 最上位ネットワークは `RUNG(...)` か `BEGIN_NET()` … `WIRE(...)` … `END_NET()` で書き、末尾に `;` を書かない。`SERIES` は入れ子の中だけ（lint の LN10。末尾の `;` は LN11。`RUNG` を忘れた形を意図して試す `f007` は `(* @lint-allow LN10 *)`）。`RUNG` を入れ子にすると実行時フォールト（`f013`）。`WIRE` の節点番号は 0〜64 の整数リテラルで（変数や式は節点表の検査で PP91。`e041` / `e042` / `e046`）、`from < to`、`to` は直前の `WIRE` の `to` 以上、番号は飛ばしてよい、どの `WIRE` も書かない節点は FALSE（`docs/DESIGN.md` の U-10）。
+- `BEGIN_MC(条件...)` と `END_MC()` は最上位に対で書く（`docs/DESIGN.md` の U-8）。入れ子にでき（`RUNGIEC_MC_MAX` まで）、`END_MC()` は最も内側を閉じる。一般形のネットワークの中・要素の中には書けない。利用者の `if` などで片方だけ包まない（lint の LN21）。POU の終わりまでに閉じる（`END_RUNGIEC()` が検査する）。`RETURN()` は `RUNG` か `WIRE` の最後の子（lint の LN13）。
+- ジャンプは `JMP(ラベル)` と `LABEL(ラベル)`（`docs/DESIGN.md` の D23 / U-14）。`JMP()` は `RETURN()` と同じく最上位の `RUNG` か `WIRE` の最後の子（lint の LN13）。`JMP()` か `RETURN()` を持つ `WIRE` は `END_NET()` の直前の最後の `WIRE` にする（後ろの `WIRE` は PP91。`e057`、`e058`。lint の LN13 も指摘する）。`jiecc -t omron` / `-t keyence` / `-t mitsubishi` では `JMP()` と `LABEL()` が PP91（`e059` は `{#define _OMRON true}` で試す）。`LABEL()` はネットワークの間に単独で書き（`END_RUNGIEC()` の直前も可）、末尾に `;` を書かない。`JMP()` と `LABEL()` の間に `BEGIN_MC` / `END_MC` を置かない（PP91。`e051`〜`e053`、`e056`）。一般形のネットワークの中の `LABEL()` と同じ POU の同じラベル 2 回は PP91（`e055`、`e054`）。ラベルの大文字小文字は `JMP()` と `LABEL()` でそろえ、`Rungiec` で始めない（lint の LN22）。後ろ向きのジャンプの間にエッジ接点と遷移コイルを置かない（lint の LN23）。後ろ向きのジャンプのテストは、ループが必ず終わる条件にする（終わらないと jiecc は `--max-cycles` でも止まらない）。
+- ボックスマクロは 14 種類だけ: `FB_SCAN` / `FB_IN` / `FB_BOX` / `FB_EXEC` / `FB_ENO` / `FBT_SCAN` / `FBT_IN` / `FBT_BOX` / `FBT_EXEC` / `FBT_ENO` / `FUN_EXEC` / `FUN_EXEC_RET` / `FUN_ENO` / `FUN_ENO_RET`。`FBT_X` は `FB_X` の第 2 引数に FB の型名を追加したもの（`FBT_BOX(inst, type, in_pin, out_pin, args...)`）で、ST モードの展開は `FB_X` と同じ（型は使わず検査もしない）。LD モードでは `FBT_X` はボックスの `typeName` に型名を、`FB_X` は `typeName=""` を出す。`FB_SCAN` は毎スキャン（パワーにも左レールにも関係なく）呼ぶ。`FB_IN(inst, pin, args...)` はパワーを入力 `pin` に渡して毎スキャン呼ぶ。`FB_BOX(inst, in_pin, out_pin, args...)` はパワーを入力 `in_pin` に渡して毎スキャン呼び、後段のパワーを出力 `inst.out_pin` にする（IEC のボックスの形。入力パワーが OFF でも出力が TRUE なら後段は ON。OFF の MC 領域では後段は OFF）。`in_pin` と `out_pin` は BOOL のピン（違えば jiecc がエラーにする。`in_pin` は実行時の型の不一致 `f025`、`out_pin` はコンパイルの `TYPE_ERROR` `f026`）。残りの `*_EXEC*` / `*_ENO` はパワー ON のときだけ呼ぶ（OFF の MC 領域では呼ばない）。`*_SCAN` / `*_IN` の後段のパワーは前段のまま、`*_EXEC*` は呼んだら後段 ON、`*_ENO` は後段 = ENO。接点のオペランドに書いた関数の呼び出しは、OFF の MC 領域でも毎スキャン実行される（`t058`）。引数は「名前、呼び出しの引数…」の呼び出しの形だけ。呼び出しの引数は名前付き（`name := v` / `name => v`）だけ（lint の LN25）。ST の文を渡さない（ST の文は `ST_EXEC` に書く）。
+- インライン ST は `ST_EXEC(文...)`（`docs/DESIGN.md` の D39 / U-13）。パワー ON のときだけ文を実行し、後段のパワーは前段のまま、OFF の MC 領域では実行しない。文の結果は変数に入れて次の接点で読む（`ST_EXEC(Ok := Pos > Lim;), CONTACT(Ok)`）。文の中の裸のカンマ（`case N of 1, 2:`）は書ける。最後の文の後の `;` は書いても書かなくてもよく、文と文の間の `;` は省けない（`f022`）。文の中に書かない: DSL のマクロ（`RUNG` などは実行時フォールト `f021`、`COIL` などの要素・エッジ接点・遷移コイルは前処理と jiecc ではエラーにならずに通る）、`return`（`RETURN()` を使う）、`{#...}` のディレクティブ（`{#if}` などは PP02。`e050`）、コメント、`Rungiec*` の名前（lint の LN17、コメントは LN18）。`ST_EXEC()` は PP91（`e049`）。
+- `PARALLEL` の直下の子にコイルと非コイルを混ぜない（lint の LN12）。マージコイルは `RUNG(PARALLEL(...), COIL(Y))`（入れ子の中なら `SERIES(PARALLEL(...), COIL(Y))`）。
+- タイマの FB（`TON` / `TOF` / `TP` と、IEC に無い積算タイマ `TONR`）は `tests/support/t_stdfb.iec` の代用品を `{#include 't_stdfb.iec'}` で使う（1 回の呼び出しが 100 ms。Jiecc 9.2.0 の標準タイマは実時間で進み、`--run` に仮想クロックが無いため。仮想クロックと、標準 `TOF` が起動直後に `Q` = TRUE になる件は jiecc 側に依頼済み）。カウンタとエッジの FB（`CTU` / `CTD` / `CTUD` / `R_TRIG` / `F_TRIG`）は Jiecc 9.2.0 の組み込みを include なしで使う。素の `CTU` / `CTD` / `CTUD` は `PV` / `CV` が INT なので、比べる変数も `int` にする。どれも時間とエッジを毎スキャン進めるため `FB_SCAN` / `FB_IN` / `FB_BOX`（または `FBT_*` の同じ形）で呼ぶ。
+- `pp-error` のパターンは jiepp の診断行（`error: PPnn` / `warning: PPnn` を含む行）に対して照合する。PP91 は `(* @expect pp-error PP91: .RUNGIEC ... *)` と書き、アポストロフィと括弧は `.` で表す。
+- LD モードの誤りを試す `e` テストは、`(* Purpose: ... *)` の後、`{#include 'rungiec.iec'}` の前に `{#define RUNGIEC_LD 1}` を書く（`e060`〜`e068`、`e073`。設定を変えるときは `{#define RUNGIEC_LD_FANIN_MAX 2}` なども include の前）。PP91 のメッセージの中の設定の名前は値に置き換わるので、パターンも値で書く（`.RUNGIEC LD: nesting exceeds 16.`）。t / x のテストは ST モードで実行する（LD の本文は `jiecc --run` で実行しないので、動作は ST モードのテストで確認する）。
+- 例題は `examples/<名前>.iec` に置く。名前は例題の目的を表す小文字の語（`on_delay_timer` など）。`examples/` には利用者が書くコードだけを置き、テストの道具（jiecunit の `TEST_M` / `EXPECT_*`、`T_*`、`@expect`）は書かない。例題 1 本の形は次の順:
+  - `{#include 'rungiec.iec'}`、短い英語のコメント。
+  - ファイル名と同じ名前の FUNCTION_BLOCK 1 つ（`function_block on_delay_timer`）。入力は `var_input`、出力は `var_output` に書き、ラダーは規則 9 の順に書く。ほかの FUNCTION_BLOCK と PROGRAM、大域変数、configuration は書かない。DSL のマクロのほかに `{#define}` を書かない。
+- 例題は 1 つのコマンド `tools\jiecc.exe examples/<名前>.iec -I . -t <omron|keyence|codesys|mitsubishi> -o <名前>.<t>.xml` で IEC 61131-10 の XML になること（`JMP()` / `LABEL()` を使う例題は codesys だけ。omron / keyence / mitsubishi では PP91）。ランナーは `--only` なしのとき、全例題を 4 ターゲットで変換し、終了コード・error / warning の行・XML の `<FunctionBlock name="<名前>">` を確認する。`JMP()` / `LABEL()` を使う例題は、codesys の XML の `jmp <ラベル>;` と、omron / keyence / mitsubishi の変換が `RUNGIEC JMP to ... is not supported ...` の PP91 だけで失敗し XML を作らないことを確認する（ベンダーのツールへの取り込みは確認していない）。
+- 例題は LD モードのコマンド `tools\jiecc.exe examples/<名前>.iec -I . -D RUNGIEC_LD -P -nC -t <omron|keyence|codesys|mitsubishi> -o <名前>.<t>.ld.xml` でも XML になること（`JMP()` / `LABEL()` を使う例題も 4 ターゲットとも）。ボックスの呼び出しの引数は名前付きだけにする（位置指定は LD モードで PP81）。例題を追加したら、LD モードの期待値ファイル `tests/expanded/<名前>.ld.xml`（omron の XML。Git で追跡）を作る: ランナーが `tests/expanded/<名前>.ld.xml.new` に書いた XML を確認してから `<名前>.ld.xml` に名前を変える。xml2rungiec が全部を断片にできない例題は、理由を付けて `tools/run_tests.py` の `LD_ROUNDTRIP_SKIP` に並べる（`docs/TESTING.md` の「LD モードの変換の検査」）。
+- 確認は `tests/x_<名前>.iec` に書く。形: `(* @expect pass *)`、`(* @cycles N *)`、`{#include 't_jiecunit.iec'}`、`DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_<名前>))`、例題を `{#include}`、`TEST_M(x_<名前>)`。`TEST_M` の `var` に例題の FB のインスタンス（`Ctl: on_delay_timer;`）を置き、各スキャンで入力表の `Cyc` 番目を入力に渡してインスタンスを呼び、同じスキャンの出力（`Ctl.Lamp`）を `Exp[Cyc]` と比べる。`@cycles` は入力表の長さ。ランナーは実行の前に、含む例題が上の形（`function_block <名前>` が 1 つだけで、`program` が無い）であることと、テストが例題の FB のインスタンス（`<インスタンス名>: <名前>;`）を宣言していることを検査する（インスタンスが無いと例題が呼ばれず、何も確認しない）。どの `x_*.iec` にも含まれない例題はランナーが失敗にする。展開後 ST と実行ログは `tests/expanded/x_<名前>.*` に出力される。
+- テストと例題を追加したら `docs/DESIGN.md` のテスト対応表を更新する。例題は `docs/EXAMPLES.md` の「例題」の表も更新する。
+
+## 図の書き方
+
+README と `docs/` の文書（GUIDE / REFERENCE / EXAMPLES / TESTING / DESIGN）は図を多く使う。ラダー図はアスキーアート、処理の流れと構造は Mermaid で描く。文書は今の状態だけを書く（経緯は書かない）。
+
+- ラダー図は各行を `(*  |...|  *)`（`(*` の後と `*)` の前に空白 2 個）で包み、呼び出しの直前に同じコードブロックで書く。表の中には書かない（レールの `|` が表を壊す）。並べて比べる表にもしない。
+- 記号: レール `|`、配線 `--`、ラングの右端 `--|`。`RETURN()` は右レールなしの `--<RETURN>`。`JMP(L)` は右レールなしの `-->>L`（`|--| Mode |-->>Skip`、無条件は `|-->>Done`）。`LABEL(L)` は `(*  L:  *)` の 1 行。
+  - 接点 `--| A |--`、`--|/A |--`、`--|P A |--`、`--|N A |--`、`--|/P A |--`（`NOT_RISE_CONTACT`）、`--|/N A |--`（`NOT_FALL_CONTACT`）、比較 `--| Count >= 3 |--`。
+  - コイル `--( Y )--`、`--(/ Y )--`、`--(S Y )--`、`--(R Y )--`、`--(P Y )--`、`--(N Y )--`。MC は `--(MC)--|`、`--(MCR)--|`。
+  - ボックスは 1 行: `FB_SCAN` は `[ Tm(IN := S, PT := T#2s) ]`、`FB_IN` は `[ Tm IN ]`、`FB_BOX` は `[ Tm(PT := T#3s) IN Q ]`（入力ピン、出力ピンの順）、`FB_EXEC` は `[ Fb1 ]`、`FB_ENO` は `[ Fb0 ENO ]`、`FUN_EXEC` は `[ Bump ]`、`FUN_EXEC_RET` は `[ R := Add(lhs := 3, rhs := 4) ]`、`FUN_ENO` は `[ EnoFn ENO ]`、`FUN_ENO_RET` は `[ R1 := EnoFn ENO ]`、`ST_EXEC` は `[[ ST: Count := Count + 1; ]]`。`FBT_*` は名前の後に `:型` を付ける（`FBT_BOX` は `[ Tm:TON(PT := T#3s) IN Q ]`、`FBT_SCAN` は `[ Tm:TON(IN := S) ]`、`FBT_IN` は `[ Tm:TON IN ]`、`FBT_EXEC` は `[ Fb1:MyFb ]`、`FBT_ENO` は `[ Fb0:MyFb ENO ]`）。
+  - 呼び出しの引数は、どのボックスでも名前の直後の `( )` に書き写す（`FB_EXEC(Fb1, a1 := B)` は `[ Fb1(a1 := B) ]`、`FB_IN(Tm, IN, PT := T#2s)` は `[ Tm(PT := T#2s) IN ]`、`FUN_ENO_RET(R1, EnoFn, ok_in := Good)` は `[ R1 := EnoFn(ok_in := Good) ENO ]`）。引数の無い呼び出しには `( )` を書かない。接点と比較のオペランドに書いた関数の呼び出しも引数ごと書き写す（`--| Probe(v := A, cnt := N1) |--`）。
+  - IEC のボックスの形（`+----------+` と `|IN  Tm   Q|` など）を説明する複数行の図は、`docs/REFERENCE.md` の「関数・FB」の節だけで使う。ラダー図の中のボックスは上の 1 行の形にする。
+- 分岐は分かれ目と合流点に `+` を置き、枝の行の間に縦線 `|` だけの行を入れる（`examples/self_hold.iec`）。ネットワークの節点は `(k)` と書き、`|` と `+` でつなぐ（`examples/bridge_circuit.iec`）。
+- 注記は右レールの後に空白 3 個を置いて英語で書く。図の中は ASCII だけにし（全角文字を使わない）、日本語の説明はコードブロックの外に書く。
+- 図の記号（接点の `| |`、ボックスの `[ ]`、インライン ST の `[[ ]]`、コイル、`<RETURN>`、`>>L`、`L:`、`(MC)`、`(MCR)`）の数と種類は直後のマクロの要素と一致させ、オペランドの名前をすべて図に書く。
+- 例外として、要素の多い直列と枝の多い並列（項数の上限を試すテストなど）は省いて描いてよい。直列は最初と最後の要素を描き、間を ` ... ` で省く（`|--| X[1] |-- ... --| X[15] |--( Y3 )--|`）。並列は最初と最後の枝を描き、間の枝を、縦線の位置に `:` を置いた 1 行で省く（この行が枝の間の `|` だけの行の代わりになる）。入れ子の段は省かずに 1 段ずつ描く。省いた図は、注記に要素か枝の数を書く（`16-term SERIES`）。
+- ファイルから引く行は書き写す（引いた先で書き方をそろえ直さない）。展開後の ST は jiepp の出力から作り、追加してよいのは改行と `(* *)` の注記だけで、省略しない。値の表は展開後の ST か `docs/DESIGN.md` の式から計算して作る。jiecc の出力が必要な図は、jiecc で確認してから書く。
+- Mermaid は `flowchart LR` / `flowchart TD` / `sequenceDiagram` / `stateDiagram-v2` を使う。flowchart のラベルと stateDiagram の `state "..." as ID` は `"..."` で囲む。sequenceDiagram の参加者の別名・`loop` のラベル・メッセージと、stateDiagram の遷移のラベルは囲まない（囲むと `"` がそのまま表示される）。どのラベルにも `;` `|` `"` `{` `}` `#` を書かない。ノード ID は ASCII の英数字で、`end` にしない。確認していないこと（各社のツールへの取り込みなど）は点線の矢印にする。
+- コードブロックの中に `#` で始まる行を書かない（lint の LN20 は文書の節を行頭の `#` の見出しで区切る）。`docs/EXAMPLES.md` の「## 例題」、DESIGN の「### 一覧」と「### 例題（`examples/`）」の見出しと、その下の表は LN20 が読むので、見出しの名前と表の位置を変えない。
+
+## その他
+
+- コード・コメント・テスト内テキストは英語。README / `docs/` の文書 / AGENTS は日本語。
+- 改行は LF。IEC キーワードは小文字。
+- スクリプトは Python。PowerShell スクリプトは書かない。
+- コミットはユーザーが判断する。

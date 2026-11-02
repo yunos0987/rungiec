@@ -1,0 +1,43 @@
+(* @expect pass *)
+(* @cycles 22 *)
+(* Purpose: lubrication interval with a retentive on-delay timer (TONR stand-in of t_stdfb, 100 ms per call): the timer accumulates the running time of a motor over several runs (it keeps ET while the motor is stopped), and when the total reaches PT = 500 ms its Q (LubeDue) stays ON, stops the motor and blocks a new start until maintenance is done. Reset (R) clears ET and Q; R also restarts the count while the motor runs. The scan where the motor starts adds no time (as in TON, the scan where IN rises is ET = 0). *)
+(* Source: Siemens S7-1200 system manual, TONR (time accumulator) -- ET accumulates while IN is TRUE over several periods, Q stays TRUE once ET reaches PT, R resets ET and Q *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t102_retentive_timer_tonr))
+{#include 't_stdfb.iec'}
+TEST_M(t102_retentive_timer_tonr)
+var
+    Start, Stop, Reset, Motor, LubeDue: bool;
+    RunTm: TONR;
+    InStart: array[1..22] of bool := [false, true, false, false, false, false, true, false, false, true, false, false, false, true, false, true, false, false, false, false, false, false];
+    InStop: array[1..22] of bool := [false, false, false, false, true, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, true, false];
+    InReset: array[1..22] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, true, false, false, false, false];
+    ExpMotor: array[1..22] of bool := [false, true, true, true, false, false, true, true, false, true, true, true, false, false, false, true, true, true, true, true, false, false];
+    ExpEt: array[1..22] of time := [T#0ms, T#0ms, T#100ms, T#200ms, T#200ms, T#200ms, T#200ms, T#300ms, T#300ms, T#300ms, T#400ms, T#500ms, T#500ms, T#500ms, T#0ms, T#0ms, T#100ms, T#0ms, T#0ms, T#100ms, T#100ms, T#100ms];
+    ExpDue: array[1..22] of bool := [false, false, false, false, false, false, false, false, false, false, false, true, true, true, false, false, false, false, false, false, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Stop := InStop[Cyc]; Reset := InReset[Cyc];
+(*  |--+--| Start |--+--|/Stop |--|/LubeDue |--( Motor )--|   no start while lubrication is due  *)
+(*  |  |             |                                    |  *)
+(*  |  +--| Motor |--+                                    |  *)
+RUNG(PARALLEL(CONTACT(Start), CONTACT(Motor)), NOT_CONTACT(Stop), NOT_CONTACT(LubeDue), COIL(Motor))
+(*  |--| Motor |--[ RunTm(R := Reset, PT := T#500ms) IN ]--|   accumulates the running time  *)
+RUNG(CONTACT(Motor), FB_IN(RunTm, IN, R := Reset, PT := T#500ms))
+(*  |--| RunTm.Q |--( LubeDue )--|  *)
+RUNG(CONTACT(RunTm.Q), COIL(LubeDue))
+EXPECT_TRUE(Motor = ExpMotor[Cyc], 'motor_matches_expected');
+EXPECT_TRUE(RunTm.ET = ExpEt[Cyc], 'elapsed_time_matches_expected');
+EXPECT_TRUE(LubeDue = ExpDue[Cyc], 'lube_due_matches_expected');
+EXPECT_TRUE((Cyc <> 6) or ((RunTm.ET = T#200ms) and (not Motor)), 'keeps_elapsed_time_while_stopped');
+EXPECT_TRUE((Cyc <> 12) or LubeDue, 'running_time_of_three_runs_adds_up');
+EXPECT_TRUE((Cyc <> 14) or (LubeDue and (not Motor)), 'due_stays_on_and_blocks_start');
+EXPECT_TRUE((Cyc <> 15) or ((RunTm.ET = T#0ms) and (not LubeDue)), 'reset_clears_time_and_due');
+EXPECT_TRUE((Cyc <> 18) or ((RunTm.ET = T#0ms) and Motor), 'reset_while_running_restarts_the_count');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

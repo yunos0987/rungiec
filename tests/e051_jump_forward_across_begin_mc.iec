@@ -1,0 +1,22 @@
+(* @expect pp-error PP91: .RUNGIEC JMP to Skip goes forward across BEGIN_MC or END_MC *)
+(* @cycles 1 *)
+(* Purpose: A forward JMP() to a label behind a BEGIN_MC() would enter the MC zone without its condition, so LABEL() stops it with PP91. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    Mode, A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Mode |-->>Skip  *)
+RUNG(CONTACT(Mode), JMP(Skip))
+(*  |--| A |--(MC)--|  *)
+BEGIN_MC(CONTACT(A))
+(*  Skip:  *)
+LABEL(Skip)
+(*  |--( Y )--|  *)
+RUNG(COIL(Y))
+(*  |--(MCR)--|  *)
+END_MC()
+END_RUNGIEC()
+end_program

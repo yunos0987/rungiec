@@ -1,0 +1,30 @@
+(* @expect pp-error PP91: .RUNGIEC END_MC and END_RUNGIEC are missing before the next BEGIN_RUNGIEC *)
+(* @cycles 1 *)
+(* Purpose: A function block that leaves a BEGIN_MC open and also omits END_RUNGIEC() is caught by BEGIN_RUNGIEC() of the next POU. *)
+(* @lint-allow LN16 *)
+{#include 'rungiec.iec'}
+function_block FbOpenMc
+var_input
+    A: bool;
+end_var
+var_output
+    Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(MC)--|   never closed, and END_RUNGIEC() is omitted  *)
+BEGIN_MC(CONTACT(A))
+(*  |--( Y )--|  *)
+RUNG(COIL(Y))
+end_function_block
+program __main__
+var
+    Fb: FbOpenMc;
+    B, Z: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| B |--( Z )--|  *)
+RUNG(CONTACT(B), COIL(Z))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,1 @@
+tests/expanded/f005_missing_comma_merge_coil.st:73.0: error: 0x44000004: 'Y'; INVALID_SYNTAX

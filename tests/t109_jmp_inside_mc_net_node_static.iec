@@ -1,0 +1,51 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: In a function block with RUNGIEC_VAR() (RungiecNode is static), JMP(Skip) as the last child of the last WIRE of a network inside an MC zone jumps forward over a second network to LABEL(Skip) in the same zone. Both networks write node 1. On a scan that does not jump, the second network leaves node 1 TRUE when D is TRUE; on the next scan the first network still reads node 1 as the series from the rail through A only, because BEGIN_NET() clears the nodes on every scan. On a scan that jumps, the coil of the second network keeps its value. After END_MC() the rail is ON again. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t109_jmp_inside_mc_net_node_static))
+function_block JmpNetFb
+var_input C, A, J, D: bool; end_var
+var_output Q1, Q2, Q3: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| C |--(MC)--|  *)
+BEGIN_MC(CONTACT(C))
+(*  |--| A |--(1)--( Q1 )--|  *)
+(*  |         (1)--| J |-->>Skip  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(1, 2, COIL(Q1))
+WIRE(1, 3, CONTACT(J), JMP(Skip))
+END_NET()
+(*  |--| D |--(1)--( Q2 )--|  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(D))
+WIRE(1, 2, COIL(Q2))
+END_NET()
+(*  Skip:  *)
+LABEL(Skip)
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--| A |--( Q3 )--|   outside the zone  *)
+RUNG(CONTACT(A), COIL(Q3))
+END_RUNGIEC()
+end_function_block
+TEST_M(t109_jmp_inside_mc_net_node_static)
+var
+    Fb: JmpNetFb;
+    Cyc: dint;
+    InC: array[1..8] of bool := [true, true, true, true, false, true, true, true];
+    InA: array[1..8] of bool := [true, true, false, true, true, false, true, true];
+    InJ: array[1..8] of bool := [false, true, false, true, true, false, true, false];
+    InD: array[1..8] of bool := [true, false, true, true, true, false, true, false];
+    ExpQ1: array[1..8] of bool := [true, true, false, true, false, false, true, true];
+    ExpQ2: array[1..8] of bool := [true, true, true, true, false, false, false, false];
+    ExpQ3: array[1..8] of bool := [true, true, false, true, true, false, true, true];
+end_var
+T_BEGIN()
+Fb(C := InC[Cyc], A := InA[Cyc], J := InJ[Cyc], D := InD[Cyc]);
+EXPECT_TRUE(Fb.Q1 = ExpQ1[Cyc], 'q1_node_1_not_kept_from_previous_scan');
+EXPECT_TRUE(Fb.Q2 = ExpQ2[Cyc], 'q2_held_on_jump_scan');
+EXPECT_TRUE(Fb.Q3 = ExpQ3[Cyc], 'q3_rail_on_after_end_mc');
+END_TEST_M

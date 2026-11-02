@@ -1,0 +1,82 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: BEGIN_MC / END_MC nest up to RUNGIEC_MC_MAX (3, used exactly). An inner zone is the AND of the outer rail and its own conditions; after the inner END_MC() only the outer zone applies. Conditions: two contacts in series, and a PARALLEL. In the innermost zone while it is OFF: NOT_COIL is FALSE, SET_COIL holds, FB_EXEC is not called, FB_SCAN is called, RISE_COIL pulses when the zone turns ON. After the outermost END_MC() the rail is ON again. *)
+{#define RUNGIEC_MC_MAX 3}
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t088_mc_nested))
+function_block CntFb
+var_in_out cnt: dint; end_var
+cnt := cnt + 1;
+end_function_block
+TEST_M(t088_mc_nested)
+var
+    A, B, C, D, E, G: bool;
+    Z1, Z2, Z3, N3, S3, P3, Z2b, Z1b, Out: bool;
+    Ex, Sc: CntFb;
+    NExec, NScan: dint;
+    InA: array[1..8] of bool := [true, true, true, true, true, true, false, true];
+    InB: array[1..8] of bool := [true, true, false, true, true, true, true, true];
+    InC: array[1..8] of bool := [true, false, true, false, true, false, true, true];
+    InD: array[1..8] of bool := [false, true, true, false, false, true, true, true];
+    InE: array[1..8] of bool := [true, true, true, true, false, true, true, true];
+    InG: array[1..8] of bool := [false, true, false, false, false, false, true, false];
+    ExpS3: array[1..8] of bool := [false, true, true, true, true, true, true, true];
+    ExpP3: array[1..8] of bool := [true, false, false, false, false, true, false, true];
+    ExpExec: array[1..8] of dint := [1, 2, 2, 2, 2, 3, 3, 4];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc]; D := InD[Cyc]; E := InE[Cyc]; G := InG[Cyc];
+(*  |--| A |--| B |--(MC)--|   depth 1  *)
+BEGIN_MC(CONTACT(A), CONTACT(B))
+(*  |--( Z1 )--|  *)
+RUNG(COIL(Z1))
+(*  |--+--| C |--+--(MC)--|   depth 2  *)
+(*  |  |         |        |  *)
+(*  |  +--| D |--+        |  *)
+BEGIN_MC(PARALLEL(CONTACT(C), CONTACT(D)))
+(*  |--( Z2 )--|  *)
+RUNG(COIL(Z2))
+(*  |--| E |--(MC)--|   depth 3 = RUNGIEC_MC_MAX  *)
+BEGIN_MC(CONTACT(E))
+(*  |--( Z3 )--|  *)
+RUNG(COIL(Z3))
+(*  |--| G |--(/ N3 )--|  *)
+RUNG(CONTACT(G), NOT_COIL(N3))
+(*  |--| G |--(S S3 )--|  *)
+RUNG(CONTACT(G), SET_COIL(S3))
+(*  |--[ Ex(cnt := NExec) ]--|   power-gated box: not called while the zone is OFF  *)
+RUNG(FB_EXEC(Ex, cnt := NExec))
+(*  |--[ Sc(cnt := NScan) ]--|   FB_SCAN: called on every scan  *)
+RUNG(FB_SCAN(Sc, cnt := NScan))
+(*  |--(P P3 )--|  *)
+RUNG(RISE_COIL(P3))
+(*  |--(MCR)--|   closes depth 3  *)
+END_MC()
+(*  |--( Z2b )--|   depth 2 again  *)
+RUNG(COIL(Z2b))
+(*  |--(MCR)--|   closes depth 2  *)
+END_MC()
+(*  |--( Z1b )--|   depth 1 again  *)
+RUNG(COIL(Z1b))
+(*  |--(MCR)--|   closes depth 1  *)
+END_MC()
+(*  |--( Out )--|   outside the zones  *)
+RUNG(COIL(Out))
+EXPECT_TRUE(Z1 = (A and B), 'depth1_follows_two_conditions');
+EXPECT_TRUE(Z2 = (A and B and (C or D)), 'depth2_and_of_outer_and_parallel');
+EXPECT_TRUE(Z3 = (A and B and (C or D) and E), 'depth3_and_of_all');
+EXPECT_TRUE(N3 = (A and B and (C or D) and E and not G), 'not_coil_false_when_zone_off');
+EXPECT_TRUE(S3 = ExpS3[Cyc], 'set_coil_holds_when_zone_off');
+EXPECT_TRUE(NExec = ExpExec[Cyc], 'fb_exec_not_called_when_zone_off');
+EXPECT_TRUE(NScan = Cyc, 'fb_scan_called_every_scan');
+EXPECT_TRUE(P3 = ExpP3[Cyc], 'rise_coil_pulses_when_zone_turns_on');
+EXPECT_TRUE(Z2b = (A and B and (C or D)), 'after_inner_end_mc_outer_only');
+EXPECT_TRUE(Z1b = (A and B), 'after_middle_end_mc_outer_only');
+EXPECT_TRUE(Out, 'rail_on_after_outer_end_mc');
+T_EXPECT_IDLE(idle_after_zones);
+END_RUNGIEC()
+END_TEST_M

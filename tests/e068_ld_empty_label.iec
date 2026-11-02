@@ -1,0 +1,16 @@
+(* @expect pp-error PP91: .RUNGIEC LD: JMP has an empty label_name *)
+(* @cycles 1 *)
+(* Purpose: In the LD mode JMP() with an empty label would write targetNetworkLabel="" into the XML, so it is PP91. *)
+(* @lint-allow LN22 *)
+{#define RUNGIEC_LD 1}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |-->>   the label of the jump is empty  *)
+RUNG(CONTACT(A), JMP())
+END_RUNGIEC()
+end_program

@@ -1,0 +1,1 @@
+tests/expanded/f026_fbt_box_out_pin_not_bool.st:157.0: error: 0x40080001: (AND __main__.rungiecrail (PLACE __main__.tm)); TYPE_ERROR

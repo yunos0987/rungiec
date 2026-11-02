@@ -1,0 +1,20 @@
+(* @expect pp-error PP91: .RUNGIEC LD: too many parallel ends merge into one element; raise 2. *)
+(* @cycles 1 *)
+(* Purpose: In the LD mode with RUNGIEC_LD_FANIN_MAX 2, the ends of a 3-branch PARALLEL that merge into one coil are PP91. *)
+{#define RUNGIEC_LD 1}
+{#define RUNGIEC_LD_FANIN_MAX 2}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, B, C, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--+--| A |--+--( Y )--|  *)
+(*  |  |         |         |  *)
+(*  |  +--| B |--+         |  *)
+(*  |  |         |         |  *)
+(*  |  +--| C |--+         |  *)
+RUNG(PARALLEL(CONTACT(A), CONTACT(B), CONTACT(C)), COIL(Y))
+END_RUNGIEC()
+end_program

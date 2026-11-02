@@ -1,0 +1,17 @@
+(* @expect pp-error PP91: .RUNGIEC WIRE from node 1 must be 0 or more and less than to node 1 *)
+(* @cycles 1 *)
+(* Purpose: A WIRE whose from node is not less than its to node is a preprocessing error that names both nodes. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(1)--( Y )--|   the second WIRE goes from node 1 to node 1  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(1, 1, COIL(Y))
+END_NET()
+END_RUNGIEC()
+end_program

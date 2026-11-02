@@ -1,0 +1,71 @@
+(* @expect pass *)
+(* @cycles 10 *)
+(* Purpose: FB_IN passes the power to the input pin and calls the instance on every scan; the power after the box equals the power before it. TON read in the same series (Q implies IN). CTU read in a separate RUNG, and read in the same series it gives Pulse and Q (pass-through, not Q). R_TRIG with no further argument. TOF read in a separate RUNG. In a PARALLEL branch the FB_IN pin receives the power of that branch. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t089_fb_in))
+{#include 't_stdfb.iec'}
+function_block PinProbe
+var_input IN: bool; end_var
+var_output Seen: bool; N: dint; end_var
+Seen := IN;
+N := N + 1;
+end_function_block
+TEST_M(t089_fb_in)
+var
+    Start, Pulse, Rst, Btn, Hold, Pe, Pa, Pb: bool;
+    Lamp, FullSeries, Full, Edge, Fan, Yp: bool;
+    Tm: TON;
+    Ct: CTU;
+    Trg: R_TRIG;
+    Tf: TOF;
+    Pr: PinProbe;
+    InStart: array[1..10] of bool := [true, true, true, true, true, false, true, true, true, true];
+    InPulse: array[1..10] of bool := [true, false, true, false, true, true, false, true, false, false];
+    InRst: array[1..10] of bool := [false, false, false, false, false, false, false, false, true, false];
+    InBtn: array[1..10] of bool := [false, true, true, false, true, false, false, true, true, false];
+    InHold: array[1..10] of bool := [true, true, false, false, false, false, true, false, false, false];
+    InPe: array[1..10] of bool := [true, true, false, true, false, true, true, false, true, false];
+    InPa: array[1..10] of bool := [true, false, true, true, false, false, true, true, false, true];
+    InPb: array[1..10] of bool := [false, true, false, false, true, false, true, false, false, true];
+    ExpTmQ: array[1..10] of bool := [false, false, false, true, true, false, false, false, false, true];
+    ExpCv: array[1..10] of int := [1, 1, 2, 2, 3, 3, 3, 4, 0, 0];
+    ExpCtQ: array[1..10] of bool := [false, false, false, false, true, true, true, true, false, false];
+    ExpEdge: array[1..10] of bool := [false, true, false, false, true, false, false, true, false, false];
+    ExpFan: array[1..10] of bool := [true, true, true, true, false, false, true, true, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Pulse := InPulse[Cyc]; Rst := InRst[Cyc]; Btn := InBtn[Cyc]; Hold := InHold[Cyc];
+Pe := InPe[Cyc]; Pa := InPa[Cyc]; Pb := InPb[Cyc];
+(*  |--| Start |--[ Tm(PT := T#300ms) IN ]--| Tm.Q |--( Lamp )--|   TON: PT = 300 ms, Q on the 4th scan with IN TRUE  *)
+RUNG(CONTACT(Start), FB_IN(Tm, IN, PT := T#300ms), CONTACT(Tm.Q), COIL(Lamp))
+(*  |--| Pulse |--[ Ct(R := Rst, PV := 3) CU ]--| Ct.Q |--( FullSeries )--|   CTU: PV = 3; Q read in the same series gives Pulse and Q  *)
+RUNG(CONTACT(Pulse), FB_IN(Ct, CU, R := Rst, PV := 3), CONTACT(Ct.Q), COIL(FullSeries))
+(*  |--| Ct.Q |--( Full )--|   CTU: Q read in a separate RUNG  *)
+RUNG(CONTACT(Ct.Q), COIL(Full))
+(*  |--| Btn |--[ Trg CLK ]--| Trg.Q |--( Edge )--|   R_TRIG  *)
+RUNG(CONTACT(Btn), FB_IN(Trg, CLK), CONTACT(Trg.Q), COIL(Edge))
+(*  |--| Hold |--[ Tf(PT := T#200ms) IN ]--|   TOF: PT = 200 ms  *)
+RUNG(CONTACT(Hold), FB_IN(Tf, IN, PT := T#200ms))
+(*  |--| Tf.Q |--( Fan )--|   TOF: Q read in a separate RUNG  *)
+RUNG(CONTACT(Tf.Q), COIL(Fan))
+(*  |--| Pe |--+--| Pa |--[ Pr IN ]--+--( Yp )--|   the pin gets the power of its branch (Pe and Pa)  *)
+(*  |          |                     |          |  *)
+(*  |          +--| Pb |-------------+          |  *)
+RUNG(CONTACT(Pe), PARALLEL(SERIES(CONTACT(Pa), FB_IN(Pr, IN)), CONTACT(Pb)), COIL(Yp))
+EXPECT_TRUE(Tm.Q = ExpTmQ[Cyc], 'ton_q');
+EXPECT_TRUE(Lamp = ExpTmQ[Cyc], 'ton_q_in_series');
+EXPECT_TRUE(Ct.CV = ExpCv[Cyc], 'ctu_cv');
+EXPECT_TRUE((Full = ExpCtQ[Cyc]) and (Full = Ct.Q), 'ctu_q_separate_rung');
+EXPECT_TRUE(FullSeries = (Pulse and ExpCtQ[Cyc]), 'ctu_q_in_series_is_pulse_and_q');
+EXPECT_TRUE((Edge = ExpEdge[Cyc]) and (Trg.Q = ExpEdge[Cyc]), 'r_trig_q');
+EXPECT_TRUE((Fan = ExpFan[Cyc]) and (Tf.Q = ExpFan[Cyc]), 'tof_q_separate_rung');
+EXPECT_TRUE(Pr.Seen = (Pe and Pa), 'parallel_branch_pin_gets_branch_power');
+EXPECT_TRUE(Pr.N = Cyc, 'parallel_branch_called_every_scan');
+EXPECT_TRUE(Yp = (Pe and (Pa or Pb)), 'parallel_power_after_branch');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

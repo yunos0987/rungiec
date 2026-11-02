@@ -1,0 +1,55 @@
+(* @expect pass *)
+(* @cycles 35 *)
+(* Check for examples/traffic_light.iec: feeds inputs and verifies the ladder. *)
+(* Scans 1-14: a full cycle (red 4 scans, green 4, yellow 2, red again). Scans 15-22: PedBtn at scan 16 extends the green to 6 scans *)
+(* and is shown by Request; a press during yellow (scan 22) and red (scan 24) is ignored. Scans 27-35: Request latched at scan 28, *)
+(* Run FALSE at scans 29-30 turns everything off, and Run TRUE again starts from red with Request cleared. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_traffic_light))
+(* Stand-in for the standard TON (the built-in timers of jiecc run on wall-clock time): the call where IN rises is ET = 0 and each *)
+(* further call with IN TRUE adds 1 s, so PT = T#3s gives Q on the 4th call with IN TRUE, whatever the speed of the machine. *)
+function_block TON
+var_input IN: bool; PT: time; end_var
+var_output Q: bool; ET: time; end_var
+var Last: bool; end_var
+if not IN then
+    ET := T#0s;
+elsif Last and (ET < PT) then
+    ET := ET + T#1s;
+end_if;
+if ET > PT then ET := PT; end_if;
+Q := IN and (ET >= PT);
+Last := IN;
+end_function_block
+{#include 'traffic_light.iec'}
+TEST_M(x_traffic_light)
+var
+    Ctl: traffic_light;
+    Run, PedBtn: bool;
+    InRun: array[1..35] of bool := [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, true, true, true, true, true];
+    InPedBtn: array[1..35] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, true, false, true, false, false, false, true, false, false, false, false, false, false, false];
+    ExpRed: array[1..35] of bool := [true, true, true, true, false, false, false, false, false, false, true, true, true, true, false, false, false, false, false, false, false, false, true, true, true, true, false, false, false, false, true, true, true, true, false];
+    ExpYellow: array[1..35] of bool := [false, false, false, false, false, false, false, false, true, true, false, false, false, false, false, false, false, false, false, false, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false];
+    ExpGreen: array[1..35] of bool := [false, false, false, false, true, true, true, true, false, false, false, false, false, false, true, true, true, true, true, true, false, false, false, false, false, false, true, true, false, false, false, false, false, false, true];
+    ExpRequest: array[1..35] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false];
+    Lit: dint;
+    Cyc: dint;
+end_var
+T_BEGIN()
+Run := InRun[Cyc]; PedBtn := InPedBtn[Cyc];
+Ctl(Run := Run, PedBtn := PedBtn);
+EXPECT_TRUE(Ctl.Red = ExpRed[Cyc], 'red_follows_expected_sequence');
+EXPECT_TRUE(Ctl.Yellow = ExpYellow[Cyc], 'yellow_follows_expected_sequence');
+EXPECT_TRUE(Ctl.Green = ExpGreen[Cyc], 'green_follows_expected_sequence');
+EXPECT_TRUE(Ctl.Request = ExpRequest[Cyc], 'request_follows_expected_sequence');
+Lit := 0;
+if Ctl.Red then Lit := Lit + 1; end_if;
+if Ctl.Yellow then Lit := Lit + 1; end_if;
+if Ctl.Green then Lit := Lit + 1; end_if;
+EXPECT_TRUE((not Run) or (Lit = 1), 'one_lamp_while_running');
+EXPECT_TRUE(Run or ((Lit = 0) and (not Ctl.Request)), 'all_off_while_stopped');
+EXPECT_TRUE((Cyc <> 9) or Ctl.Yellow, 'green_ends_after_four_scans');
+EXPECT_TRUE((Cyc <> 19) or Ctl.Green, 'green_extended_by_request');
+EXPECT_TRUE((Cyc <> 21) or Ctl.Yellow, 'extended_green_ends_after_six_scans');
+EXPECT_TRUE((Cyc <> 31) or (Ctl.Red and (not Ctl.Request)), 'restart_from_red');
+END_TEST_M

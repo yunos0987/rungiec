@@ -1,0 +1,36 @@
+(* @expect pass *)
+(* @cycles 14 *)
+(* Purpose: batch counting use case: an up counter (CTU) counts the bottles passing a sensor (one count per rising edge, a held sensor counts once), Q = batch complete at 3 bottles, a comparison contact on CV lights "almost full" at 2, and Reset clears the count. Once the batch is full the gate contact |/Full| in front of the counter input stops the counting: the IEC CTU does not stop at PV (it counts up to PVmax), so the circuit has to stop it. *)
+(* Source: IEC 61131-3 Ed. 4.0 (CDV), 6.6.3.5.4 Table 46 -- CTU: CV counts the rising edges of CU up to PVmax, R clears CV, Q = CV >= PV *)
+(* Source: https://dl.mitsubishielectric.com/dl/fa/document/manual/plc/sh081266eng/sh081266engae.pdf, chapter 43 counter FBs (CTU) -- the same up counter in the vendor FB library *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t065_batch_counter_ctu))
+TEST_M(t065_batch_counter_ctu)
+var
+    Sensor, Reset, CntIn, Almost, Full: bool;
+    Ct: CTU;
+    InSensor: array[1..14] of bool := [false, true, true, false, true, false, true, false, true, false, false, true, false, true];
+    InReset: array[1..14] of bool := [false, false, false, false, false, false, false, false, false, false, true, false, false, false];
+    ExpCv: array[1..14] of int := [0, 1, 1, 1, 2, 2, 3, 3, 3, 3, 0, 1, 1, 2];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Sensor := InSensor[Cyc]; Reset := InReset[Cyc];
+(*  |--| Sensor |--|/Full |--( CntIn )--|   the full batch gates the counter input  *)
+RUNG(CONTACT(Sensor), NOT_CONTACT(Full), COIL(CntIn))
+(*  |--[ Ct(CU := CntIn, R := Reset, PV := 3) ]--| Ct.Q |--( Full )--|  *)
+RUNG(FB_SCAN(Ct, CU := CntIn, R := Reset, PV := 3), CONTACT(Ct.Q), COIL(Full))
+(*  |--| Ct.CV >= 2 |--( Almost )--|  *)
+RUNG(GE_CONTACT(Ct.CV, 2), COIL(Almost))
+EXPECT_TRUE(Ct.CV = ExpCv[Cyc], 'count_matches_expected');
+EXPECT_TRUE((Cyc <> 3) or (Ct.CV = 1), 'held_sensor_counts_once');
+EXPECT_TRUE(Full = (Ct.CV >= 3), 'full_at_preset');
+EXPECT_TRUE(Almost = (Ct.CV >= 2), 'almost_full_from_two');
+EXPECT_TRUE((Cyc <> 9) or ((Ct.CV = 3) and (not CntIn)), 'extra_bottle_after_full_not_counted');
+EXPECT_TRUE((Cyc <> 11) or ((Ct.CV = 0) and (not Full) and (not Almost)), 'reset_clears_count_and_full');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,32 @@
+(* @expect pass *)
+(* @cycles 14 *)
+(* Purpose: direction of a package on a belt from two light barriers. A rising edge on one barrier while the other is clear means the package arrives from that side: it sets LEFT (PEB1 first) or RIGHT (PEB2 first); both barriers clear resets both indicators. Edge contacts and SET/RESET coils. *)
+(* Source: https://cache.industry.siemens.com/dl/files/822/45523822/att_82001/v1/s7kop__b.pdf, Appendix B.2 Example 2, p.201-203 -- detecting the direction of travel from the order in which two light barriers are interrupted *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t082_belt_direction_detection))
+TEST_M(t082_belt_direction_detection)
+var
+    Peb1, Peb2, Left, Right: bool;
+    InPeb1: array[1..14] of bool := [false, true, true, false, false, false, false, false, true, true, false, false, false, false];
+    InPeb2: array[1..14] of bool := [false, false, true, true, false, false, false, true, true, false, false, false, true, false];
+    ExpLeft: array[1..14] of bool := [false, true, true, true, false, false, false, false, false, false, false, false, false, false];
+    ExpRight: array[1..14] of bool := [false, false, false, false, false, false, false, true, true, true, false, false, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Peb1 := InPeb1[Cyc]; Peb2 := InPeb2[Cyc];
+(*  |--|P Peb1 |--|/Peb2 |--(S Left )--|   PEB1 rises while PEB2 is clear  *)
+RUNG(RISE_CONTACT(Peb1), NOT_CONTACT(Peb2), SET_COIL(Left))
+(*  |--|P Peb2 |--|/Peb1 |--(S Right )--|   PEB2 rises while PEB1 is clear  *)
+RUNG(RISE_CONTACT(Peb2), NOT_CONTACT(Peb1), SET_COIL(Right))
+(*  |--|/Peb1 |--|/Peb2 |--(R Right )--(R Left )--|   nothing between the barriers  *)
+RUNG(NOT_CONTACT(Peb1), NOT_CONTACT(Peb2), RESET_COIL(Right), RESET_COIL(Left))
+EXPECT_TRUE(Left = ExpLeft[Cyc], 'left_matches_expected');
+EXPECT_TRUE(Right = ExpRight[Cyc], 'right_matches_expected');
+EXPECT_TRUE(not (Left and Right), 'never_both_directions');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

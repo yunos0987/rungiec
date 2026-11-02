@@ -1,0 +1,1 @@
+tests/expanded/f012_missing_rungiec_var.st:67.0: error: 0x40010801: RungiecEn; UNDEFINED_SYMBOL

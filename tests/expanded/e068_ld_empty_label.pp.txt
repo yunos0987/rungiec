@@ -1,0 +1,1 @@
+tests/e068_ld_empty_label.iec:14.0: error: PP91: 'RUNGIEC LD: JMP has an empty label_name'

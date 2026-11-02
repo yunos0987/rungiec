@@ -1,0 +1,2 @@
+tests/e045_end_net_missing_before_next_pou.iec:26.0: error: PP91: 'RUNGIEC END_NET and END_RUNGIEC are missing before the next BEGIN_RUNGIEC'
+tests/e045_end_net_missing_before_next_pou.iec:26.0: error: PP91: 'RUNGIEC END_RUNGIEC is missing before BEGIN_RUNGIEC'

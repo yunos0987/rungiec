@@ -1,0 +1,20 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Check for examples/contact_coil.iec: feeds inputs and verifies the ladder. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_contact_coil))
+{#include 'contact_coil.iec'}
+TEST_M(x_contact_coil)
+var
+    Cc: contact_coil;
+    X: bool;
+    InX: array[1..4] of bool := [false, true, false, true];
+    Cyc: dint;
+end_var
+T_BEGIN()
+X := InX[Cyc];
+Cc(X := X);
+EXPECT_TRUE(Cc.Y = InX[Cyc], 'y_follows_x');
+EXPECT_TRUE((Cyc <> 1) or (not Cc.Y), 'y_off_when_x_off');
+EXPECT_TRUE((Cyc <> 2) or Cc.Y, 'y_on_when_x_on');
+END_TEST_M

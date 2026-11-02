@@ -1,0 +1,16 @@
+(* @expect pp-error PP91: .RUNGIEC END_RUNGIEC is missing before BEGIN_RUNGIEC *)
+(* @cycles 1 *)
+(* Purpose: A POU that writes BEGIN_RUNGIEC() twice is a preprocessing error: the second BEGIN_RUNGIEC() finds the first one still open. *)
+(* @lint-allow LN16 *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|   BEGIN_RUNGIEC() is deliberately written twice  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

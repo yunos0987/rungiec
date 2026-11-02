@@ -1,0 +1,14 @@
+(* @expect run-error array index 0 out of bounds *)
+(* @cycles 1 *)
+(* Purpose: LABEL() written as a child of a RUNG cannot be seen by the preprocessor, so the nesting trap after the label faults at run time (RungiecStIn[1 - RungiecSp] with RungiecSp = 1). *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|   the label is deliberately written inside the RUNG  *)
+RUNG(CONTACT(A), LABEL(Skip), COIL(Y))
+END_RUNGIEC()
+end_program

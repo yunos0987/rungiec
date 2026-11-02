@@ -1,0 +1,1 @@
+tests/expanded/f002_edge_in_function.st:68.0: error: 0x40010801: RungiecPrev; UNDEFINED_SYMBOL

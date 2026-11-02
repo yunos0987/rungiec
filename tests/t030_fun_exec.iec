@@ -1,0 +1,39 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: FUN_EXEC: no execution when the power is OFF (counter unchanged), execution and power ON otherwise; FUN_EXEC_RET stores the return value. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t030_fun_exec))
+function Bump : dint
+var_in_out cnt: dint; end_var
+cnt := cnt + 1;
+Bump := cnt;
+end_function
+function Add : dint
+var_input lhs, rhs: dint; end_var
+Add := lhs + rhs;
+end_function
+TEST_M(t030_fun_exec)
+var
+    P, Y1, Y2: bool;
+    N1, R2: dint;
+    InP: array[1..4] of bool := [false, true, false, true];
+    ExpN1: array[1..4] of dint := [0, 1, 1, 2];
+    ExpR2: array[1..4] of dint := [0, 7, 7, 7];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+P := InP[Cyc];
+(*  |--| P |--[ Bump(cnt := N1) ]--( Y1 )--|  *)
+RUNG(CONTACT(P), FUN_EXEC(Bump, cnt := N1), COIL(Y1))
+(*  |--| P |--[ R2 := Add(lhs := 3, rhs := 4) ]--( Y2 )--|  *)
+RUNG(CONTACT(P), FUN_EXEC_RET(R2, Add, lhs := 3, rhs := 4), COIL(Y2))
+EXPECT_TRUE(N1 = ExpN1[Cyc], 'counter_unchanged_when_power_off_and_incremented_when_on');
+EXPECT_TRUE(Y1 = P, 'power_after_box_follows_execution');
+EXPECT_TRUE(Y2 = P, 'power_after_second_box_follows_execution');
+EXPECT_TRUE(R2 = ExpR2[Cyc], 'return_value_assigned_only_when_executed');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

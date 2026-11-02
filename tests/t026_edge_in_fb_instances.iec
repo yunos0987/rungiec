@@ -1,0 +1,34 @@
+(* @expect pass *)
+(* @cycles 5 *)
+(* Purpose: Two function block instances with edge contacts keep independent previous values. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t026_edge_in_fb_instances))
+function_block EdgeFb
+var_input x: bool; end_var
+var_output q: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--|P x |--( q )--|  *)
+RUNG(RISE_CONTACT(x), COIL(q))
+END_RUNGIEC()
+end_function_block
+TEST_M(t026_edge_in_fb_instances)
+var
+    Fb1, Fb2: EdgeFb;
+    X1, X2: bool;
+    InX1: array[1..5] of bool := [false, true, true, false, true];
+    InX2: array[1..5] of bool := [false, false, true, true, false];
+    Exp1: array[1..5] of bool := [false, true, false, false, true];
+    Exp2: array[1..5] of bool := [false, false, true, false, false];
+    Cyc: dint;
+end_var
+
+T_BEGIN()
+X1 := InX1[Cyc]; X2 := InX2[Cyc];
+Fb1(x := X1);
+Fb2(x := X2);
+(*  instance 1 and instance 2 keep independent previous values  *)
+EXPECT_TRUE(Fb1.q = Exp1[Cyc], 'instance1_edge');
+EXPECT_TRUE(Fb2.q = Exp2[Cyc], 'instance2_edge');
+END_TEST_M

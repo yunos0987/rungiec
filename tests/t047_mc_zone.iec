@@ -1,0 +1,72 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: BEGIN_MC() / END_MC(): networks between them take the MC condition as their left rail; coils and NOT_COIL OFF, SET/RESET hold, boxes not executed, edge contacts still update. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t047_mc_zone))
+function_block Bump
+var_in_out cnt: dint; end_var
+cnt := cnt + 1;
+end_function_block
+TEST_M(t047_mc_zone)
+var
+    X, A, Rst, Pre, B1, C1, C2, S1, N1, F1, R1, Rc, Fc, Out: bool;
+    Runs: dint;
+    Bumper: Bump;
+    InX: array[1..6] of bool := [true, true, false, false, true, true];
+    InA: array[1..6] of bool := [false, true, false, true, true, false];
+    InRst: array[1..6] of bool := [false, false, false, true, false, true];
+    ExpR1: array[1..6] of bool := [false, true, false, false, false, false];
+    ExpS1: array[1..6] of bool := [false, true, true, true, true, false];
+    ExpRuns: array[1..6] of dint := [0, 1, 1, 1, 2, 2];
+    ExpRc: array[1..6] of bool := [true, false, false, false, true, false];
+    ExpFc: array[1..6] of bool := [false, false, true, false, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+X := InX[Cyc]; A := InA[Cyc]; Rst := InRst[Cyc];
+(*  |--( Pre )--|   before MC: left rail ON  *)
+RUNG(COIL(Pre))
+(*  |--| X |--(MC)--|  *)
+BEGIN_MC(CONTACT(X))
+(*  |--| A |--( B1 )--|  *)
+RUNG(CONTACT(A), COIL(B1))
+(*  |--| true |--( C1 )--|  *)
+RUNG(CONTACT(true), COIL(C1))
+(*  |--( C2 )--|   single-element RUNG in the zone  *)
+RUNG(COIL(C2))
+(*  |--| A |--(S S1 )--|  *)
+RUNG(CONTACT(A), SET_COIL(S1))
+(*  |--| Rst |--(R S1 )--|  *)
+RUNG(CONTACT(Rst), RESET_COIL(S1))
+(*  |--| A |--(/ N1 )--|  *)
+RUNG(CONTACT(A), NOT_COIL(N1))
+(*  |--| A |--[ Bumper(cnt := Runs) ]--( F1 )--|  *)
+RUNG(CONTACT(A), FB_EXEC(Bumper, cnt := Runs), COIL(F1))
+(*  |--|P A |--( R1 )--|  *)
+RUNG(RISE_CONTACT(A), COIL(R1))
+(*  |--(P Rc )--|  *)
+RUNG(RISE_COIL(Rc))
+(*  |--(N Fc )--|  *)
+RUNG(FALL_COIL(Fc))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--| A |--( Out )--|   after MCR: left rail ON again  *)
+RUNG(CONTACT(A), COIL(Out))
+EXPECT_TRUE(Pre, 'before_mc_rail_on');
+EXPECT_TRUE(B1 = (X and A), 'zone_contact_and_rail');
+EXPECT_TRUE(C1 = X, 'zone_true_contact_follows_rail');
+EXPECT_TRUE(C2 = X, 'zone_single_coil_follows_rail');
+EXPECT_TRUE(S1 = ExpS1[Cyc], 'zone_set_reset_hold');
+EXPECT_TRUE(N1 = (X and not A), 'zone_not_coil_false_when_off');
+EXPECT_TRUE(Runs = ExpRuns[Cyc], 'zone_box_not_executed');
+EXPECT_TRUE(F1 = (X and A), 'zone_box_power_after');
+EXPECT_TRUE(R1 = ExpR1[Cyc], 'zone_edge_prev_updated_while_off');
+EXPECT_TRUE(Rc = ExpRc[Cyc], 'zone_rise_coil_on_rail_rise');
+EXPECT_TRUE(Fc = ExpFc[Cyc], 'zone_fall_coil_on_rail_fall');
+EXPECT_TRUE(Out = A, 'after_mcr_rail_on');
+T_EXPECT_IDLE(idle_after_mcr);
+END_RUNGIEC()
+END_TEST_M

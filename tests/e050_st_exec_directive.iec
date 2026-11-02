@@ -1,0 +1,16 @@
+(* @expect pp-error PP02: .*control directive inside macro argument *)
+(* @cycles 1 *)
+(* Purpose: A control directive written in the statements of ST_EXEC is a preprocessing error (jiepp does not allow it inside a macro argument). *)
+(* @lint-allow LN17 *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+    N: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--[[ ST: N := N + 1; ]]--( Y )--|   a conditional directive is deliberately written in the statements  *)
+RUNG(CONTACT(A), ST_EXEC(N := N + 1; {#if 1} N := N + 1; {#endif}), COIL(Y))
+END_RUNGIEC()
+end_program

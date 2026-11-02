@@ -1,0 +1,14 @@
+(* t_jiecunit.iec - jiecunit glue for the RUNGIEC pass tests (prefix t) and example checks (prefix x_). *)
+(* The runner passes -D T_CYCLES=N from the @cycles header and runs jiecc with --max-cycles N+2. *)
+{#pragma once}
+{#include <jiecunit.iec>}
+{#ifndef T_CYCLES}
+{#error T_CYCLES is not defined; tools/run_tests.py passes it from the @cycles header}
+{#endif}
+(* T_BEGIN() is the first statement after BEGIN_RUNGIEC() (or, when the test POU does not use the DSL, right after
+   the last end_var of the user).
+   Scans 1..T_CYCLES run the test with Cyc = 1..T_CYCLES; the next scan ends the test before anything else runs,
+   so a RETURN() later in the body cannot skip the end of the test. *)
+{#define T_BEGIN() if CURRENT_CYCLE() >= T_CYCLES then EOT(); end_if; Cyc := CURRENT_CYCLE() + 1;}
+(* T_EXPECT_IDLE(id) expects the work variables to be back at their idle values (top level, power ON). *)
+{#define T_EXPECT_IDLE(id) EXPECT_TRUE((RungiecSp = 0) and RungiecEn and RungiecIn and RungiecAcc and RungiecRail, @id)}

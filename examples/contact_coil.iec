@@ -1,0 +1,11 @@
+{#include 'rungiec.iec'}
+(* Example: the simplest rung. A normally open contact drives a coil. *)
+function_block contact_coil
+var_input X: bool; end_var
+var_output Y: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| X |--( Y )--|  *)
+RUNG(CONTACT(X), COIL(Y))
+END_RUNGIEC()
+end_function_block

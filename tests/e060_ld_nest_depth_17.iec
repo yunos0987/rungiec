@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC LD: nesting exceeds 16. *)
+(* @cycles 1 *)
+(* Purpose: In the LD mode a nesting depth of 17 exceeds RUNGIEC_NEST_MAX (16) and is PP91 (the ST mode faults at run time, f001). The test defines RUNGIEC_LD before rungiec.iec, as jiecc -D RUNGIEC_LD does. *)
+{#define RUNGIEC_LD 1}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--+--+--+--+--+--+--+--+--| A |--( Y )--|   nested 17 levels deep  *)
+RUNG(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(CONTACT(A), COIL(Y))))))))))))))))))
+END_RUNGIEC()
+end_program

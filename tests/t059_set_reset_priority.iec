@@ -1,0 +1,36 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: set-priority and reset-priority latches. The same Set and Rst inputs drive two outputs; the rung order decides which input wins when both are ON (the later rung wins). *)
+(* Source: IEC 61131-3 Ed. 4.0 (CDV), 6.6.3.5.2 Table 44 -- SR is set-dominant and RS is reset-dominant; when S and R are both TRUE the dominant input decides the output *)
+(* Source: https://cache.industry.siemens.com/dl/files/822/45523822/att_82001/v1/s7kop__b.pdf, 1.10 RS / 1.11 SR, p.24-27 -- in LAD the input that is executed last wins; with SET and RESET coils the rung order decides the same way. The Siemens names are the reverse of the IEC names: Siemens RS (reset, then set) is set-dominant and Siemens SR (set, then reset) is reset-dominant *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t059_set_reset_priority))
+TEST_M(t059_set_reset_priority)
+var
+    Set, Rst, YReset, YSet: bool;
+    InSet: array[1..8] of bool := [false, true, false, true, false, true, false, false];
+    InRst: array[1..8] of bool := [false, false, false, true, false, false, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Set := InSet[Cyc]; Rst := InRst[Cyc];
+(*  |--| Set |--(S YReset )--|   set first, reset last: reset dominates (like the IEC RS)  *)
+RUNG(CONTACT(Set), SET_COIL(YReset))
+(*  |--| Rst |--(R YReset )--|  *)
+RUNG(CONTACT(Rst), RESET_COIL(YReset))
+(*  |--| Rst |--(R YSet )--|   reset first, set last: set dominates (like the IEC SR)  *)
+RUNG(CONTACT(Rst), RESET_COIL(YSet))
+(*  |--| Set |--(S YSet )--|  *)
+RUNG(CONTACT(Set), SET_COIL(YSet))
+EXPECT_TRUE((Cyc <> 1) or ((not YReset) and (not YSet)), 'both_off_at_start');
+EXPECT_TRUE((Cyc <> 2) or (YReset and YSet), 'set_turns_both_on');
+EXPECT_TRUE((Cyc <> 3) or (YReset and YSet), 'both_hold_when_inputs_off');
+EXPECT_TRUE((Cyc <> 4) or (not YReset), 'both_inputs_on_reset_dominates_rs');
+EXPECT_TRUE((Cyc <> 4) or YSet, 'both_inputs_on_set_dominates_sr');
+EXPECT_TRUE((Cyc <> 7) or ((not YReset) and (not YSet)), 'reset_alone_clears_both');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

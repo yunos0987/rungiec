@@ -1,0 +1,22 @@
+(* @expect pp-error PP91: .RUNGIEC WIRE after a WIRE that jumps or returns, write that WIRE last before END_NET *)
+(* @cycles 1 *)
+(* Purpose: A WIRE after the WIRE with JMP() in the same network would not run on a scan that jumps, so the later WIRE is PP91. The WIRE with JMP() itself passes its checks. *)
+(* @lint-allow LN13 *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, J, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(1)--| J |-->>Skip  *)
+(*  |         (1)--( Y )--|   after the WIRE with the jump  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(1, 2, CONTACT(J), JMP(Skip))
+WIRE(1, 3, COIL(Y))
+END_NET()
+(*  Skip:  *)
+LABEL(Skip)
+END_RUNGIEC()
+end_program

@@ -1,0 +1,14 @@
+(* @expect run-error array index 0 out of bounds *)
+(* @cycles 1 *)
+(* Purpose: A RUNG nested inside another RUNG cannot be seen by the preprocessor (the argument is expanded first), so the nesting trap at the start of RUNG faults at run time (RungiecStIn[1 - RungiecSp] with RungiecSp = 1). *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|   the coil is deliberately wrapped in a nested RUNG  *)
+RUNG(CONTACT(A), RUNG(COIL(Y)))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,41 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: Edge contacts in a BEGIN_MC condition and in WIRE lines take one slot each: with RUNGIEC_EDGE_MAX 4 exactly 4 edge contacts fit (slots 1..4, so a call site that took two slots would be a preprocessing error), and each one keeps its own previous value. The previous values are updated while the zone is OFF. *)
+{#define RUNGIEC_EDGE_MAX 4}
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t094_edge_slots_in_wire_and_mc))
+TEST_M(t094_edge_slots_in_wire_and_mc)
+var
+    Z, A, B, C, Yab, Yc: bool;
+    InZ: array[1..6] of bool := [true, false, true, false, true, true];
+    InA: array[1..6] of bool := [true, false, false, true, true, false];
+    InB: array[1..6] of bool := [false, true, false, true, true, false];
+    InC: array[1..6] of bool := [false, true, true, false, true, false];
+    ExpYab: array[1..6] of bool := [true, false, true, false, false, false];
+    ExpYc: array[1..6] of bool := [false, false, false, false, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Z := InZ[Cyc]; A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc];
+(*  |--|P Z |--(MC)--|   slot 1  *)
+BEGIN_MC(RISE_CONTACT(Z))
+(*  |--+--|P A |--+--(1)--( Yab )--|   slots 2 and 3  *)
+(*  |  |          |                |  *)
+(*  |  +--|N B |--+                |  *)
+(*  |--|P C |--( Yc )--------------|   slot 4  *)
+BEGIN_NET()
+WIRE(0, 1, RISE_CONTACT(A))
+WIRE(0, 1, FALL_CONTACT(B))
+WIRE(1, 2, COIL(Yab))
+WIRE(0, 3, RISE_CONTACT(C), COIL(Yc))
+END_NET()
+(*  |--(MCR)--|  *)
+END_MC()
+EXPECT_TRUE(Yab = ExpYab[Cyc], 'rise_a_or_fall_b_in_zone');
+EXPECT_TRUE(Yc = ExpYc[Cyc], 'rise_c_in_zone');
+T_EXPECT_IDLE(idle_after_zone);
+END_RUNGIEC()
+END_TEST_M

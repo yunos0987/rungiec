@@ -1,0 +1,2 @@
+tests/e059_jump_omron_target.iec:13.0: error: PP91: 'RUNGIEC JMP to Skip is not supported for the jiecc targets omron, keyence and mitsubishi'
+tests/e059_jump_omron_target.iec:17.0: error: PP91: 'RUNGIEC LABEL Skip is not supported for the jiecc targets omron, keyence and mitsubishi'

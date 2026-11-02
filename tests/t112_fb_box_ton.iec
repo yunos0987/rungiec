@@ -1,0 +1,26 @@
+(* @expect pass *)
+(* @cycles 10 *)
+(* Purpose: FB_BOX passes the power to the input pin IN of a TON on every scan, and the power after the box is the output Q (the box of IEC 61131-3). The coil after the box follows Q, not the power before the box. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t112_fb_box_ton))
+{#include 't_stdfb.iec'}
+TEST_M(t112_fb_box_ton)
+var
+    Start, Lamp: bool;
+    Tm: TON;
+    InStart: array[1..10] of bool := [true, true, true, true, true, false, true, true, true, true];
+    ExpQ: array[1..10] of bool := [false, false, false, true, true, false, false, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc];
+(*  |--| Start |--[ Tm(PT := T#300ms) IN Q ]--( Lamp )--|   TON: PT = 300 ms, Q on the 4th scan with IN TRUE  *)
+RUNG(CONTACT(Start), FB_BOX(Tm, IN, Q, PT := T#300ms), COIL(Lamp))
+EXPECT_TRUE(Tm.Q = ExpQ[Cyc], 'ton_q');
+EXPECT_TRUE(Lamp = ExpQ[Cyc], 'power_after_box_is_q');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

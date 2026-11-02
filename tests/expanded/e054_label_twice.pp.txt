@@ -1,0 +1,1 @@
+tests/e054_label_twice.iec:18.0: error: PP91: 'RUNGIEC LABEL Skip is defined twice in this POU'

@@ -1,0 +1,14 @@
+(* @expect pp-error PP91: .RUNGIEC empty element *)
+(* @cycles 1 *)
+(* Purpose: An empty child (trailing comma) is a preprocessing error. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), )
+END_RUNGIEC()
+end_program

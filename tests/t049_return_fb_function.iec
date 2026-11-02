@@ -1,0 +1,57 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: RETURN() returns from a FUNCTION (keeping the result assigned before it) and from a FB; rungs after it are skipped, so their edge contacts see the edge late. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t049_return_fb_function))
+function Pick : bool
+var_input A, B, Quit: bool; end_var
+RUNGIEC_VAR_NOEDGE()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Pick )--|  *)
+RUNG(CONTACT(A), COIL(Pick))
+(*  |--| Quit |--<RETURN>  *)
+RUNG(CONTACT(Quit), RETURN())
+(*  |--| B |--( Pick )--|  *)
+RUNG(CONTACT(B), COIL(Pick))
+END_RUNGIEC()
+end_function
+function_block Worker
+var_input Quit, A: bool; end_var
+var_output Y, R: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Quit |--<RETURN>  *)
+RUNG(CONTACT(Quit), RETURN())
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+(*  |--|P A |--( R )--|  *)
+RUNG(RISE_CONTACT(A), COIL(R))
+END_RUNGIEC()
+end_function_block
+TEST_M(t049_return_fb_function)
+var
+    Quit, A, B, P0, P1: bool;
+    W: Worker;
+    InQuit: array[1..4] of bool := [false, true, true, false];
+    InA: array[1..4] of bool := [false, false, true, true];
+    InB: array[1..4] of bool := [true, false, false, true];
+    ExpY: array[1..4] of bool := [false, false, false, true];
+    ExpR: array[1..4] of bool := [false, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Quit := InQuit[Cyc]; A := InA[Cyc]; B := InB[Cyc];
+P0 := Pick(A := A, B := B, Quit := Quit);
+W(Quit := Quit, A := A);
+(*  |--| P0 |--( P1 )--|  *)
+RUNG(CONTACT(P0), COIL(P1))
+EXPECT_TRUE((not Quit) or (P0 = A), 'function_result_before_return');
+EXPECT_TRUE(Quit or (P0 = (A or B)), 'function_runs_to_end_without_return');
+EXPECT_TRUE(W.Y = ExpY[Cyc], 'fb_rungs_after_return_skipped');
+EXPECT_TRUE(W.R = ExpR[Cyc], 'fb_edge_after_return_seen_late');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

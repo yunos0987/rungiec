@@ -1,0 +1,47 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: Edge slots are counted per POU: with RUNGIEC_EDGE_MAX 2 the function block and the program each use slots 1 and 2 (a file-wide count would need 4), and the edges of both work. *)
+{#define RUNGIEC_EDGE_MAX 2}
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t090_edge_slots_per_pou))
+function_block EdgeFb
+var_input
+    X: bool;
+end_var
+var_output
+    R, F: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--|P X |--( R )--|  *)
+RUNG(RISE_CONTACT(X), COIL(R))
+(*  |--|N X |--( F )--|  *)
+RUNG(FALL_CONTACT(X), COIL(F))
+END_RUNGIEC()
+end_function_block
+TEST_M(t090_edge_slots_per_pou)
+var
+    Fb: EdgeFb;
+    X, R, F: bool;
+    InX: array[1..4] of bool := [false, true, true, false];
+    ExpR: array[1..4] of bool := [false, true, false, false];
+    ExpF: array[1..4] of bool := [false, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+X := InX[Cyc];
+Fb(X := X);
+(*  |--|P X |--( R )--|  *)
+RUNG(RISE_CONTACT(X), COIL(R))
+(*  |--|N X |--( F )--|  *)
+RUNG(FALL_CONTACT(X), COIL(F))
+EXPECT_TRUE(Fb.R = ExpR[Cyc], 'fb_rise');
+EXPECT_TRUE(Fb.F = ExpF[Cyc], 'fb_fall');
+EXPECT_TRUE(R = ExpR[Cyc], 'program_rise');
+EXPECT_TRUE(F = ExpF[Cyc], 'program_fall');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

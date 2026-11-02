@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  # jiecc and jiepp on the homepage are updated independently of this repository,
+  # so the tests also run weekly against the latest published tools.
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request cancels the run that is still in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            archive: jiecc.tgz
+            exe: ""
+            python: python3
+          - os: windows-latest
+            archive: jiecc.zip
+            exe: ".exe"
+            python: python
+    defaults:
+      run:
+        shell: bash
+    env:
+      PY: ${{ matrix.python }}
+      EXE: ${{ matrix.exe }}
+      ARCHIVE: ${{ matrix.archive }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # jiecunit (vendor/jiecunit) is a git submodule used by the t/x tests.
+          submodules: recursive
+
+      # The archive holds jiecc and jiepp at its root (Windows: jiecc.exe / jiepp.exe,
+      # Linux: jiecc / jiepp). It is downloaded and extracted outside the repository.
+      - name: Download jiecc and jiepp
+        run: |
+          dist="$RUNNER_TEMP/jiecc-dist"
+          mkdir -p "$dist/x"
+          curl -fsSL --retry 3 --retry-all-errors -o "$dist/$ARCHIVE" "https://www.graviness.com/iec_61131-3/$ARCHIVE"
+          case "$ARCHIVE" in
+            *.zip) "$PY" -m zipfile -e "$dist/$ARCHIVE" "$dist/x" ;;
+            *.tgz) tar -xzf "$dist/$ARCHIVE" -C "$dist/x" ;;
+          esac
+          cp "$dist/x/jiecc$EXE" "$dist/x/jiepp$EXE" tools/
+          chmod +x "tools/jiecc$EXE" "tools/jiepp$EXE"
+
+      # The homepage serves the latest tools. This repository is tested with Jiecc 9.x and
+      # jiepp 1.x, so a new major version fails here instead of in the tests.
+      - name: Tool versions
+        run: |
+          "$PY" --version
+          jiepp_version="$("tools/jiepp$EXE" --version | head -n 1)"
+          jiecc_version="$("tools/jiecc$EXE" --version | head -n 1)"
+          echo "$jiepp_version"
+          echo "$jiecc_version"
+          case "$jiepp_version" in
+            "jiepp 1."*) ;;
+            *) echo "::error::expected jiepp 1.x, got: $jiepp_version"; exit 1 ;;
+          esac
+          case "$jiecc_version" in
+            "Jiecc 9."*) ;;
+            *) echo "::error::expected Jiecc 9.x, got: $jiecc_version"; exit 1 ;;
+          esac
+
+      - name: Check the arity and node tables
+        run: '"$PY" tools/gen_arity_table.py --check'
+
+      # lxml is not installed here: the XSD check of the converter tests is skipped without it.
+      - name: Unit tests of the LD XML converter
+        run: '"$PY" -m unittest discover -s tools/ld_xml -p "test_*.py"'
+
+      - name: Lint self-test
+        run: '"$PY" tools/run_tests.py --lint-selftest'
+
+      # The default run lints the repository before the tests.
+      - name: Run lint and tests
+        run: '"$PY" tools/run_tests.py'

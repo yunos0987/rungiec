@@ -1,0 +1,30 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: the result of ST is passed on through a variable: ST_EXEC(Over := Pos > Lim;), CONTACT(Over). The contact reads the value assigned in the same scan; without power the statement does not run and the variable is held, so a later RUNG reads the held value. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t098_st_exec_result_contact))
+TEST_M(t098_st_exec_result_contact)
+var
+    En, Over, Y, Z: bool;
+    Pos, Lim: dint;
+    InEn: array[1..6] of bool := [true, true, false, true, true, false];
+    InPos: array[1..6] of dint := [3, 7, 8, 2, 9, 6];
+    ExpOver: array[1..6] of bool := [false, true, true, false, true, true];
+    ExpY: array[1..6] of bool := [false, true, false, false, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+En := InEn[Cyc]; Pos := InPos[Cyc]; Lim := 5;
+(*  |--| En |--[[ ST: Over := Pos > Lim; ]]--| Over |--( Y )--|  *)
+RUNG(CONTACT(En), ST_EXEC(Over := Pos > Lim;), CONTACT(Over), COIL(Y))
+(*  |--| Over |--( Z )--|   reads the held value when En is OFF  *)
+RUNG(CONTACT(Over), COIL(Z))
+EXPECT_TRUE(Over = ExpOver[Cyc], 'result_assigned_when_powered');
+EXPECT_TRUE(Y = ExpY[Cyc], 'contact_reads_result_same_scan');
+EXPECT_TRUE(Z = ExpOver[Cyc], 'later_rung_reads_held_result');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

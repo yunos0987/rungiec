@@ -1,0 +1,42 @@
+(* @expect pass *)
+(* @cycles 12 *)
+(* Check for examples/on_delay_timer.iec: feeds inputs and verifies the ladder. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_on_delay_timer))
+(* Stand-in for the standard TON (the built-in timers of jiecc run on wall-clock time): ET advances by a fixed 250 ms per call, so the result does not depend on the speed of the machine and PT = T#1s elapses on the 4th scan. *)
+function_block TON
+var_input IN: bool; PT: time; end_var
+var_output Q: bool; ET: time; end_var
+if not IN then
+    ET := T#0ms;
+elsif ET < PT then
+    if ET < T#250ms then ET := T#250ms;
+    elsif ET < T#500ms then ET := T#500ms;
+    elsif ET < T#750ms then ET := T#750ms;
+    elsif ET < T#1000ms then ET := T#1000ms;
+    elsif ET < T#1250ms then ET := T#1250ms;
+    elsif ET < T#1500ms then ET := T#1500ms;
+    else ET := PT;
+    end_if;
+end_if;
+Q := IN and (ET >= PT);
+end_function_block
+{#include 'on_delay_timer.iec'}
+TEST_M(x_on_delay_timer)
+var
+    Ctl: on_delay_timer;
+    Start: bool;
+    InStart: array[1..12] of bool := [false, true, true, true, true, true, false, true, true, true, true, true];
+    ExpLamp: array[1..12] of bool := [false, false, false, false, true, true, false, false, false, false, true, true];
+    Cyc: dint;
+end_var
+T_BEGIN()
+Start := InStart[Cyc];
+Ctl(Start := Start);
+EXPECT_TRUE(Ctl.Lamp = ExpLamp[Cyc], 'lamp_follows_expected_sequence');
+EXPECT_TRUE((Cyc <> 4) or (not Ctl.Lamp), 'lamp_still_off_on_third_scan');
+EXPECT_TRUE((Cyc <> 5) or Ctl.Lamp, 'lamp_on_after_four_scans');
+EXPECT_TRUE((Cyc <> 7) or (not Ctl.Lamp), 'lamp_off_when_start_released');
+EXPECT_TRUE((Cyc <> 10) or (not Ctl.Lamp), 'delay_restarts_after_release');
+EXPECT_TRUE((Cyc <> 11) or Ctl.Lamp, 'lamp_on_again_after_four_scans');
+END_TEST_M

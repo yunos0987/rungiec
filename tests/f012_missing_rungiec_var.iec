@@ -1,0 +1,13 @@
+(* @expect run-error RungiecEn; UNDEFINED_SYMBOL *)
+(* @cycles 1 *)
+(* Purpose: A POU that forgot RUNGIEC_VAR() has no work variables, so the first statement of BEGIN_RUNGIEC() is an undefined symbol (jiecc compile stage). *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|   RUNGIEC_VAR() is deliberately omitted  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

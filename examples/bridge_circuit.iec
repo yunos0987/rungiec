@@ -1,0 +1,23 @@
+{#include 'rungiec.iec'}
+(* Example: bridge circuit. A series-parallel RUNG cannot express it, so it is written as a general network with BEGIN_NET, WIRE and END_NET. *)
+(* Each WIRE(from, to, elements...) connects two nodes; node 0 is the left rail. E conducts from node 1 to node 2 only (left to right), so Y = A and C or B and D or A and E and D. *)
+function_block bridge_circuit
+var_input A, B, C, D, E: bool; end_var
+var_output Y: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(1)--| C |--(3)--( Y )--|  *)
+(*  |          |           |             *)
+(*  |        | E |         |   (1 -> 2)  *)
+(*  |          |           |             *)
+(*  |--| B |--(2)--| D |---+             *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(0, 2, CONTACT(B))
+WIRE(1, 2, CONTACT(E))
+WIRE(1, 3, CONTACT(C))
+WIRE(2, 3, CONTACT(D))
+WIRE(3, 4, COIL(Y))
+END_NET()
+END_RUNGIEC()
+end_function_block

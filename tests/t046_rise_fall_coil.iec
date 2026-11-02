@@ -1,0 +1,42 @@
+(* @expect pass *)
+(* @cycles 7 *)
+(* Purpose: RISE_COIL / FALL_COIL (IEC -(P)- / -(N)-) write TRUE for one evaluation on a power edge, FALSE otherwise, and pass the power on. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t046_rise_fall_coil))
+TEST_M(t046_rise_fall_coil)
+var
+    P, Yr, Yf, Yp, Ya, Yb, Yc, Yfirst, Ynofall: bool;
+    InP: array[1..7] of bool := [false, true, true, false, false, true, false];
+    ExpR: array[1..7] of bool := [false, true, false, false, false, true, false];
+    ExpF: array[1..7] of bool := [false, false, false, true, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+P := InP[Cyc];
+Yr := true; Yf := true; Ya := true; Yb := true;
+(*  |--| P |--(P Yr )--( Yp )--|  *)
+RUNG(CONTACT(P), RISE_COIL(Yr), COIL(Yp))
+(*  |--| P |--(N Yf )--|  *)
+RUNG(CONTACT(P), FALL_COIL(Yf))
+(*  |--| P |--+--(P Ya )--+--( Yc )--|  *)
+(*  |         |           |          |  *)
+(*  |         +--(N Yb )--+          |  *)
+RUNG(CONTACT(P), PARALLEL(RISE_COIL(Ya), FALL_COIL(Yb)), COIL(Yc))
+(*  |--(P Yfirst )--|   left rail: TRUE from the first scan on  *)
+RUNG(RISE_COIL(Yfirst))
+(*  |--(N Ynofall )--|  *)
+RUNG(FALL_COIL(Ynofall))
+EXPECT_TRUE(Yr = ExpR[Cyc], 'rise_coil_one_scan_on_power_rise');
+EXPECT_TRUE(Yf = ExpF[Cyc], 'fall_coil_one_scan_on_power_fall');
+EXPECT_TRUE(Yp = P, 'rise_coil_passes_power');
+EXPECT_TRUE(Ya = ExpR[Cyc], 'rise_coil_in_parallel');
+EXPECT_TRUE(Yb = ExpF[Cyc], 'fall_coil_in_parallel');
+EXPECT_TRUE(Yc = P, 'power_after_coil_only_parallel');
+EXPECT_TRUE(Yfirst = (Cyc = 1), 'rise_coil_first_scan_true');
+EXPECT_TRUE(not Ynofall, 'fall_coil_never_on_steady_power');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

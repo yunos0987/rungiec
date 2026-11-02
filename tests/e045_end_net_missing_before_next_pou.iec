@@ -1,0 +1,30 @@
+(* @expect pp-error PP91: .RUNGIEC END_NET and END_RUNGIEC are missing before the next BEGIN_RUNGIEC *)
+(* @cycles 1 *)
+(* Purpose: A function block that leaves a network open and also omits END_RUNGIEC() is caught by BEGIN_RUNGIEC() of the next POU. *)
+(* @lint-allow LN16 *)
+{#include 'rungiec.iec'}
+function_block FbOpenNet
+var_input
+    A: bool;
+end_var
+var_output
+    Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(1)--( Y )--|   END_NET() and END_RUNGIEC() are omitted  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(1, 2, COIL(Y))
+end_function_block
+program __main__
+var
+    Fb: FbOpenNet;
+    B, Z: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| B |--( Z )--|  *)
+RUNG(CONTACT(B), COIL(Z))
+END_RUNGIEC()
+end_program

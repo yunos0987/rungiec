@@ -1,0 +1,49 @@
+(* @expect pass *)
+(* @cycles 5 *)
+(* Purpose: *_ENO macros with no arguments: the power after the box is ENO (TRUE when eno is not assigned); no execution without power. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t045_eno_zero_args))
+function ZeroOk : dint
+ZeroOk := 7;
+end_function
+function ZeroNg : dint
+ZeroNg := 9;
+eno := false;
+end_function
+function_block Cnt0
+var_output n: dint; end_var
+n := n + 1;
+end_function_block
+TEST_M(t045_eno_zero_args)
+var
+    P, Y1, Y2, Y3, Y4: bool;
+    R1, R2: dint;
+    Fb0: Cnt0;
+    InP: array[1..5] of bool := [false, true, true, false, true];
+    ExpN: array[1..5] of dint := [0, 1, 2, 2, 3];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+P := InP[Cyc];
+R1 := 0; R2 := 0;
+(*  |--| P |--[ R1 := ZeroOk ENO ]--( Y1 )--|  *)
+RUNG(CONTACT(P), FUN_ENO_RET(R1, ZeroOk), COIL(Y1))
+(*  |--| P |--[ R2 := ZeroNg ENO ]--( Y2 )--|  *)
+RUNG(CONTACT(P), FUN_ENO_RET(R2, ZeroNg), COIL(Y2))
+(*  |--| P |--[ ZeroOk ENO ]--( Y3 )--|  *)
+RUNG(CONTACT(P), FUN_ENO(ZeroOk), COIL(Y3))
+(*  |--| P |--[ Fb0 ENO ]--( Y4 )--|  *)
+RUNG(CONTACT(P), FB_ENO(Fb0), COIL(Y4))
+EXPECT_TRUE(Y1 = P, 'ok_function_power_on_after_box');
+EXPECT_TRUE(not Y2, 'ng_function_power_off_after_box');
+EXPECT_TRUE(Y3 = P, 'ok_function_without_return_power_on');
+EXPECT_TRUE(Y4 = P, 'fb_without_inputs_power_on');
+EXPECT_TRUE((R1 = 7) = P, 'ok_function_result_only_when_executed');
+EXPECT_TRUE((R2 = 9) = P, 'ng_function_result_only_when_executed');
+EXPECT_TRUE(Fb0.n = ExpN[Cyc], 'fb_executed_only_with_power');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

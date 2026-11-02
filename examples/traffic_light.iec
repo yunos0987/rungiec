@@ -1,0 +1,35 @@
+{#include 'rungiec.iec'}
+(* Example: traffic light. The lamps Red, Green and Yellow are also the step bits: while Run is TRUE exactly one of them is TRUE, *)
+(* and each transition resets the current step and sets the next one (SET_COIL / RESET_COIL). Each step has an on-delay timer, *)
+(* called with FBT_BOX on every scan so that it resets when its step ends. Red 3 s, green 3 s, yellow 1 s. A press of PedBtn while green latches *)
+(* Request, and that green ends after 5 s instead of 3 s. Run FALSE turns all lamps off; Run TRUE starts again from red. *)
+function_block traffic_light
+var_input Run, PedBtn: bool; end_var
+var_output Red, Yellow, Green, Request: bool; end_var
+var TmRed, TmGreen, TmLong, TmYellow: TON; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--|/Run |--(R Red )--(R Yellow )--(R Green )--(R Request )--|   stopped: all lamps off  *)
+RUNG(NOT_CONTACT(Run), RESET_COIL(Red), RESET_COIL(Yellow), RESET_COIL(Green), RESET_COIL(Request))
+(*  |--| Run |--|/Red |--|/Yellow |--|/Green |--(S Red )--|   no step yet: start from red  *)
+RUNG(CONTACT(Run), NOT_CONTACT(Red), NOT_CONTACT(Yellow), NOT_CONTACT(Green), SET_COIL(Red))
+(*  |--| Red |--| TmRed.Q |--(R Red )--(S Green )--|  *)
+RUNG(CONTACT(Red), CONTACT(TmRed.Q), RESET_COIL(Red), SET_COIL(Green))
+(*  |--| Green |--+--| TmGreen.Q |--|/Request |--+--(R Green )--(R Request )--(S Yellow )--|  *)
+(*  |             |                              |                                         |  *)
+(*  |             +--| TmLong.Q |----------------+                                         |   extended green  *)
+RUNG(CONTACT(Green), PARALLEL(SERIES(CONTACT(TmGreen.Q), NOT_CONTACT(Request)), CONTACT(TmLong.Q)), RESET_COIL(Green), RESET_COIL(Request), SET_COIL(Yellow))
+(*  |--| Yellow |--| TmYellow.Q |--(R Yellow )--(S Red )--|  *)
+RUNG(CONTACT(Yellow), CONTACT(TmYellow.Q), RESET_COIL(Yellow), SET_COIL(Red))
+(*  |--| Green |--| PedBtn |--(S Request )--|   a press while green extends this green  *)
+RUNG(CONTACT(Green), CONTACT(PedBtn), SET_COIL(Request))
+(*  |--| Red |--[ TmRed:TON(PT := T#3s) IN Q ]--|  *)
+RUNG(CONTACT(Red), FBT_BOX(TmRed, TON, IN, Q, PT := T#3s))
+(*  |--| Green |--[ TmGreen:TON(PT := T#3s) IN Q ]--|  *)
+RUNG(CONTACT(Green), FBT_BOX(TmGreen, TON, IN, Q, PT := T#3s))
+(*  |--| Green |--[ TmLong:TON(PT := T#5s) IN Q ]--|  *)
+RUNG(CONTACT(Green), FBT_BOX(TmLong, TON, IN, Q, PT := T#5s))
+(*  |--| Yellow |--[ TmYellow:TON(PT := T#1s) IN Q ]--|  *)
+RUNG(CONTACT(Yellow), FBT_BOX(TmYellow, TON, IN, Q, PT := T#1s))
+END_RUNGIEC()
+end_function_block

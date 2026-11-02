@@ -1,0 +1,63 @@
+(* @expect pass *)
+(* @cycles 16 *)
+(* Purpose: An MC zone holding a network works in a FUNCTION with RUNGIEC_VAR_NOEDGE() (the coil writes the function result) and in a function block with RUNGIEC_VAR_TEMP() (RungiecNode and RungiecMcSt are var_temp). After END_MC() the rail is ON again. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t093_net_in_function))
+function NetFn : bool
+var_input A, B, C: bool; end_var
+RUNGIEC_VAR_NOEDGE()
+BEGIN_RUNGIEC()
+(*  |--| C |--(MC)--|  *)
+BEGIN_MC(CONTACT(C))
+(*  |--+--| A |--+--(1)--( NetFn )--|  *)
+(*  |  |         |                  |  *)
+(*  |  +--| B |--+                  |  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(0, 1, CONTACT(B))
+WIRE(1, 2, COIL(NetFn))
+END_NET()
+(*  |--(MCR)--|  *)
+END_MC()
+END_RUNGIEC()
+end_function
+function_block TempNetFb
+var_input A, B, C, D: bool; end_var
+var_output Q, Q2: bool; end_var
+RUNGIEC_VAR_TEMP()
+BEGIN_RUNGIEC()
+(*  |--| D |--(MC)--|  *)
+BEGIN_MC(CONTACT(D))
+(*  |--| A |--(1)--| C |--(2)--( Q )--|  *)
+(*  |--| B |----------------(2)          *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(0, 2, CONTACT(B))
+WIRE(1, 2, CONTACT(C))
+WIRE(2, 3, COIL(Q))
+END_NET()
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--| A |--( Q2 )--|   outside the zone  *)
+RUNG(CONTACT(A), COIL(Q2))
+END_RUNGIEC()
+end_function_block
+TEST_M(t093_net_in_function)
+var
+    A, B, C, D, R1: bool;
+    Fb: TempNetFb;
+    InA: array[1..16] of bool := [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true];
+    InB: array[1..16] of bool := [false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true];
+    InC: array[1..16] of bool := [false, false, false, false, true, true, true, true, false, false, false, false, true, true, true, true];
+    InD: array[1..16] of bool := [false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true];
+    Cyc: dint;
+end_var
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc]; D := InD[Cyc];
+R1 := NetFn(A := A, B := B, C := C);
+Fb(A := A, B := B, C := C, D := D);
+EXPECT_TRUE(R1 = (C and (A or B)), 'function_net_in_mc_zone');
+EXPECT_TRUE(Fb.Q = (D and (B or (A and C))), 'var_temp_net_in_mc_zone');
+EXPECT_TRUE(Fb.Q2 = A, 'var_temp_rail_on_after_end_mc');
+END_TEST_M

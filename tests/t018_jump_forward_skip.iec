@@ -1,0 +1,32 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: JMP(L) as the last child of a RUNG jumps forward to LABEL(L) when powered. The skipped rung keeps the value of its coil, the rung after the label runs on every scan, and the work variables are at their idle values after the label whether the jump was taken or not. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t018_jump_forward_skip))
+TEST_M(t018_jump_forward_skip)
+var
+    Mode, A, Y, Z: bool;
+    Cyc: dint;
+    InMode: array[1..6] of bool := [false, false, true, true, false, true];
+    InA: array[1..6] of bool := [true, true, false, false, false, true];
+    ExpY: array[1..6] of bool := [true, true, true, true, false, false];
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Mode := InMode[Cyc]; A := InA[Cyc];
+(*  |--| Mode |-->>Skip  *)
+RUNG(CONTACT(Mode), JMP(Skip))
+(*  |--| A |--( Y )--|   skipped while Mode is on  *)
+RUNG(CONTACT(A), COIL(Y))
+(*  Skip:  *)
+LABEL(Skip)
+T_EXPECT_IDLE(idle_after_label);
+(*  |--| A |--( Z )--|  *)
+RUNG(CONTACT(A), COIL(Z))
+EXPECT_TRUE(Y = ExpY[Cyc], 'y_held_while_skipped');
+EXPECT_TRUE(Z = A, 'z_runs_after_label');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

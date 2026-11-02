@@ -1,0 +1,31 @@
+(* @expect pass *)
+(* @cycles 12 *)
+(* Purpose: off-delay (TOF) use case: a cooling fan runs while the motor runs and for a short time after it stops; restarting the motor during the delay keeps the fan on and re-arms the delay. With PT = 200 ms the fan stays on during the scan where the motor stops and the next scan (ET = 0, 100 ms; IEC Figure 17 c) and turns off on the 3rd scan (ET = 200 ms). *)
+(* Source: IEC 61131-3 Ed. 4.0 (CDV), 6.6.3.5.5 Table 47 / Figure 17 c -- TOF: Q follows IN = TRUE at once and falls PT after IN falls *)
+(* Source: https://dl.mitsubishielectric.com/dl/fa/document/manual/plc/sh081266eng/sh081266engae.pdf, TOF, p.1551 -- the same off-delay timing in the vendor FB library *)
+(* Source: https://www.fernhillsoftware.com/help/iec-61131/common-elements/standard-function-blocks/off-delay-timer.html, TOF -- while IN is TRUE, Q is TRUE and ET is 0; after IN falls ET runs up to PT and then Q is FALSE *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t063_off_delay_fan))
+{#include 't_stdfb.iec'}
+TEST_M(t063_off_delay_fan)
+var
+    Motor, Fan: bool;
+    Tf: TOF;
+    InMotor: array[1..12] of bool := [false, true, true, false, false, false, false, true, false, true, true, false];
+    ExpFan: array[1..12] of bool := [false, true, true, true, true, false, false, true, true, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Motor := InMotor[Cyc];
+(*  |--[ Tf(IN := Motor, PT := T#200ms) ]--| Tf.Q |--( Fan )--|   Q follows IN at once and falls PT after IN falls  *)
+RUNG(FB_SCAN(Tf, IN := Motor, PT := T#200ms), CONTACT(Tf.Q), COIL(Fan))
+EXPECT_TRUE(Fan = ExpFan[Cyc], 'fan_matches_expected');
+EXPECT_TRUE((Cyc <> 2) or Fan, 'fan_on_at_once_with_motor');
+EXPECT_TRUE(((Cyc <> 4) and (Cyc <> 5)) or Fan, 'fan_still_on_two_scans_after_stop');
+EXPECT_TRUE((Cyc <> 6) or (not Fan), 'fan_off_after_delay');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

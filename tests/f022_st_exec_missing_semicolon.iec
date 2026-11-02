@@ -1,0 +1,15 @@
+(* @expect run-error INVALID_SYNTAX *)
+(* @cycles 1 *)
+(* Purpose: A ';' missing between two statements of ST_EXEC is a jiecc syntax error. The ';' after the last statement may be left out (t096), because ST_EXEC adds one. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+    N, M: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--[[ ST: N := 1 M := 2; ]]--( Y )--|   the ';' after the first statement is deliberately left out  *)
+RUNG(CONTACT(A), ST_EXEC(N := 1 M := 2;), COIL(Y))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,14 @@
+(* @expect pp-error PP91: .RUNGIEC rungiec_st.iec is the ST mode part of rungiec.iec; include rungiec.iec instead *)
+(* @cycles 1 *)
+(* Purpose: The ST mode body rungiec_st.iec included directly, not through rungiec.iec, stops preprocessing (it needs the common part of rungiec.iec). *)
+{#include 'rungiec_st.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

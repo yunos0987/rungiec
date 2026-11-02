@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="www.iec.ch/public/TC65SC65BWG7TF10" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smcext="https://www.ia.omron.com/Smc" xsi:schemaLocation="https://www.ia.omron.com/Smc%20IEC61131_10_Ed1_0_SmcExt1_0_Spc1_0.xsd" schemaVersion="1">
+<FileHeader companyName="" productName="" productVersion="" />
+<ContentHeader name="" creationDateTime="2026-11-01T00:00:00+09:00">
+<AddDataInfo><Info name="https://www.ia.omron.com/Smc IEC61131_10_Ed1_0_SmcExt1_0_Spc1_0.xsd" vendor="https://www.ia.omron.com/Smc" /></AddDataInfo>
+</ContentHeader>
+<Types><GlobalNamespace>
+<FunctionBlock name="automatic_door">
+	<Parameters>
+	<InputVars>
+		<Variable name="Sensor" orderWithinParamSet="1">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</InputVars>
+	<InputVars>
+		<Variable name="OpenLimit" orderWithinParamSet="2">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</InputVars>
+	<InputVars>
+		<Variable name="ClosedLimit" orderWithinParamSet="3">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</InputVars>
+	<OutputVars>
+		<Variable name="MotorOpen" orderWithinParamSet="4">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</OutputVars>
+	<OutputVars>
+		<Variable name="MotorClose" orderWithinParamSet="5">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</OutputVars>
+	</Parameters>
+	<Vars accessSpecifier="private">
+		<Variable name="HoldTm">
+			<Type><TypeName>TON</TypeName></Type>
+		</Variable>
+	</Vars>
+	<MainBody>
+		<BodyContent xsi:type="LD">
+<Rung evaluationOrder="1">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="1"/></LdObject>
+<LdObject xsi:type="Contact" operand="OpenLimit"><ConnectionPointIn><Connection refConnectionPointOutId="1"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="2"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="Sensor"><ConnectionPointIn><Connection refConnectionPointOutId="2"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="3"/></LdObject>
+<FbdObject xsi:type="DataSource" identifier="T#3s"><ConnectionPointOut connectionPointOutId="4"/></FbdObject>
+<FbdObject xsi:type="Block" typeName="TON" instanceName="HoldTm"><InputVariables><InputVariable parameterName="IN"><ConnectionPointIn><Connection refConnectionPointOutId="3"/></ConnectionPointIn></InputVariable><InputVariable parameterName="PT"><ConnectionPointIn><Connection refConnectionPointOutId="4"/></ConnectionPointIn></InputVariable></InputVariables><OutputVariables><OutputVariable parameterName="Q"><ConnectionPointOut connectionPointOutId="5"/></OutputVariable></OutputVariables></FbdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="5"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="2">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="6"/></LdObject>
+<LdObject xsi:type="Contact" operand="HoldTm.Q"><ConnectionPointIn><Connection refConnectionPointOutId="6"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="7"/></LdObject>
+<LdObject xsi:type="Contact" operand="MotorClose"><ConnectionPointIn><Connection refConnectionPointOutId="6"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="8"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="Sensor"><ConnectionPointIn><Connection refConnectionPointOutId="7"/><Connection refConnectionPointOutId="8"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="9"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="ClosedLimit"><ConnectionPointIn><Connection refConnectionPointOutId="9"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="10"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="MotorOpen"><ConnectionPointIn><Connection refConnectionPointOutId="10"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="11"/></LdObject>
+<LdObject xsi:type="Coil" operand="MotorClose"><ConnectionPointIn><Connection refConnectionPointOutId="11"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="12"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="12"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="3">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="13"/></LdObject>
+<LdObject xsi:type="Contact" operand="Sensor"><ConnectionPointIn><Connection refConnectionPointOutId="13"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="14"/></LdObject>
+<LdObject xsi:type="Contact" operand="MotorOpen"><ConnectionPointIn><Connection refConnectionPointOutId="13"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="15"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="OpenLimit"><ConnectionPointIn><Connection refConnectionPointOutId="14"/><Connection refConnectionPointOutId="15"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="16"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="MotorClose"><ConnectionPointIn><Connection refConnectionPointOutId="16"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="17"/></LdObject>
+<LdObject xsi:type="Coil" operand="MotorOpen"><ConnectionPointIn><Connection refConnectionPointOutId="17"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="18"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="18"/></ConnectionPointIn></LdObject>
+</Rung>
+      </BodyContent>
+	</MainBody>
+</FunctionBlock>
+</GlobalNamespace></Types>
+<Instances>
+</Instances>
+</Project>

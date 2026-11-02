@@ -1,0 +1,36 @@
+(* @expect pass *)
+(* @cycles 1 *)
+(* Purpose: RUNGIEC_VERSION_MAJOR / _MINOR / _REVISION and the combined RUNGIEC_VERSION are integer literals usable in preprocessor conditions and in ST. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t051_version_macros))
+{#if defined(RUNGIEC_VERSION_MAJOR) \and\ defined(RUNGIEC_VERSION_MINOR) \and\ defined(RUNGIEC_VERSION_REVISION) \and\ RUNGIEC_VERSION >= 200}
+{#define T_VERSION_SEEN 1}
+{#else}
+{#define T_VERSION_SEEN 0}
+{#endif}
+{#if RUNGIEC_VERSION = RUNGIEC_VERSION_MAJOR * 10000 + RUNGIEC_VERSION_MINOR * 100 + RUNGIEC_VERSION_REVISION}
+{#define T_VERSION_COMBINED 1}
+{#else}
+{#define T_VERSION_COMBINED 0}
+{#endif}
+TEST_M(t051_version_macros)
+var
+    Y: bool;
+    V, Maj, Min, Rev: dint;
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+V := RUNGIEC_VERSION; Maj := RUNGIEC_VERSION_MAJOR; Min := RUNGIEC_VERSION_MINOR; Rev := RUNGIEC_VERSION_REVISION;
+(*  |--( Y )--|  *)
+RUNG(COIL(Y))
+EXPECT_TRUE(T_VERSION_SEEN = 1, 'version_seen_in_if');
+EXPECT_TRUE(T_VERSION_COMBINED = 1, 'version_combined_in_if');
+EXPECT_TRUE(V = Maj * 10000 + Min * 100 + Rev, 'version_combined_in_st');
+EXPECT_TRUE((Min < 100) and (Rev < 100) and (Maj >= 0), 'version_parts_in_range');
+EXPECT_TRUE((Maj = 0) and (Min = 2) and (Rev = 0) and (V = 200), 'version_is_0_2_0');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

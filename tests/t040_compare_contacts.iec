@@ -1,0 +1,81 @@
+(* @expect pass *)
+(* @cycles 3 *)
+(* Purpose: EQ/NE/GT/GE/LT/LE contacts: results match the operators and each operand is evaluated exactly once per scan. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t040_compare_contacts))
+function BumpVal : dint
+var_input v: dint; end_var
+var_in_out cnt: dint; end_var
+cnt := cnt + 1;
+BumpVal := v;
+end_function
+TEST_M(t040_compare_contacts)
+var
+    Fls: bool;
+    Tru: bool := true;
+    Xv, Zv: dint;
+    YoEQ, YoNE, YoGT, YoGE, YoLT, YoLE, YpEQ, YpNE, YpGT, YpGE, YpLT, YpLE: bool;
+    NL0, NL1, NL2, NL3, NL4, NL5, NR0, NR1, NR2, NR3, NR4, NR5: dint;
+    InX: array[1..3] of dint := [1, 2, 3];
+    InZ: array[1..3] of dint := [2, 2, 2];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Xv := InX[Cyc]; Zv := InZ[Cyc];
+(*  |--| Fls |--| BumpVal(v := Xv, cnt := NL0) = BumpVal(v := Zv, cnt := NR0) |--( YoEQ )--|   operands still evaluated  *)
+RUNG(CONTACT(Fls), EQ_CONTACT(BumpVal(v := Xv, cnt := NL0), BumpVal(v := Zv, cnt := NR0)), COIL(YoEQ))
+(*  |--| Tru |--| Xv = Zv |--( YpEQ )--|  *)
+RUNG(CONTACT(Tru), EQ_CONTACT(Xv, Zv), COIL(YpEQ))
+(*  |--| Fls |--| BumpVal(v := Xv, cnt := NL1) <> BumpVal(v := Zv, cnt := NR1) |--( YoNE )--|   operands still evaluated  *)
+RUNG(CONTACT(Fls), NE_CONTACT(BumpVal(v := Xv, cnt := NL1), BumpVal(v := Zv, cnt := NR1)), COIL(YoNE))
+(*  |--| Tru |--| Xv <> Zv |--( YpNE )--|  *)
+RUNG(CONTACT(Tru), NE_CONTACT(Xv, Zv), COIL(YpNE))
+(*  |--| Fls |--| BumpVal(v := Xv, cnt := NL2) > BumpVal(v := Zv, cnt := NR2) |--( YoGT )--|   operands still evaluated  *)
+RUNG(CONTACT(Fls), GT_CONTACT(BumpVal(v := Xv, cnt := NL2), BumpVal(v := Zv, cnt := NR2)), COIL(YoGT))
+(*  |--| Tru |--| Xv > Zv |--( YpGT )--|  *)
+RUNG(CONTACT(Tru), GT_CONTACT(Xv, Zv), COIL(YpGT))
+(*  |--| Fls |--| BumpVal(v := Xv, cnt := NL3) >= BumpVal(v := Zv, cnt := NR3) |--( YoGE )--|   operands still evaluated  *)
+RUNG(CONTACT(Fls), GE_CONTACT(BumpVal(v := Xv, cnt := NL3), BumpVal(v := Zv, cnt := NR3)), COIL(YoGE))
+(*  |--| Tru |--| Xv >= Zv |--( YpGE )--|  *)
+RUNG(CONTACT(Tru), GE_CONTACT(Xv, Zv), COIL(YpGE))
+(*  |--| Fls |--| BumpVal(v := Xv, cnt := NL4) < BumpVal(v := Zv, cnt := NR4) |--( YoLT )--|   operands still evaluated  *)
+RUNG(CONTACT(Fls), LT_CONTACT(BumpVal(v := Xv, cnt := NL4), BumpVal(v := Zv, cnt := NR4)), COIL(YoLT))
+(*  |--| Tru |--| Xv < Zv |--( YpLT )--|  *)
+RUNG(CONTACT(Tru), LT_CONTACT(Xv, Zv), COIL(YpLT))
+(*  |--| Fls |--| BumpVal(v := Xv, cnt := NL5) <= BumpVal(v := Zv, cnt := NR5) |--( YoLE )--|   operands still evaluated  *)
+RUNG(CONTACT(Fls), LE_CONTACT(BumpVal(v := Xv, cnt := NL5), BumpVal(v := Zv, cnt := NR5)), COIL(YoLE))
+(*  |--| Tru |--| Xv <= Zv |--( YpLE )--|  *)
+RUNG(CONTACT(Tru), LE_CONTACT(Xv, Zv), COIL(YpLE))
+EXPECT_TRUE(NL0 = Cyc, 'left_operand_once_eq');
+EXPECT_TRUE(NR0 = Cyc, 'right_operand_once_eq');
+EXPECT_TRUE(not YoEQ, 'unpowered_eq_is_off');
+EXPECT_TRUE(YpEQ = (Xv = Zv), 'powered_eq_matches_operator');
+EXPECT_TRUE(NL1 = Cyc, 'left_operand_once_ne');
+EXPECT_TRUE(NR1 = Cyc, 'right_operand_once_ne');
+EXPECT_TRUE(not YoNE, 'unpowered_ne_is_off');
+EXPECT_TRUE(YpNE = (Xv <> Zv), 'powered_ne_matches_operator');
+EXPECT_TRUE(NL2 = Cyc, 'left_operand_once_gt');
+EXPECT_TRUE(NR2 = Cyc, 'right_operand_once_gt');
+EXPECT_TRUE(not YoGT, 'unpowered_gt_is_off');
+EXPECT_TRUE(YpGT = (Xv > Zv), 'powered_gt_matches_operator');
+EXPECT_TRUE(NL3 = Cyc, 'left_operand_once_ge');
+EXPECT_TRUE(NR3 = Cyc, 'right_operand_once_ge');
+EXPECT_TRUE(not YoGE, 'unpowered_ge_is_off');
+EXPECT_TRUE(YpGE = (Xv >= Zv), 'powered_ge_matches_operator');
+EXPECT_TRUE(NL4 = Cyc, 'left_operand_once_lt');
+EXPECT_TRUE(NR4 = Cyc, 'right_operand_once_lt');
+EXPECT_TRUE(not YoLT, 'unpowered_lt_is_off');
+EXPECT_TRUE(YpLT = (Xv < Zv), 'powered_lt_matches_operator');
+EXPECT_TRUE(NL5 = Cyc, 'left_operand_once_le');
+EXPECT_TRUE(NR5 = Cyc, 'right_operand_once_le');
+EXPECT_TRUE(not YoLE, 'unpowered_le_is_off');
+EXPECT_TRUE(YpLE = (Xv <= Zv), 'powered_le_matches_operator');
+EXPECT_TRUE((Cyc <> 2) or YpEQ, 'eq_value_on_cycle2');
+EXPECT_TRUE((Cyc <> 3) or YpGT, 'gt_value_on_cycle3');
+EXPECT_TRUE((Cyc <> 1) or YpLT, 'lt_value_on_cycle1');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

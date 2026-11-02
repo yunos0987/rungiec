@@ -1,0 +1,18 @@
+(* @expect pp-error PP91: .RUNGIEC WIRE from node K is not an integer literal from 0 to 64 *)
+(* @cycles 1 *)
+(* Purpose: A WIRE node number must be an integer literal: a variable is not in the node table, so the integer-literal check is the error PP91, with or without the -Werror=undef of the runner. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+    K: dint := 1;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(1)--( Y )--|   the second WIRE uses the variable K as its from node  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(K, 2, COIL(Y))
+END_NET()
+END_RUNGIEC()
+end_program

@@ -1,0 +1,16 @@
+(* @expect run-error INVALID_SYNTAX_FOR_CODEBLOCK *)
+(* @cycles 1 *)
+(* Purpose: A POU that uses the DSL and has an st directive line of the user between RUNGIEC_VAR() and BEGIN_RUNGIEC() opens an ST block that nothing closes (the statements go directly in the POU body and END_RUNGIEC() writes no end directive), so jiecc reports a syntax error (jiecc compile stage). *)
+(* @lint-allow LN16 *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+{st}
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|   the st directive line above is deliberately written by the user  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,1 @@
+tests/expanded/f007_missing_rung.st:75.0: error: 0x44000004: 'RungiecStIn'; INVALID_SYNTAX

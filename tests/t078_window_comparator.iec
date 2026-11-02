@@ -1,0 +1,37 @@
+(* @expect pass *)
+(* @cycles 9 *)
+(* Purpose: analog window alarm written three ways that must agree: comparison contacts in series (in-range), comparison contacts in parallel (out-of-range alarm), and a user function with a BOOL result called by FUN_EXEC_RET whose result is read by a CONTACT. Boundaries 20 and 80 are inside the window (GE / LE), 19 and 81 are outside. Note: the alarm has no hysteresis and no delay, so a real signal that is noisy near a limit makes it chatter; a real alarm adds a deadband (separate ON and OFF limits) or an on-delay timer (t067). *)
+(* Source: https://cache.industry.siemens.com/dl/files/822/45523822/att_82001/v1/s7kop__b.pdf, Appendix B.4, p.208-210 -- comparison operations on a value drive indicator lamps; here the same idea checks a value against a window *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t078_window_comparator))
+function InRange : bool
+var_input v, lo, hi: dint; end_var
+InRange := (v >= lo) and (v <= hi);
+end_function
+TEST_M(t078_window_comparator)
+var
+    Level: dint;
+    Normal, Alarm, ByFunction, InWin: bool;
+    InLevel: array[1..9] of dint := [0, 19, 20, 50, 80, 81, 100, -5, 80];
+    ExpNormal: array[1..9] of bool := [false, false, true, true, true, false, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Level := InLevel[Cyc];
+(*  |--| Level >= 20 |--| Level <= 80 |--( Normal )--|  *)
+RUNG(GE_CONTACT(Level, 20), LE_CONTACT(Level, 80), COIL(Normal))
+(*  |--+--| Level < 20 |--+--( Alarm )--|  *)
+(*  |  |                  |             |  *)
+(*  |  +--| Level > 80 |--+             |  *)
+RUNG(PARALLEL(LT_CONTACT(Level, 20), GT_CONTACT(Level, 80)), COIL(Alarm))
+(*  |--[ InWin := InRange(v := Level, lo := 20, hi := 80) ]--| InWin |--( ByFunction )--|  *)
+RUNG(FUN_EXEC_RET(InWin, InRange, v := Level, lo := 20, hi := 80), CONTACT(InWin), COIL(ByFunction))
+EXPECT_TRUE(Normal = ExpNormal[Cyc], 'normal_matches_expected');
+EXPECT_TRUE(Alarm = (not Normal), 'alarm_is_not_normal');
+EXPECT_TRUE(ByFunction = Normal, 'function_form_agrees');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

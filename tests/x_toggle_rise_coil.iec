@@ -1,0 +1,24 @@
+(* @expect pass *)
+(* @cycles 9 *)
+(* Check for examples/toggle_rise_coil.iec: feeds inputs and verifies the ladder. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_toggle_rise_coil))
+{#include 'toggle_rise_coil.iec'}
+TEST_M(x_toggle_rise_coil)
+var
+    Ctl: toggle_rise_coil;
+    Btn: bool;
+    InBtn: array[1..9] of bool := [false, true, true, false, true, false, true, true, false];
+    ExpPulse: array[1..9] of bool := [false, true, false, false, true, false, true, false, false];
+    ExpLamp: array[1..9] of bool := [false, true, true, true, false, false, true, true, true];
+    Cyc: dint;
+end_var
+T_BEGIN()
+Btn := InBtn[Cyc];
+Ctl(Btn := Btn);
+EXPECT_TRUE(Ctl.Pulse = ExpPulse[Cyc], 'pulse_follows_expected_sequence');
+EXPECT_TRUE(Ctl.Lamp = ExpLamp[Cyc], 'lamp_follows_expected_sequence');
+EXPECT_TRUE((Cyc <> 3) or (not Ctl.Pulse), 'pulse_lasts_one_scan_while_button_held');
+EXPECT_TRUE((Cyc <> 3) or Ctl.Lamp, 'lamp_stays_on_while_button_held');
+EXPECT_TRUE((Cyc <> 5) or (not Ctl.Lamp), 'second_press_turns_lamp_off');
+END_TEST_M

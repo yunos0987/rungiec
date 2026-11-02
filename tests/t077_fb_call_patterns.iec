@@ -1,0 +1,47 @@
+(* @expect pass *)
+(* @cycles 12 *)
+(* Purpose: FB call patterns of a real project: (1) output binding Q => Lamp on a FB_SCAN box (a TON with PT = 300 ms: Lamp on the 4th scan of Start); (2) a user FB with a var_in_out argument (a valve actuator that counts its opening edges in a caller-owned counter) called two ways: with FB_EXEC it runs only while powered, so the edge detector inside it misses the openings that happen while it is not called; with FB_SCAN it sees every scan and counts all of them; (3) the instance output read by a later contact in the same rung. *)
+(* Source: RUNGIEC README (box macros; stateful FBs need FB_SCAN) -- no external source; these are the call forms a project needs for timers and user FBs *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t077_fb_call_patterns))
+{#include 't_stdfb.iec'}
+function_block Valve
+var_input Open: bool; end_var
+var_output Opened: bool; end_var
+var_in_out Cycles: dint; end_var
+var Prev: bool; end_var
+if Open and (not Prev) then Cycles := Cycles + 1; end_if;
+Prev := Open;
+Opened := Open;
+end_function_block
+TEST_M(t077_fb_call_patterns)
+var
+    Start, Open, Lamp, Done: bool;
+    Tm: TON;
+    V1, V2: Valve;
+    Cnt, Cnt2: dint;
+    InStart: array[1..12] of bool := [false, true, true, true, true, true, false, true, true, true, true, false];
+    InOpen: array[1..12] of bool := [false, true, true, false, false, true, true, false, true, true, true, false];
+    ExpLamp: array[1..12] of bool := [false, false, false, false, true, true, false, false, false, false, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Open := InOpen[Cyc];
+(*  |--[ Tm(IN := Start, PT := T#300ms, Q => Lamp) ]--|   output bound straight to a variable  *)
+RUNG(FB_SCAN(Tm, IN := Start, PT := T#300ms, Q => Lamp))
+(*  |--| Open |--[ V1(Open := true, Cycles := Cnt) ]--| V1.Opened |--( Done )--|   power-gated call: the edge detector in V1 does not see the scans where Open is FALSE  *)
+RUNG(CONTACT(Open), FB_EXEC(V1, Open := true, Cycles := Cnt), CONTACT(V1.Opened), COIL(Done))
+(*  |--[ V2(Open := Open, Cycles := Cnt2) ]--|   every scan: all rising edges counted  *)
+RUNG(FB_SCAN(V2, Open := Open, Cycles := Cnt2))
+EXPECT_TRUE(Lamp = ExpLamp[Cyc], 'lamp_on_fourth_scan_of_start');
+EXPECT_TRUE((Cyc <> 7) or (not Lamp), 'lamp_off_after_start_drops');
+EXPECT_TRUE((Cyc <> 11) or Lamp, 'lamp_on_fourth_scan_of_second_start');
+EXPECT_TRUE(Done = Open, 'done_follows_open');
+EXPECT_TRUE((Cyc <> 12) or (Cnt = 1), 'fb_exec_misses_edges_while_not_called');
+EXPECT_TRUE((Cyc <> 12) or (Cnt2 = 3), 'fb_scan_counts_every_rising_edge');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

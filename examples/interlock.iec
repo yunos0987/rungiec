@@ -1,0 +1,17 @@
+{#include 'rungiec.iec'}
+(* Example: forward/reverse motor control with a mutual interlock. While one direction runs, the other cannot start. *)
+function_block interlock
+var_input Fwd, Rev, Stop: bool; end_var
+var_output RunF, RunR: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--+--| Fwd |--+--|/Stop |--|/RunR |--( RunF )--|  *)
+(*  |  |           |                                |  *)
+(*  |  +--| RunF |-+                                |  *)
+RUNG(PARALLEL(CONTACT(Fwd), CONTACT(RunF)), NOT_CONTACT(Stop), NOT_CONTACT(RunR), COIL(RunF))
+(*  |--+--| Rev |--+--|/Stop |--|/RunF |--( RunR )--|  *)
+(*  |  |           |                                |  *)
+(*  |  +--| RunR |-+                                |  *)
+RUNG(PARALLEL(CONTACT(Rev), CONTACT(RunR)), NOT_CONTACT(Stop), NOT_CONTACT(RunF), COIL(RunR))
+END_RUNGIEC()
+end_function_block

@@ -1,0 +1,2 @@
+tests/e042_wire_node_expression.iec:14.0: error: PP54: '_RUNGIEC_IS_NODE_1' is not defined, evaluates to 0
+tests/e042_wire_node_expression.iec:14.0: error: PP91: 'RUNGIEC WIRE to node 1 + 1 is not an integer literal from 0 to 64'

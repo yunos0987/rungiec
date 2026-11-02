@@ -1,0 +1,40 @@
+(* @expect pass *)
+(* @cycles 22 *)
+(* Purpose: jog (inching) / continuous run selection with a selector switch in the seal-in path. SelRun = TRUE selects continuous run: Start seals in through | Motor |--| SelRun | and the motor keeps running after Start is released. SelRun = FALSE selects jog: the seal-in path is open, so the motor runs only while Start is held. Stop has priority in both modes (Start and Stop pressed together: the motor is OFF). Turning the selector to jog while the motor runs opens the seal and stops the motor. Turning the selector to continuous run while jogging (Start still held) keeps the motor ON, and the seal holds it after Start is released. *)
+(* Source: common textbook pattern -- jogging with a selector switch that opens the holding (seal-in) contact of a start/stop circuit *)
+(* Source: https://en.wikipedia.org/wiki/Ladder_logic, "Industrial STOP/START" -- the self-holding start/stop circuit this variant is built on *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t084_jog_continuous_select))
+TEST_M(t084_jog_continuous_select)
+var
+    Start, Stop, SelRun, Motor: bool;
+    InStart: array[1..22] of bool := [false, true, true, false, false, true, false, false, false, true, true, false, false, true, true, false, true, true, false, false, false, false];
+    InStop: array[1..22] of bool := [false, false, false, false, false, false, false, false, true, true, false, false, false, false, true, false, false, false, false, false, true, false];
+    InSelRun: array[1..22] of bool := [false, false, false, false, true, true, true, true, true, true, true, true, false, false, false, false, false, true, true, true, true, true];
+    ExpMotor: array[1..22] of bool := [false, true, true, false, false, true, true, true, false, false, true, true, false, true, false, false, true, true, true, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Stop := InStop[Cyc]; SelRun := InSelRun[Cyc];
+(*  |--+--| Start |--------------+--|/Stop |--( Motor )--|   SelRun ON: continuous; OFF: jog (no seal-in)  *)
+(*  |  |                         |                       |  *)
+(*  |  +--| Motor |--| SelRun |--+                       |  *)
+RUNG(PARALLEL(CONTACT(Start), SERIES(CONTACT(Motor), CONTACT(SelRun))), NOT_CONTACT(Stop), COIL(Motor))
+EXPECT_TRUE(Motor = ExpMotor[Cyc], 'motor_matches_expected');
+EXPECT_TRUE((Cyc <> 3) or Motor, 'jog_runs_while_start_held');
+EXPECT_TRUE((Cyc <> 4) or (not Motor), 'jog_stops_when_start_released');
+EXPECT_TRUE(((Cyc <> 7) and (Cyc <> 8)) or Motor, 'continuous_holds_after_release');
+EXPECT_TRUE((Cyc <> 9) or (not Motor), 'stop_stops_continuous_run');
+EXPECT_TRUE((Cyc <> 10) or (not Motor), 'stop_has_priority_over_start');
+EXPECT_TRUE((Cyc <> 13) or (not Motor), 'selecting_jog_while_running_stops_motor');
+EXPECT_TRUE((Cyc <> 15) or (not Motor), 'stop_has_priority_over_jog');
+EXPECT_TRUE((Cyc <> 18) or Motor, 'selecting_run_while_jogging_keeps_motor');
+EXPECT_TRUE(((Cyc <> 19) and (Cyc <> 20)) or Motor, 'selected_run_holds_after_release');
+EXPECT_TRUE((not Stop) or (not Motor), 'motor_off_while_stop_pressed');
+EXPECT_TRUE(SelRun or (Motor = (Start and (not Stop))), 'jog_mode_follows_start_button');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

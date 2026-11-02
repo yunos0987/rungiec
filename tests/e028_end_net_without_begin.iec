@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC END_NET without BEGIN_NET *)
+(* @cycles 1 *)
+(* Purpose: END_NET() with no open network is a preprocessing error. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+END_NET()
+END_RUNGIEC()
+end_program

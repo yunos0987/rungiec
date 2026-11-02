@@ -1,0 +1,65 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: FBT_SCAN, FBT_IN, FBT_EXEC, FBT_ENO and FBT_BOX take the type of the function block as the second argument and behave in the ST mode as FB_SCAN, FB_IN, FB_EXEC, FB_ENO and FB_BOX (the type is not used). Each pair has its own instances and the same inputs. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t115_fbt_boxes))
+{#include 't_stdfb.iec'}
+function_block CallCount
+var_output n: dint; end_var
+n := n + 1;
+end_function_block
+function_block EnoFb
+var_input ok_in: bool; end_var
+var_output n: dint; end_var
+n := n + 1;
+eno := ok_in;
+end_function_block
+TEST_M(t115_fbt_boxes)
+var
+    A, B: bool;
+    Y1, Y2, Y3, Y4, Y5, Y6, Y7, Y8, Y9, Y10: bool;
+    Rt1, Rt2: R_TRIG;
+    Tn1, Tn2: TON;
+    Cc1, Cc2: CallCount;
+    Ef1, Ef2: EnoFb;
+    Tf1, Tf2: TOF;
+    InA: array[1..8] of bool := [false, true, true, false, true, true, false, true];
+    InB: array[1..8] of bool := [true, true, false, false, true, false, true, true];
+    ExpN: array[1..8] of dint := [0, 1, 2, 2, 3, 4, 4, 5];
+    ExpEno: array[1..8] of bool := [false, true, false, false, true, false, false, true];
+    ExpTofQ: array[1..8] of bool := [false, true, true, true, true, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc];
+(*  |--| A |--[ Rt1(CLK := B) ]--( Y1 )--|  *)
+RUNG(CONTACT(A), FB_SCAN(Rt1, CLK := B), COIL(Y1))
+(*  |--| A |--[ Rt2:R_TRIG(CLK := B) ]--( Y2 )--|  *)
+RUNG(CONTACT(A), FBT_SCAN(Rt2, R_TRIG, CLK := B), COIL(Y2))
+(*  |--| A |--[ Tn1(PT := T#200ms) IN ]--| Tn1.Q |--( Y3 )--|  *)
+RUNG(CONTACT(A), FB_IN(Tn1, IN, PT := T#200ms), CONTACT(Tn1.Q), COIL(Y3))
+(*  |--| A |--[ Tn2:TON(PT := T#200ms) IN ]--| Tn2.Q |--( Y4 )--|  *)
+RUNG(CONTACT(A), FBT_IN(Tn2, TON, IN, PT := T#200ms), CONTACT(Tn2.Q), COIL(Y4))
+(*  |--| A |--[ Cc1 ]--( Y5 )--|  *)
+RUNG(CONTACT(A), FB_EXEC(Cc1), COIL(Y5))
+(*  |--| A |--[ Cc2:CallCount ]--( Y6 )--|  *)
+RUNG(CONTACT(A), FBT_EXEC(Cc2, CallCount), COIL(Y6))
+(*  |--| A |--[ Ef1(ok_in := B) ENO ]--( Y7 )--|  *)
+RUNG(CONTACT(A), FB_ENO(Ef1, ok_in := B), COIL(Y7))
+(*  |--| A |--[ Ef2:EnoFb(ok_in := B) ENO ]--( Y8 )--|  *)
+RUNG(CONTACT(A), FBT_ENO(Ef2, EnoFb, ok_in := B), COIL(Y8))
+(*  |--| A |--[ Tf1(PT := T#300ms) IN Q ]--( Y9 )--|  *)
+RUNG(CONTACT(A), FB_BOX(Tf1, IN, Q, PT := T#300ms), COIL(Y9))
+(*  |--| A |--[ Tf2:TOF(PT := T#300ms) IN Q ]--( Y10 )--|  *)
+RUNG(CONTACT(A), FBT_BOX(Tf2, TOF, IN, Q, PT := T#300ms), COIL(Y10))
+EXPECT_TRUE((Y1 = Y2) and (Y1 = A) and (Rt1.Q = Rt2.Q), 'fbt_scan_is_fb_scan');
+EXPECT_TRUE((Y3 = Y4) and (Tn1.Q = Tn2.Q) and (Tn1.ET = Tn2.ET), 'fbt_in_is_fb_in');
+EXPECT_TRUE((Y5 = Y6) and (Y5 = A) and (Cc1.n = ExpN[Cyc]) and (Cc2.n = ExpN[Cyc]), 'fbt_exec_is_fb_exec');
+EXPECT_TRUE((Y7 = ExpEno[Cyc]) and (Y8 = ExpEno[Cyc]) and (Ef1.n = Ef2.n), 'fbt_eno_is_fb_eno');
+EXPECT_TRUE((Y9 = ExpTofQ[Cyc]) and (Y10 = ExpTofQ[Cyc]) and (Tf1.Q = Tf2.Q), 'fbt_box_is_fb_box');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

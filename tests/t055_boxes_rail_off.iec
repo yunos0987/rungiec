@@ -1,0 +1,118 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: while the left rail is OFF (OFF MC zone) none of the six power-gated boxes (FB_EXEC, FB_ENO, FUN_EXEC, FUN_EXEC_RET, FUN_ENO, FUN_ENO_RET) is called, wherever it sits: directly in a RUNG, in a PARALLEL branch, or behind CONTACT(true) in a SERIES inside a PARALLEL. Their counters stay and FUN_*_RET destinations hold. FB_SCAN and FB_IN are called on every scan wherever they sit. The power after any of the eight boxes and a following coil are OFF; when the zone is ON every box is called. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t055_boxes_rail_off))
+function_block CntFb
+var_input ok_in: bool; end_var
+var_in_out cnt: dint; end_var
+cnt := cnt + 1;
+eno := ok_in;
+end_function_block
+function CntFn : dint
+var_input ok_in: bool; end_var
+var_in_out cnt: dint; end_var
+cnt := cnt + 1;
+CntFn := cnt * 10;
+eno := ok_in;
+end_function
+TEST_M(t055_boxes_rail_off)
+var
+    X: bool;
+    Ya1, Ya2, Ya3, Ya4, Ya5, Ya6, Ya7, Ya8, Yb, Yc, After: bool;
+    FbA1, FbA2, FbA3, FbA8, FbB1, FbB2, FbB3, FbB8, FbC1, FbC2, FbC3, FbC8: CntFb;
+    Na1, Na2, Na3, Na4, Na5, Na6, Na7, Na8, Nb, NbS, NbI, Nc, NcS, NcI: dint;
+    Ra5, Ra7, Rb5, Rb7, Rc5, Rc7: dint;
+    InX: array[1..6] of bool := [false, true, false, true, true, false];
+    ExpN: array[1..6] of dint := [0, 1, 1, 2, 3, 3];
+    ExpN6: array[1..6] of dint := [0, 6, 6, 12, 18, 18];
+    ExpR5: array[1..6] of dint := [0, 10, 10, 20, 30, 30];
+    ExpGroupR5: array[1..6] of dint := [0, 40, 40, 100, 160, 160];
+    ExpGroupR7: array[1..6] of dint := [0, 60, 60, 120, 180, 180];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+X := InX[Cyc];
+(*  |--| X |--(MC)--|   the zone is OFF in scans 1, 3 and 6  *)
+BEGIN_MC(CONTACT(X))
+(*  Group A: one box per RUNG, directly in the series  *)
+(*  |--[ FbA1(ok_in := true, cnt := Na1) ]--( Ya1 )--|  *)
+RUNG(FB_SCAN(FbA1, ok_in := true, cnt := Na1), COIL(Ya1))
+(*  |--[ FbA2(ok_in := true, cnt := Na2) ]--( Ya2 )--|  *)
+RUNG(FB_EXEC(FbA2, ok_in := true, cnt := Na2), COIL(Ya2))
+(*  |--[ FbA3(ok_in := true, cnt := Na3) ENO ]--( Ya3 )--|  *)
+RUNG(FB_ENO(FbA3, ok_in := true, cnt := Na3), COIL(Ya3))
+(*  |--[ CntFn(ok_in := true, cnt := Na4) ]--( Ya4 )--|  *)
+RUNG(FUN_EXEC(CntFn, ok_in := true, cnt := Na4), COIL(Ya4))
+(*  |--[ Ra5 := CntFn(ok_in := true, cnt := Na5) ]--( Ya5 )--|  *)
+RUNG(FUN_EXEC_RET(Ra5, CntFn, ok_in := true, cnt := Na5), COIL(Ya5))
+(*  |--[ CntFn(ok_in := true, cnt := Na6) ENO ]--( Ya6 )--|  *)
+RUNG(FUN_ENO(CntFn, ok_in := true, cnt := Na6), COIL(Ya6))
+(*  |--[ Ra7 := CntFn(ok_in := true, cnt := Na7) ENO ]--( Ya7 )--|  *)
+RUNG(FUN_ENO_RET(Ra7, CntFn, ok_in := true, cnt := Na7), COIL(Ya7))
+(*  |--[ FbA8(cnt := Na8) ok_in ]--( Ya8 )--|  *)
+RUNG(FB_IN(FbA8, ok_in, cnt := Na8), COIL(Ya8))
+(*  Group B: all eight boxes in the branches of one PARALLEL (shared counter Nb for the six power-gated boxes; FB_SCAN counts in NbS, FB_IN in NbI)  *)
+(*  |--+--[ FbB1(ok_in := true, cnt := NbS) ]-------------+--( Yb )--|  *)
+(*  |  |                                                  |          |  *)
+(*  |  +--[ FbB8(cnt := NbI) ok_in ]----------------------+          |  *)
+(*  |  |                                                  |          |  *)
+(*  |  +--[ FbB2(ok_in := true, cnt := Nb) ]--------------+          |  *)
+(*  |  |                                                  |          |  *)
+(*  |  +--[ FbB3(ok_in := true, cnt := Nb) ENO ]----------+          |  *)
+(*  |  |                                                  |          |  *)
+(*  |  +--[ CntFn(ok_in := true, cnt := Nb) ]-------------+          |  *)
+(*  |  |                                                  |          |  *)
+(*  |  +--[ Rb5 := CntFn(ok_in := true, cnt := Nb) ]------+          |  *)
+(*  |  |                                                  |          |  *)
+(*  |  +--[ CntFn(ok_in := true, cnt := Nb) ENO ]---------+          |  *)
+(*  |  |                                                  |          |  *)
+(*  |  +--[ Rb7 := CntFn(ok_in := true, cnt := Nb) ENO ]--+          |  *)
+RUNG(PARALLEL(FB_SCAN(FbB1, ok_in := true, cnt := NbS), FB_IN(FbB8, ok_in, cnt := NbI), FB_EXEC(FbB2, ok_in := true, cnt := Nb), FB_ENO(FbB3, ok_in := true, cnt := Nb), FUN_EXEC(CntFn, ok_in := true, cnt := Nb), FUN_EXEC_RET(Rb5, CntFn, ok_in := true, cnt := Nb), FUN_ENO(CntFn, ok_in := true, cnt := Nb), FUN_ENO_RET(Rb7, CntFn, ok_in := true, cnt := Nb)), COIL(Yb))
+(*  Group C: every box behind | true | in a SERIES inside a PARALLEL (shared counter Nc for the six power-gated boxes; FB_SCAN counts in NcS, FB_IN in NcI); nothing inside can re-power a box  *)
+(*  |--+--| true |--[ FbC1(ok_in := true, cnt := NcS) ]-------------+--( Yc )--|  *)
+(*  |  |                                                            |          |  *)
+(*  |  +--| true |--[ FbC8(cnt := NcI) ok_in ]----------------------+          |  *)
+(*  |  |                                                            |          |  *)
+(*  |  +--| true |--[ FbC2(ok_in := true, cnt := Nc) ]--------------+          |  *)
+(*  |  |                                                            |          |  *)
+(*  |  +--| true |--[ FbC3(ok_in := true, cnt := Nc) ENO ]----------+          |  *)
+(*  |  |                                                            |          |  *)
+(*  |  +--| true |--[ CntFn(ok_in := true, cnt := Nc) ]-------------+          |  *)
+(*  |  |                                                            |          |  *)
+(*  |  +--| true |--[ Rc5 := CntFn(ok_in := true, cnt := Nc) ]------+          |  *)
+(*  |  |                                                            |          |  *)
+(*  |  +--| true |--[ CntFn(ok_in := true, cnt := Nc) ENO ]---------+          |  *)
+(*  |  |                                                            |          |  *)
+(*  |  +--| true |--[ Rc7 := CntFn(ok_in := true, cnt := Nc) ENO ]--+          |  *)
+RUNG(PARALLEL(SERIES(CONTACT(true), FB_SCAN(FbC1, ok_in := true, cnt := NcS)), SERIES(CONTACT(true), FB_IN(FbC8, ok_in, cnt := NcI)), SERIES(CONTACT(true), FB_EXEC(FbC2, ok_in := true, cnt := Nc)), SERIES(CONTACT(true), FB_ENO(FbC3, ok_in := true, cnt := Nc)), SERIES(CONTACT(true), FUN_EXEC(CntFn, ok_in := true, cnt := Nc)), SERIES(CONTACT(true), FUN_EXEC_RET(Rc5, CntFn, ok_in := true, cnt := Nc)), SERIES(CONTACT(true), FUN_ENO(CntFn, ok_in := true, cnt := Nc)), SERIES(CONTACT(true), FUN_ENO_RET(Rc7, CntFn, ok_in := true, cnt := Nc))), COIL(Yc))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--( After )--|  *)
+RUNG(COIL(After))
+EXPECT_TRUE(Na1 = Cyc, 'a_fb_scan_called_every_scan');
+EXPECT_TRUE(Na2 = ExpN[Cyc], 'a_fb_exec_called_only_while_rail_on');
+EXPECT_TRUE(Na3 = ExpN[Cyc], 'a_fb_eno_called_only_while_rail_on');
+EXPECT_TRUE(Na4 = ExpN[Cyc], 'a_fun_exec_called_only_while_rail_on');
+EXPECT_TRUE(Na5 = ExpN[Cyc], 'a_fun_exec_ret_called_only_while_rail_on');
+EXPECT_TRUE(Na6 = ExpN[Cyc], 'a_fun_eno_called_only_while_rail_on');
+EXPECT_TRUE(Na7 = ExpN[Cyc], 'a_fun_eno_ret_called_only_while_rail_on');
+EXPECT_TRUE(Ra5 = ExpR5[Cyc], 'a_fun_exec_ret_destination_holds');
+EXPECT_TRUE(Ra7 = ExpR5[Cyc], 'a_fun_eno_ret_destination_holds');
+EXPECT_TRUE(Na8 = Cyc, 'a_fb_in_called_every_scan');
+EXPECT_TRUE((Ya1 = X) and (Ya2 = X) and (Ya3 = X) and (Ya4 = X) and (Ya5 = X) and (Ya6 = X) and (Ya7 = X) and (Ya8 = X), 'a_power_after_each_box_follows_rail');
+EXPECT_TRUE(Nb = ExpN6[Cyc], 'b_parallel_boxes_called_only_while_rail_on');
+EXPECT_TRUE((NbS = Cyc) and (NbI = Cyc), 'b_parallel_scan_and_in_called_every_scan');
+EXPECT_TRUE((Rb5 = ExpGroupR5[Cyc]) and (Rb7 = ExpGroupR7[Cyc]), 'b_parallel_destinations_hold');
+EXPECT_TRUE(Yb = X, 'b_parallel_power_follows_rail');
+EXPECT_TRUE(Nc = ExpN6[Cyc], 'c_true_contact_does_not_re_power_boxes');
+EXPECT_TRUE((NcS = Cyc) and (NcI = Cyc), 'c_nested_scan_and_in_called_every_scan');
+EXPECT_TRUE((Rc5 = ExpGroupR5[Cyc]) and (Rc7 = ExpGroupR7[Cyc]), 'c_nested_destinations_hold');
+EXPECT_TRUE(Yc = X, 'c_nested_power_follows_rail');
+EXPECT_TRUE(After, 'rail_on_after_mcr');
+T_EXPECT_IDLE(idle_after_mcr);
+END_RUNGIEC()
+END_TEST_M

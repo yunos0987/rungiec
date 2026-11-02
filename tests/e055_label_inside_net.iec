@@ -1,0 +1,20 @@
+(* @expect pp-error PP91: .RUNGIEC LABEL inside BEGIN_NET and END_NET *)
+(* @cycles 1 *)
+(* Purpose: A label between BEGIN_NET() and END_NET() would let a jump enter the network with stale nodes, so LABEL() is PP91 there. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    Mode, A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Mode |-->>Skip  *)
+RUNG(CONTACT(Mode), JMP(Skip))
+(*  |--| A |--(1)--( Y )--|   the label is between the two WIREs  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+LABEL(Skip)
+WIRE(1, 2, COIL(Y))
+END_NET()
+END_RUNGIEC()
+end_program

@@ -1,0 +1,84 @@
+(* @expect pass *)
+(* @cycles 12 *)
+(* Purpose: The same ladder (an MC zone with a network and a nested RUNG, edge contacts, a conditional RETURN() and an edge contact after it) is written in a function block with RUNGIEC_VAR() (static work variables) and in one with RUNGIEC_VAR_TEMP() (work variables var_temp, RungiecPrev static var). Fed the same inputs, both give the same outputs on every scan, and the outputs match the expected tables: the edge previous values survive between calls in both, also over the scans that return and the scans with the zone OFF. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t111_temp_vs_static_equivalence))
+function_block StaticFb
+var_input M, A, B, C, R: bool; end_var
+var_output Q1, Q2, Q3: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| M |--(MC)--|  *)
+BEGIN_MC(CONTACT(M))
+(*  |--| A |--(1)--| C |--(2)--( Q1 )--|  *)
+(*  |--|P B |----------------(2)          *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(0, 2, RISE_CONTACT(B))
+WIRE(1, 2, CONTACT(C))
+WIRE(2, 3, COIL(Q1))
+END_NET()
+(*  |--+--| A |--|/C |--+--( Q2 )--|  *)
+(*  |  |                |          |  *)
+(*  |  +--|N B |--------+          |  *)
+RUNG(PARALLEL(SERIES(CONTACT(A), NOT_CONTACT(C)), FALL_CONTACT(B)), COIL(Q2))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--| R |--<RETURN>  *)
+RUNG(CONTACT(R), RETURN())
+(*  |--|P A |--( Q3 )--|  *)
+RUNG(RISE_CONTACT(A), COIL(Q3))
+END_RUNGIEC()
+end_function_block
+function_block TempFb
+var_input M, A, B, C, R: bool; end_var
+var_output Q1, Q2, Q3: bool; end_var
+RUNGIEC_VAR_TEMP()
+BEGIN_RUNGIEC()
+(*  |--| M |--(MC)--|  *)
+BEGIN_MC(CONTACT(M))
+(*  |--| A |--(1)--| C |--(2)--( Q1 )--|  *)
+(*  |--|P B |----------------(2)          *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(0, 2, RISE_CONTACT(B))
+WIRE(1, 2, CONTACT(C))
+WIRE(2, 3, COIL(Q1))
+END_NET()
+(*  |--+--| A |--|/C |--+--( Q2 )--|  *)
+(*  |  |                |          |  *)
+(*  |  +--|N B |--------+          |  *)
+RUNG(PARALLEL(SERIES(CONTACT(A), NOT_CONTACT(C)), FALL_CONTACT(B)), COIL(Q2))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--| R |--<RETURN>  *)
+RUNG(CONTACT(R), RETURN())
+(*  |--|P A |--( Q3 )--|  *)
+RUNG(RISE_CONTACT(A), COIL(Q3))
+END_RUNGIEC()
+end_function_block
+TEST_M(t111_temp_vs_static_equivalence)
+var
+    S: StaticFb;
+    T: TempFb;
+    Cyc: dint;
+    InM: array[1..12] of bool := [true, true, true, true, false, false, true, true, true, true, true, true];
+    InA: array[1..12] of bool := [true, true, false, true, true, true, false, true, true, false, true, true];
+    InB: array[1..12] of bool := [false, true, true, false, true, true, false, true, true, false, false, true];
+    InC: array[1..12] of bool := [true, false, true, true, false, true, true, false, true, true, false, false];
+    InR: array[1..12] of bool := [false, false, true, false, false, true, false, false, true, true, false, false];
+    ExpQ1: array[1..12] of bool := [true, true, false, true, false, false, false, true, true, false, false, true];
+    ExpQ2: array[1..12] of bool := [false, true, false, true, false, false, true, true, false, true, true, true];
+    ExpQ3: array[1..12] of bool := [true, false, false, false, false, false, false, true, true, true, false, false];
+end_var
+T_BEGIN()
+S(M := InM[Cyc], A := InA[Cyc], B := InB[Cyc], C := InC[Cyc], R := InR[Cyc]);
+T(M := InM[Cyc], A := InA[Cyc], B := InB[Cyc], C := InC[Cyc], R := InR[Cyc]);
+EXPECT_EQ_BOOL(S.Q1, T.Q1, 'q1_same_static_and_temp');
+EXPECT_EQ_BOOL(S.Q2, T.Q2, 'q2_same_static_and_temp');
+EXPECT_EQ_BOOL(S.Q3, T.Q3, 'q3_same_static_and_temp');
+EXPECT_TRUE(S.Q1 = ExpQ1[Cyc], 'q1_net_with_rise_in_zone');
+EXPECT_TRUE(S.Q2 = ExpQ2[Cyc], 'q2_nested_with_fall_in_zone');
+EXPECT_TRUE(S.Q3 = ExpQ3[Cyc], 'q3_rise_after_return');
+END_TEST_M

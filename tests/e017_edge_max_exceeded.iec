@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC edge slot 3 exceeds 2 *)
+(* @cycles 1 *)
+(* Purpose: More edge contacts in one POU than RUNGIEC_EDGE_MAX (2) is a preprocessing error that names the slot and the limit. *)
+{#define RUNGIEC_EDGE_MAX 2}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y1: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--|P A |--|P A |--|P A |--( Y1 )--|   three edge contacts, two slots  *)
+RUNG(RISE_CONTACT(A), RISE_CONTACT(A), RISE_CONTACT(A), COIL(Y1))
+END_RUNGIEC()
+end_program

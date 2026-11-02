@@ -1,0 +1,1 @@
+tests/e006_contact_two_args.iec:12.0: error: PP34: Argument count mismatch; 'CONTACT: expected 1, got 2'

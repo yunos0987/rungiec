@@ -1,0 +1,50 @@
+(* @expect pass *)
+(* @cycles 21 *)
+(* Purpose: two-hand control. The output Run starts only when both buttons B1 and B2 are pressed within a time window: a TON (t_stdfb, PT = 300 ms, Q on the 4th scan) runs while either button is held, and Run starts only while its Q is FALSE. Run holds while both buttons are held and stops when either is released. To start again both buttons must be released: the bit Ready is set while both buttons are released and reset when Run is on, and Run starts only while Ready is TRUE. Pressing the released button again while the other is still held does not restart, after the window (scan 7) and inside it (scan 17). Ready is FALSE at the start; the first rung sets it on scan 1, where both buttons are released, before the start rung reads it (with a button held on scan 1, the first start needs both buttons released first). The window here is 300 ms of the stand-in clock (ISO 13851 uses 0.5 s). The safety function itself belongs in a safety relay or a safety PLC; this test shows the logic only. *)
+(* Source: ISO 13851 (two-hand control devices), type III -- synchronous actuation of both control actuators within 0.5 s, the output stops when either is released, and both must be released before the output can be started again *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t104_two_hand_control))
+{#include 't_stdfb.iec'}
+TEST_M(t104_two_hand_control)
+var
+    B1, B2, Run, Ready: bool;
+    Win: TON;
+    InB1: array[1..21] of bool := [false, true, true, true, true, true, true, false, true, true, true, true, true, false, true, false, true, false, false, true, true];
+    InB2: array[1..21] of bool := [false, false, true, true, true, false, true, false, false, false, false, false, true, false, true, true, true, false, true, true, false];
+    ExpWinQ: array[1..21] of bool := [false, false, false, false, true, true, true, false, false, false, false, true, true, false, false, false, false, false, false, false, false];
+    ExpRun: array[1..21] of bool := [false, false, true, true, true, false, false, false, false, false, false, false, false, false, true, false, false, false, false, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+B1 := InB1[Cyc]; B2 := InB2[Cyc];
+(*  |--|/B1 |--|/B2 |--(S Ready )--|   both buttons released: a new start is allowed  *)
+RUNG(NOT_CONTACT(B1), NOT_CONTACT(B2), SET_COIL(Ready))
+(*  |--+--| B1 |--+--[ Win(PT := T#300ms) IN ]--|   Win: PT = 300 ms, runs while either button is held  *)
+(*  |  |          |                             |  *)
+(*  |  +--| B2 |--+                             |  *)
+RUNG(PARALLEL(CONTACT(B1), CONTACT(B2)), FB_IN(Win, IN, PT := T#300ms))
+(*  |--| B1 |--| B2 |--+--| Ready |--|/Win.Q |--+--( Run )--|   start inside the window after both were released, then hold  *)
+(*  |                  |                        |           |  *)
+(*  |                  +--| Run |---------------+           |  *)
+RUNG(CONTACT(B1), CONTACT(B2), PARALLEL(SERIES(CONTACT(Ready), NOT_CONTACT(Win.Q)), CONTACT(Run)), COIL(Run))
+(*  |--| Run |--(R Ready )--|   a start uses up the release  *)
+RUNG(CONTACT(Run), RESET_COIL(Ready))
+EXPECT_TRUE(Win.Q = ExpWinQ[Cyc], 'window_timer_matches_expected');
+EXPECT_TRUE(Run = ExpRun[Cyc], 'run_matches_expected');
+EXPECT_TRUE((Cyc <> 3) or Run, 'second_button_inside_window_starts');
+EXPECT_TRUE((Cyc <> 5) or Run, 'run_holds_after_window_while_both_held');
+EXPECT_TRUE((Cyc <> 6) or (not Run), 'release_of_one_button_stops');
+EXPECT_TRUE((Cyc <> 7) or (not Run), 'no_restart_without_releasing_both');
+EXPECT_TRUE((Cyc <> 13) or (not Run), 'second_button_after_window_does_not_start');
+EXPECT_TRUE((Cyc <> 15) or Run, 'both_buttons_in_the_same_scan_start');
+EXPECT_TRUE((Cyc <> 17) or (not Run), 'one_button_pressed_again_inside_window_does_not_restart');
+EXPECT_TRUE((Cyc <> 17) or (not Ready), 'not_ready_until_both_released');
+EXPECT_TRUE((Cyc <> 18) or Ready, 'ready_after_both_released');
+EXPECT_TRUE((Cyc <> 20) or Run, 'b2_first_then_b1_inside_window_starts');
+EXPECT_TRUE(Run = (Run and B1 and B2), 'run_only_while_both_held');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

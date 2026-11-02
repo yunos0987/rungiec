@@ -1,0 +1,44 @@
+(* @expect pass *)
+(* @cycles 20 *)
+(* Purpose: three-conveyor sequence. Flow is C1 -> C2 -> C3. Start: the downstream conveyor first (C3 at once, C2 after 2 scans, C1 after 4 scans). Stop: the upstream conveyor first (C1 at once, C2 2 scans later, C3 4 scans later), so no load is left standing on a stopped belt. Each delay is PT / 100 ms scans, counted from the scan where Req changes: the timers count ET = 0 on the scan where their IN changes (IEC Figure 17), so with PT = 200 ms and 400 ms C2 starts on the 3rd scan of Req and C1 on the 5th. Start/Stop is a self-holding circuit; the timers are called with FB_SCAN so they see IN = FALSE and reset. *)
+(* Source: common textbook pattern -- start the conveyors from the downstream end and stop them from the upstream end with on-delay and off-delay timers *)
+(* Source: IEC 61131-3 Ed. 4.0 (CDV), 6.6.3.5.5 Table 47 / Figure 17 b, c -- TON and TOF timing *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t071_conveyor_sequence))
+{#include 't_stdfb.iec'}
+TEST_M(t071_conveyor_sequence)
+var
+    Start, Stop, Req, C1, C2, C3, M2: bool;
+    TStart2, TStart1: TON;
+    TStop2, TStop3: TOF;
+    InStart: array[1..20] of bool := [false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
+    InStop: array[1..20] of bool := [false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false];
+    ExpC1: array[1..20] of bool := [false, false, false, false, false, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false];
+    ExpC2: array[1..20] of bool := [false, false, false, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false];
+    ExpC3: array[1..20] of bool := [false, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Stop := InStop[Cyc];
+(*  |--+--| Start |--+--|/Stop |--( Req )--|  *)
+(*  |  |             |                     |  *)
+(*  |  +--| Req |----+                     |  *)
+RUNG(PARALLEL(CONTACT(Start), CONTACT(Req)), NOT_CONTACT(Stop), COIL(Req))
+(*  |--[ TStop3(IN := Req, PT := T#400ms) ]--| TStop3.Q |--( C3 )--|   C3 starts with Req, stops 4 scans after it  *)
+RUNG(FB_SCAN(TStop3, IN := Req, PT := T#400ms), CONTACT(TStop3.Q), COIL(C3))
+(*  |--[ TStart2(IN := Req, PT := T#200ms) ]--| TStart2.Q |--( M2 )--|  *)
+RUNG(FB_SCAN(TStart2, IN := Req, PT := T#200ms), CONTACT(TStart2.Q), COIL(M2))
+(*  |--[ TStop2(IN := M2, PT := T#200ms) ]--| TStop2.Q |--( C2 )--|   C2 starts 2 scans after Req, stops 2 scans after it  *)
+RUNG(FB_SCAN(TStop2, IN := M2, PT := T#200ms), CONTACT(TStop2.Q), COIL(C2))
+(*  |--[ TStart1(IN := Req, PT := T#400ms) ]--| TStart1.Q |--( C1 )--|   C1 starts 4 scans after Req, stops at once  *)
+RUNG(FB_SCAN(TStart1, IN := Req, PT := T#400ms), CONTACT(TStart1.Q), COIL(C1))
+EXPECT_TRUE(C1 = ExpC1[Cyc], 'c1_matches_expected');
+EXPECT_TRUE(C2 = ExpC2[Cyc], 'c2_matches_expected');
+EXPECT_TRUE(C3 = ExpC3[Cyc], 'c3_matches_expected');
+EXPECT_TRUE(((not C1) or C2) and ((not C2) or C3), 'upstream_never_runs_without_downstream');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,42 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: The DSL works inside a FUNCTION when it uses RUNGIEC_VAR_NOEDGE(), the declaration without the edge pool. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t037_ld_in_function))
+function AndFn : bool
+var_input in1, in2: bool; end_var
+RUNGIEC_VAR_NOEDGE()
+BEGIN_RUNGIEC()
+(*  |--| in1 |--| in2 |--( AndFn )--|  *)
+RUNG(CONTACT(in1), CONTACT(in2), COIL(AndFn))
+END_RUNGIEC()
+end_function
+
+function MixFn : bool
+var_input in1, in2, in3: bool; end_var
+RUNGIEC_VAR_NOEDGE()
+BEGIN_RUNGIEC()
+(*  |--+--| in1 |--| in2 |--+--( MixFn )--|  *)
+(*  |  |                    |             |  *)
+(*  |  +--|/in3 |-----------+             |  *)
+RUNG(PARALLEL(SERIES(CONTACT(in1), CONTACT(in2)), NOT_CONTACT(in3)), COIL(MixFn))
+END_RUNGIEC()
+end_function
+TEST_M(t037_ld_in_function)
+var
+    A, B, C, R1, R2: bool;
+    InA: array[1..8] of bool := [false, true, false, true, false, true, false, true];
+    InB: array[1..8] of bool := [false, false, true, true, false, false, true, true];
+    InC: array[1..8] of bool := [false, false, false, false, true, true, true, true];
+    Cyc: dint;
+end_var
+
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc];
+(*  the DSL runs inside FUNCTIONs with RUNGIEC_VAR_NOEDGE()  *)
+R1 := AndFn(in1 := A, in2 := B);
+R2 := MixFn(in1 := A, in2 := B, in3 := C);
+EXPECT_TRUE(R1 = (A and B), 'function_returns_and');
+EXPECT_TRUE(R2 = ((A and B) or (not C)), 'function_returns_mixed_circuit');
+END_TEST_M

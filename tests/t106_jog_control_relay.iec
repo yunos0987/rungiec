@@ -1,0 +1,41 @@
+(* @expect pass *)
+(* @cycles 14 *)
+(* Purpose: jog (inching) with a control relay. The Run button seals in the control relay CR (the seal is CR, not the motor); the motor runs from CR or directly from the Jog button. So Jog runs the motor only while it is held and never seals in (CR stays OFF), Run keeps the motor running after release, Jog while running changes nothing, and Stop stops both (also while Jog or Run is pressed). Unlike t084 (a selector switch in the seal path of the motor), jog and run are two buttons and need no selector. *)
+(* Source: common textbook pattern -- jogging with a control relay: the run push button seals in a control relay that energizes the motor starter, the jog push button energizes the motor starter directly without the seal *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t106_jog_control_relay))
+TEST_M(t106_jog_control_relay)
+var
+    RunPb, JogPb, Stop, CR, Motor: bool;
+    InRun: array[1..14] of bool := [false, false, false, false, true, false, false, false, false, false, false, false, true, false];
+    InJog: array[1..14] of bool := [false, true, true, false, false, false, true, false, false, true, true, false, false, false];
+    InStop: array[1..14] of bool := [false, false, false, false, false, false, false, false, true, true, false, false, true, false];
+    ExpCR: array[1..14] of bool := [false, false, false, false, true, true, true, true, false, false, false, false, false, false];
+    ExpMotor: array[1..14] of bool := [false, true, true, false, true, true, true, true, false, false, true, false, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+RunPb := InRun[Cyc]; JogPb := InJog[Cyc]; Stop := InStop[Cyc];
+(*  |--+--| RunPb |--+--|/Stop |--( CR )--|   the control relay seals in  *)
+(*  |  |             |                    |  *)
+(*  |  +--| CR |-----+                    |  *)
+RUNG(PARALLEL(CONTACT(RunPb), CONTACT(CR)), NOT_CONTACT(Stop), COIL(CR))
+(*  |--+--| CR |-----+--|/Stop |--( Motor )--|   Jog drives the motor without a seal  *)
+(*  |  |             |                       |  *)
+(*  |  +--| JogPb |--+                       |  *)
+RUNG(PARALLEL(CONTACT(CR), CONTACT(JogPb)), NOT_CONTACT(Stop), COIL(Motor))
+EXPECT_TRUE(CR = ExpCR[Cyc], 'control_relay_matches_expected');
+EXPECT_TRUE(Motor = ExpMotor[Cyc], 'motor_matches_expected');
+EXPECT_TRUE(((Cyc <> 2) and (Cyc <> 3)) or (Motor and (not CR)), 'jog_runs_motor_without_control_relay');
+EXPECT_TRUE(((Cyc <> 4) and (Cyc <> 12)) or ((not Motor) and (not CR)), 'jog_does_not_seal_in');
+EXPECT_TRUE((Cyc <> 6) or (Motor and CR), 'run_seals_in_through_control_relay');
+EXPECT_TRUE((Cyc <> 8) or Motor, 'jog_while_running_keeps_motor');
+EXPECT_TRUE((Cyc <> 10) or (not Motor), 'stop_has_priority_over_jog');
+EXPECT_TRUE((Cyc <> 13) or ((not Motor) and (not CR)), 'stop_has_priority_over_run');
+EXPECT_TRUE(CR or (Motor = (JogPb and (not Stop))), 'without_control_relay_motor_follows_jog');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

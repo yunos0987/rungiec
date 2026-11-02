@@ -1,0 +1,31 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: A coil passes its input power on (IEC 8.2.5), also after a PARALLEL made only of coils and after an intermediate coil. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t012_coil_passthrough))
+TEST_M(t012_coil_passthrough)
+var
+    A, B, Y1, Y2, Y3, Y4, Y5: bool;
+    InA: array[1..4] of bool := [false, true, false, true];
+    InB: array[1..4] of bool := [false, false, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc];
+(*  |--| A |--+--( Y1 )--+--( Y3 )--|  *)
+(*  |         |          |          |  *)
+(*  |         +--( Y2 )--+          |  *)
+RUNG(CONTACT(A), PARALLEL(COIL(Y1), COIL(Y2)), COIL(Y3))
+(*  |--| A |--( Y4 )--| B |--( Y5 )--|  *)
+RUNG(CONTACT(A), COIL(Y4), CONTACT(B), COIL(Y5))
+EXPECT_TRUE(Y1 = A, 'y1_fork_coil');
+EXPECT_TRUE(Y2 = A, 'y2_fork_coil');
+EXPECT_TRUE(Y3 = A, 'y3_after_coil_only_parallel_gets_power');
+EXPECT_TRUE(Y4 = A, 'y4_intermediate_coil');
+EXPECT_TRUE(Y5 = (A and B), 'y5_after_intermediate_coil');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

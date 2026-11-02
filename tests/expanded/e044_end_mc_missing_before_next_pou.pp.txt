@@ -1,0 +1,2 @@
+tests/e044_end_mc_missing_before_next_pou.iec:26.0: error: PP91: 'RUNGIEC END_MC and END_RUNGIEC are missing before the next BEGIN_RUNGIEC'
+tests/e044_end_mc_missing_before_next_pou.iec:26.0: error: PP91: 'RUNGIEC END_RUNGIEC is missing before BEGIN_RUNGIEC'

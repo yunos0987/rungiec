@@ -1,0 +1,34 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: RETURN() as the last child of a RUNG whose first child is nested to the full depth (RUNGIEC_NEST_MAX = 16 with the RUNG) returns from the program on the scans where R is TRUE, after the coil Y inside the nest is written. The rung after it is skipped on those scans: its coil Z keeps its value and its edge contact does not update the previous value, so a rise of E is seen late. The checks at the start of every scan see the values of the previous scan, and the work variables at their idle values: the next scan runs the full-depth nest again without a stack overflow. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t108_return_deep_nest_next_scan))
+TEST_M(t108_return_deep_nest_next_scan)
+var
+    R, E, Y, Z: bool;
+    Ends, Cyc: dint;
+    InR: array[1..6] of bool := [false, true, false, true, true, false];
+    InE: array[1..6] of bool := [false, true, true, false, true, true];
+    ExpYStart: array[1..6] of bool := [false, false, true, false, true, true];
+    ExpZStart: array[1..6] of bool := [false, false, false, true, true, true];
+    ExpEndsStart: array[1..6] of dint := [0, 1, 1, 2, 2, 2];
+    ExpZ: array[1..6] of bool := [false, false, true, true, true, false];
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+EXPECT_TRUE(Y = ExpYStart[Cyc], 'y_of_previous_scan_written_before_return');
+EXPECT_TRUE(Z = ExpZStart[Cyc], 'z_of_previous_scan_held_on_return');
+EXPECT_TRUE(Ends = ExpEndsStart[Cyc], 'scans_that_passed_the_return');
+T_EXPECT_IDLE(idle_at_scan_start);
+R := InR[Cyc]; E := InE[Cyc];
+(*  |--+--+--+--+--+--+--+--| R |--( Y )--+--+--+--+--+--+--+--<RETURN>   nested 16 levels deep  *)
+RUNG(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(SERIES(CONTACT(R), COIL(Y)))))))))))))))), RETURN())
+(*  |--|P E |--( Z )--|  *)
+RUNG(RISE_CONTACT(E), COIL(Z))
+EXPECT_TRUE(Z = ExpZ[Cyc], 'z_edge_seen_late_after_return');
+T_EXPECT_IDLE(idle_after_edge_rung);
+Ends := Ends + 1;
+END_RUNGIEC()
+END_TEST_M

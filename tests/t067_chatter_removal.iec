@@ -1,0 +1,33 @@
+(* @expect pass *)
+(* @cycles 20 *)
+(* Purpose: chatter removal (input debounce) with two on-delay timers and a set/reset latch: Clean turns ON only when Raw has stayed ON for PT = 300 ms and OFF only when Raw has stayed OFF for 300 ms. The timers count ET = 0 on the scan where their IN rises (IEC Figure 17), so Clean changes on the 4th consecutive scan of the new Raw value; glitches of up to 3 scans on either edge are ignored. *)
+(* Source: common textbook pattern -- input debounce with one on-delay timer per direction and a latch *)
+(* Source: https://infosys.beckhoff.com/content/1031/tcplclibstandard/11931085195.html, TON -- an on-delay timer resets when IN falls, so an input shorter than PT never sets Q *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t067_chatter_removal))
+{#include 't_stdfb.iec'}
+TEST_M(t067_chatter_removal)
+var
+    Raw, NotRaw, Clean: bool;
+    TUp, TDown: TON;
+    InRaw: array[1..20] of bool := [false, true, false, true, false, true, true, true, true, true, false, true, false, false, true, false, false, false, false, false];
+    ExpClean: array[1..20] of bool := [false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Raw := InRaw[Cyc];
+(*  |--|/Raw |--( NotRaw )--|  *)
+RUNG(NOT_CONTACT(Raw), COIL(NotRaw))
+(*  |--[ TUp(IN := Raw, PT := T#300ms) ]--| TUp.Q |--(S Clean )--|  *)
+RUNG(FB_SCAN(TUp, IN := Raw, PT := T#300ms), CONTACT(TUp.Q), SET_COIL(Clean))
+(*  |--[ TDown(IN := NotRaw, PT := T#300ms) ]--| TDown.Q |--(R Clean )--|  *)
+RUNG(FB_SCAN(TDown, IN := NotRaw, PT := T#300ms), CONTACT(TDown.Q), RESET_COIL(Clean))
+EXPECT_TRUE(Clean = ExpClean[Cyc], 'clean_matches_expected');
+EXPECT_TRUE((Cyc > 8) or (not Clean), 'short_on_glitches_ignored');
+EXPECT_TRUE(((Cyc <> 11) and (Cyc <> 13) and (Cyc <> 14)) or Clean, 'short_off_glitches_ignored');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

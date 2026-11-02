@@ -1,0 +1,34 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: Rungs skipped by a jump do not update the previous values of their edge contacts and transition coils. A rise that happens while the rung is skipped is seen on the first scan that runs the rung again, and a transition coil keeps its output (TRUE here) while it is skipped. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t028_jump_edge_skipped))
+TEST_M(t028_jump_edge_skipped)
+var
+    Mode, X, Y, W, P: bool;
+    Cyc: dint;
+    InMode: array[1..6] of bool := [false, false, true, true, false, false];
+    InX: array[1..6] of bool := [false, false, false, true, true, true];
+    InW: array[1..6] of bool := [false, true, true, true, true, true];
+    ExpY: array[1..6] of bool := [false, false, false, false, true, false];
+    ExpP: array[1..6] of bool := [false, true, true, true, false, false];
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Mode := InMode[Cyc]; X := InX[Cyc]; W := InW[Cyc];
+(*  |--| Mode |-->>Skip  *)
+RUNG(CONTACT(Mode), JMP(Skip))
+(*  |--|P X |--( Y )--|  *)
+RUNG(RISE_CONTACT(X), COIL(Y))
+(*  |--| W |--(P P )--|  *)
+RUNG(CONTACT(W), RISE_COIL(P))
+(*  Skip:  *)
+LABEL(Skip)
+EXPECT_TRUE(Y = ExpY[Cyc], 'rise_seen_after_skip');
+EXPECT_TRUE(P = ExpP[Cyc], 'rise_coil_held_while_skipped');
+EXPECT_TRUE((Cyc <> 5) or Y, 'delayed_edge_on_scan_5');
+T_EXPECT_IDLE(idle_after_label);
+END_RUNGIEC()
+END_TEST_M

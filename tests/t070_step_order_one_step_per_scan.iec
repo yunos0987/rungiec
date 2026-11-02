@@ -1,0 +1,40 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: scan-order effect on step progression. With all transition conditions TRUE, the transition rungs written in forward order (Idle->A, A->B, B->C) run through several steps in ONE scan (a SET coil is seen by the later rung of the same scan); the same rungs written in reverse order (B->C, A->B, Idle->A) advance exactly one step per scan. *)
+(* Source: IEC 61131-3 Ed. 4.0 (CDV), 8.2.7 -- the networks of an LD program are evaluated from top to bottom, so a later rung already sees what an earlier rung wrote in the same scan *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t070_step_order_one_step_per_scan))
+TEST_M(t070_step_order_one_step_per_scan)
+var
+    Go: bool := true;
+    F0: bool := true;
+    FA, FB, FC: bool;
+    R0: bool := true;
+    RA, RB, RC: bool;
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+(*  forward order: Idle->A, A->B, B->C  *)
+(*  |--| F0 |--| Go |--(S FA )--(R F0 )--|   Idle -> A  *)
+RUNG(CONTACT(F0), CONTACT(Go), SET_COIL(FA), RESET_COIL(F0))
+(*  |--| FA |--| Go |--(S FB )--(R FA )--|   A -> B: sees FA set by the rung above in the same scan  *)
+RUNG(CONTACT(FA), CONTACT(Go), SET_COIL(FB), RESET_COIL(FA))
+(*  |--| FB |--| Go |--(S FC )--(R FB )--|   B -> C  *)
+RUNG(CONTACT(FB), CONTACT(Go), SET_COIL(FC), RESET_COIL(FB))
+(*  reverse order: B->C, A->B, Idle->A  *)
+(*  |--| RB |--| Go |--(S RC )--(R RB )--|   B -> C  *)
+RUNG(CONTACT(RB), CONTACT(Go), SET_COIL(RC), RESET_COIL(RB))
+(*  |--| RA |--| Go |--(S RB )--(R RA )--|   A -> B  *)
+RUNG(CONTACT(RA), CONTACT(Go), SET_COIL(RB), RESET_COIL(RA))
+(*  |--| R0 |--| Go |--(S RA )--(R R0 )--|   Idle -> A: RA is seen by A -> B only in the next scan  *)
+RUNG(CONTACT(R0), CONTACT(Go), SET_COIL(RA), RESET_COIL(R0))
+EXPECT_TRUE((Cyc <> 1) or FC, 'forward_order_reaches_c_in_first_scan');
+EXPECT_TRUE((Cyc <> 1) or RA, 'reverse_order_one_step_in_first_scan');
+EXPECT_TRUE((Cyc <> 2) or RB, 'reverse_order_second_step');
+EXPECT_TRUE((Cyc <> 3) or RC, 'reverse_order_third_step');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

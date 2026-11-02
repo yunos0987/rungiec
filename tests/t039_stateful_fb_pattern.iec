@@ -1,0 +1,38 @@
+(* @expect pass *)
+(* @cycles 7 *)
+(* Purpose: Recommended pattern for stateful FBs: make an intermediate BOOL with a coil and call the FB in plain ST every scan. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t039_stateful_fb_pattern))
+function_block ScanTimer
+var_input sig: bool; end_var
+var_output q: bool; end_var
+var cnt: dint; end_var
+if sig then cnt := cnt + 1; else cnt := 0; end_if;
+q := cnt >= 2;
+end_function_block
+TEST_M(t039_stateful_fb_pattern)
+var
+    Start, Enable, Mid, Out: bool;
+    Tm: ScanTimer;
+    InStart: array[1..7] of bool := [true, true, true, false, true, true, true];
+    InEnable: array[1..7] of bool := [true, true, true, true, true, false, true];
+    ExpOut: array[1..7] of bool := [false, true, true, false, false, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Enable := InEnable[Cyc];
+(*  |--| Start |--| Enable |--( Mid )--|   coil makes an intermediate BOOL  *)
+RUNG(CONTACT(Start), CONTACT(Enable), COIL(Mid))
+(*  the stateful FB is called in plain ST on every scan  *)
+Tm(sig := Mid);
+(*  |--| Tm.q |--( Out )--|  *)
+RUNG(CONTACT(Tm.q), COIL(Out))
+EXPECT_TRUE(Out = ExpOut[Cyc], 'out_follows_scan_timer_with_reset_on_mid_off');
+EXPECT_TRUE((Cyc <> 2) or Out, 'timer_runs_after_two_scans');
+EXPECT_TRUE((Cyc <> 4) or (not Out), 'timer_resets_when_mid_turns_off');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,16 @@
+{#include 'rungiec.iec'}
+(* Example: conditional return. While Maint is ON the function block returns after the maintenance lamp rung; later rungs are skipped, so Out keeps its previous value. *)
+(* RETURN() is written as the last child of a RUNG. BEGIN_RUNGIEC() resets the left rail at the start of every scan. *)
+function_block conditional_return
+var_input Maint, Cmd: bool; end_var
+var_output Out, Lamp: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Maint |--( Lamp )--|  *)
+RUNG(CONTACT(Maint), COIL(Lamp))
+(*  |--| Maint |--<RETURN>  *)
+RUNG(CONTACT(Maint), RETURN())
+(*  |--| Cmd |--( Out )--|   not executed during maintenance  *)
+RUNG(CONTACT(Cmd), COIL(Out))
+END_RUNGIEC()
+end_function_block

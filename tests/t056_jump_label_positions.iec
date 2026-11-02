@@ -1,0 +1,54 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: LABEL() works before the first network, right after another label, END_NET(), BEGIN_MC() and END_MC(). A backward JMP() to the first label, a forward JMP() to the second of two labels in a row, and a JMP() from a WIRE to the label right after END_NET(). *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t056_jump_label_positions))
+TEST_M(t056_jump_label_positions)
+var
+    J, M, N1, Y: bool;
+    Count, Loops: dint;
+    Cyc: dint;
+    InJ: array[1..4] of bool := [false, true, false, true];
+    InM: array[1..4] of bool := [true, true, false, false];
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+J := InJ[Cyc]; M := InM[Cyc];
+(*  Top:  *)
+LABEL(Top)
+(*  |--[[ ST: Loops := Loops + 1; ]]--|  *)
+RUNG(ST_EXEC(Loops := Loops + 1;))
+(*  |--| Loops < 2 |-->>Top  *)
+RUNG(LT_CONTACT(Loops, 2), JMP(Top))
+EXPECT_TRUE(Loops = Cyc + 1, 'label_before_first_network');
+(*  |--| J |-->>Second  *)
+RUNG(CONTACT(J), JMP(Second))
+(*  |--[[ ST: Count := Count + 1; ]]--|  *)
+RUNG(ST_EXEC(Count := Count + 1;))
+(*  First:  *)
+LABEL(First)
+(*  Second:  *)
+LABEL(Second)
+(*  |--| J |-->>AfterNet   leaves the network  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(J), JMP(AfterNet))
+END_NET()
+(*  AfterNet:  *)
+LABEL(AfterNet)
+(*  |--| M |--(MC)--|  *)
+BEGIN_MC(CONTACT(M))
+(*  InZone:  *)
+LABEL(InZone)
+(*  |--| J |--( N1 )--|  *)
+RUNG(CONTACT(J), COIL(N1))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  AfterZone:  *)
+LABEL(AfterZone)
+EXPECT_TRUE(N1 = (M and J), 'label_after_begin_mc');
+EXPECT_TRUE(Count = 1 + (Cyc - 1) / 2, 'count_skipped_when_j');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

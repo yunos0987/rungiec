@@ -1,0 +1,54 @@
+(* @expect pass *)
+(* @cycles 31 *)
+(* Purpose: communication watchdog on a heartbeat bit that the partner toggles. Either edge of the heartbeat (a rising or a falling edge contact in parallel) kicks the watchdog; if no edge arrives for PT = 300 ms (stuck at 0 or at 1) the on-delay timer expires on the 4th scan after the last edge (ET = 0 on the first scan without an edge, IEC Figure 17), a SET coil latches the watchdog fault, the outputs are forced OFF through an MC zone and the alarm lamp lights. Reset clears the fault while the watchdog timer has not expired, that is once the heartbeat is alive again; Reset does not have to coincide with a heartbeat edge. *)
+(* Source: common textbook pattern -- heartbeat supervision: a timer restarted by every heartbeat change, a latched fault when it expires *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t076_watchdog_heartbeat))
+{#include 't_stdfb.iec'}
+TEST_M(t076_watchdog_heartbeat)
+var
+    Hb, Cmd, Reset, Kick, NoBeat, WdFault, Out, Alarm: bool;
+    Wd: TON;
+    InHb: array[1..31] of bool := [false, true, true, false, false, true, true, false, false, false, false, false, false, false, false, true, true, false, false, true, true, false, false, true, true, true, true, true, true, false, false];
+    InCmd: array[1..31] of bool := [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true];
+    InReset: array[1..31] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, true, false, false, false, false, false, false, false, false, false, false, false, false, true, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Hb := InHb[Cyc]; Cmd := InCmd[Cyc]; Reset := InReset[Cyc];
+(*  |--+--|P Hb |--+--( Kick )--|   any edge of the heartbeat kicks the watchdog  *)
+(*  |  |           |            |  *)
+(*  |  +--|N Hb |--+            |  *)
+RUNG(PARALLEL(RISE_CONTACT(Hb), FALL_CONTACT(Hb)), COIL(Kick))
+(*  |--|/Kick |--( NoBeat )--|  *)
+RUNG(NOT_CONTACT(Kick), COIL(NoBeat))
+(*  |--[ Wd(IN := NoBeat, PT := T#300ms) ]--| Wd.Q |--(S WdFault )--|  *)
+RUNG(FB_SCAN(Wd, IN := NoBeat, PT := T#300ms), CONTACT(Wd.Q), SET_COIL(WdFault))
+(*  |--| Reset |--|/Wd.Q |--(R WdFault )--|   reset only while the watchdog has not expired (live heartbeat)  *)
+RUNG(CONTACT(Reset), NOT_CONTACT(Wd.Q), RESET_COIL(WdFault))
+(*  |--|/WdFault |--(MC)--|   outputs are cut while the fault is latched  *)
+BEGIN_MC(NOT_CONTACT(WdFault))
+(*  |--| Cmd |--( Out )--|  *)
+RUNG(CONTACT(Cmd), COIL(Out))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--| WdFault |--( Alarm )--|  *)
+RUNG(CONTACT(WdFault), COIL(Alarm))
+EXPECT_TRUE((Cyc <> 11) or ((not WdFault) and Out), 'fault_not_yet_three_scans_after_last_edge');
+EXPECT_TRUE((Cyc <> 12) or (WdFault and (not Out) and Alarm), 'fault_latched_four_scans_after_last_edge');
+EXPECT_TRUE((Cyc <> 14) or WdFault, 'reset_refused_without_heartbeat');
+EXPECT_TRUE((Cyc <> 16) or ((not WdFault) and Out and (not Alarm)), 'reset_with_live_heartbeat_restores_output');
+EXPECT_TRUE((Cyc < 16) or (Cyc > 25) or (not WdFault), 'slow_heartbeat_with_gaps_of_two_scans_never_trips');
+EXPECT_TRUE((Cyc <> 27) or ((not WdFault) and Out), 'stuck_high_not_yet_three_scans_after_last_edge');
+EXPECT_TRUE((Cyc <> 28) or (WdFault and (not Out) and Alarm), 'stuck_high_fault_latched_four_scans_after_last_edge');
+EXPECT_TRUE((Cyc <> 29) or WdFault, 'reset_refused_while_heartbeat_stuck_high');
+EXPECT_TRUE((Cyc <> 30) or (WdFault and (not Out)), 'fault_stays_latched_without_reset');
+EXPECT_TRUE((Cyc <> 31) or ((not Kick) and (not WdFault) and Out and (not Alarm)), 'reset_between_heartbeat_edges_accepted');
+EXPECT_TRUE(Alarm = WdFault, 'alarm_follows_fault');
+EXPECT_TRUE((not WdFault) or (not Out), 'out_is_cut_while_fault');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

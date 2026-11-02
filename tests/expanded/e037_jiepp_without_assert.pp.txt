@@ -1,0 +1,2 @@
+tests/e037_jiepp_without_assert.iec:4.0: warning: PP35: Macro redefined; '__assert: undefining built-in macro'
+rungiec.iec:9.0: error: PP91: 'RUNGIEC needs a jiepp with the built-in assert, named counters and comma protection, neither redefined nor undefined; use the jiepp version named in README.md'

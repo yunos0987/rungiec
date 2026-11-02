@@ -1,0 +1,18 @@
+(* @expect run-error array index 0 out of bounds *)
+(* @cycles 1 *)
+(* Purpose: A BEGIN_MC nested inside a RUNG cannot be seen by the preprocessor (the argument is expanded first), so the nesting trap at the start of BEGIN_MC faults at run time (RungiecStIn[1 - RungiecSp] with RungiecSp = 1). *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, B, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--| B |--(MC)--|   BEGIN_MC is deliberately written inside a RUNG  *)
+RUNG(CONTACT(A), BEGIN_MC(CONTACT(B)))
+(*  |--( Y )--|  *)
+RUNG(COIL(Y))
+(*  |--(MCR)--|  *)
+END_MC()
+END_RUNGIEC()
+end_program

@@ -1,0 +1,42 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: Instance output read by a following CONTACT; function ENO as power; FB output keeps its value when not executed. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t034_fb_output_contact))
+function_block CntFb
+var_input sig: bool; end_var
+var_output q: bool; n: dint; end_var
+n := n + 1;
+q := sig;
+end_function_block
+function EnoFn : dint
+var_input ok_in: bool; end_var
+var_in_out cnt: dint; end_var
+cnt := cnt + 1;
+EnoFn := cnt;
+eno := ok_in;
+end_function
+TEST_M(t034_fb_output_contact)
+var
+    A, B, Y1, Y2: bool;
+    Fb0: CntFb;
+    N, R: dint;
+    InA: array[1..4] of bool := [true, false, true, false];
+    InB: array[1..4] of bool := [true, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc];
+(*  |--| A |--[ Fb0(sig := B) ]--| Fb0.q |--( Y1 )--|  *)
+RUNG(CONTACT(A), FB_EXEC(Fb0, sig := B), CONTACT(Fb0.q), COIL(Y1))
+(*  |--| A |--[ R := EnoFn(ok_in := B, cnt := N) ENO ]--( Y2 )--|  *)
+RUNG(CONTACT(A), FUN_ENO_RET(R, EnoFn, ok_in := B, cnt := N), COIL(Y2))
+EXPECT_TRUE(Y1 = (A and B), 'y1_is_a_and_instance_output');
+EXPECT_TRUE(Y2 = (A and B), 'y2_is_a_and_eno');
+EXPECT_TRUE((Cyc <> 2) or Fb0.q, 'instance_output_keeps_previous_value_when_not_executed');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

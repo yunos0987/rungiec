@@ -1,0 +1,46 @@
+(* @expect pass *)
+(* @cycles 22 *)
+(* Check for examples/automatic_door.iec: feeds inputs and verifies the ladder. The inputs play the door: OpenLimit and *)
+(* ClosedLimit follow the motor outputs of the scans before. Scans 1-8: closed, a person opens it, open limit, held 3 scans *)
+(* (scans 5-7), closing. Scans 9-12: a person while closing reopens it at once. Scans 13-18: a person at the open limit *)
+(* (scan 14) restarts the hold time, so it closes at scan 18, not 16. Scans 19-22: closing to the closed limit. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_automatic_door))
+(* Stand-in for the standard TON (the built-in timers of jiecc run on wall-clock time): the call where IN rises is ET = 0 and each *)
+(* further call with IN TRUE adds 1 s, so PT = T#3s gives Q on the 4th call with IN TRUE, whatever the speed of the machine. *)
+function_block TON
+var_input IN: bool; PT: time; end_var
+var_output Q: bool; ET: time; end_var
+var Last: bool; end_var
+if not IN then
+    ET := T#0s;
+elsif Last and (ET < PT) then
+    ET := ET + T#1s;
+end_if;
+if ET > PT then ET := PT; end_if;
+Q := IN and (ET >= PT);
+Last := IN;
+end_function_block
+{#include 'automatic_door.iec'}
+TEST_M(x_automatic_door)
+var
+    Ctl: automatic_door;
+    Sensor, OpenLimit, ClosedLimit: bool;
+    InSensor: array[1..22] of bool := [false, true, false, false, false, false, false, false, false, false, true, false, false, true, false, false, false, false, false, false, false, false];
+    InOpenLimit: array[1..22] of bool := [false, false, false, false, true, true, true, true, false, false, false, false, true, true, true, true, true, true, false, false, false, false];
+    InClosedLimit: array[1..22] of bool := [true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true];
+    ExpOpen: array[1..22] of bool := [false, true, true, true, false, false, false, false, false, false, true, true, false, false, false, false, false, false, false, false, false, false];
+    ExpClose: array[1..22] of bool := [false, false, false, false, false, false, false, true, true, true, false, false, false, false, false, false, false, true, true, true, false, false];
+    Cyc: dint;
+end_var
+T_BEGIN()
+Sensor := InSensor[Cyc]; OpenLimit := InOpenLimit[Cyc]; ClosedLimit := InClosedLimit[Cyc];
+Ctl(Sensor := Sensor, OpenLimit := OpenLimit, ClosedLimit := ClosedLimit);
+EXPECT_TRUE(Ctl.MotorOpen = ExpOpen[Cyc], 'motor_open_follows_expected_sequence');
+EXPECT_TRUE(Ctl.MotorClose = ExpClose[Cyc], 'motor_close_follows_expected_sequence');
+EXPECT_TRUE(not (Ctl.MotorOpen and Ctl.MotorClose), 'motors_interlocked');
+EXPECT_TRUE((Cyc <> 7) or (not Ctl.MotorClose), 'held_open_three_scans');
+EXPECT_TRUE((Cyc <> 11) or Ctl.MotorOpen, 'reopens_when_person_while_closing');
+EXPECT_TRUE((Cyc <> 16) or (not Ctl.MotorClose), 'detection_restarts_hold_time');
+EXPECT_TRUE((Cyc <> 21) or (not Ctl.MotorClose), 'closed_limit_stops_closing');
+END_TEST_M

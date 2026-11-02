@@ -1,0 +1,22 @@
+(* @expect pass *)
+(* @cycles 2 *)
+(* Purpose: Nesting depth 16 (the maximum) works and the stack is empty afterwards. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t009_nest_depth_16))
+TEST_M(t009_nest_depth_16)
+var
+    A, Y: bool;
+    InA: array[1..2] of bool := [false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc];
+(*  |--+--+--+--+--+--+--+--| A |--( Y )--|   nested 16 levels deep  *)
+RUNG(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(PARALLEL(SERIES(SERIES(CONTACT(A), COIL(Y)))))))))))))))))
+EXPECT_TRUE(Y = A, 'y_follows_a_through_16_levels');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,40 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: ST_EXEC is not run in an OFF MC zone, also as the first child of a RUNG (the rail is the MC condition). Inside an ON zone it follows the contact before it. A plain ST statement between two RUNGs inside the zone is outside the DSL and runs on every scan, also while the zone is OFF. After END_MC() the rail is ON again and ST_EXEC as the first child runs on every scan. The state after the networks is idle. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t097_st_exec_rail_off))
+TEST_M(t097_st_exec_rail_off)
+var
+    X, A, Y: bool;
+    N, P, K, M: dint;
+    InX: array[1..6] of bool := [false, true, false, true, true, false];
+    InA: array[1..6] of bool := [true, true, true, false, true, true];
+    ExpN: array[1..6] of dint := [0, 1, 1, 2, 3, 3];
+    ExpP: array[1..6] of dint := [0, 1, 1, 1, 2, 2];
+    ExpY: array[1..6] of bool := [false, true, false, true, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+X := InX[Cyc]; A := InA[Cyc];
+(*  |--| X |--(MC)--|   the zone is OFF in scans 1, 3 and 6  *)
+BEGIN_MC(CONTACT(X))
+(*  |--[[ ST: N := N + 1; ]]--( Y )--|  *)
+RUNG(ST_EXEC(N := N + 1;), COIL(Y))
+M := M + 1;
+(*  |--| A |--[[ ST: P := P + 1; ]]--|  *)
+RUNG(CONTACT(A), ST_EXEC(P := P + 1;))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--[[ ST: K := K + 1; ]]--|   outside the zone  *)
+RUNG(ST_EXEC(K := K + 1;))
+EXPECT_TRUE(N = ExpN[Cyc], 'not_run_in_off_zone');
+EXPECT_TRUE(P = ExpP[Cyc], 'follows_contact_in_on_zone');
+EXPECT_TRUE(Y = ExpY[Cyc], 'coil_after_follows_rail');
+EXPECT_TRUE(K = Cyc, 'runs_every_scan_after_end_mc');
+EXPECT_TRUE(M = Cyc, 'plain_st_between_rungs_runs_in_off_zone');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

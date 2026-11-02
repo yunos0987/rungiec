@@ -1,0 +1,20 @@
+(* @expect pp-error PP91: .RUNGIEC LABEL Skip is defined twice in this POU *)
+(* @cycles 1 *)
+(* Purpose: The same label written twice in one POU is PP91 (jiecc would report DUPLICATE_SYMBOL). *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    Mode, A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Mode |-->>Skip  *)
+RUNG(CONTACT(Mode), JMP(Skip))
+(*  Skip:  *)
+LABEL(Skip)
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+(*  Skip:  *)
+LABEL(Skip)
+END_RUNGIEC()
+end_program

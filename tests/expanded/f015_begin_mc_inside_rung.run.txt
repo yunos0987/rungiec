@@ -1,0 +1,1 @@
+tests/expanded/f015_begin_mc_inside_rung.st:70.0: error: InterpreterFault: array index 0 out of bounds

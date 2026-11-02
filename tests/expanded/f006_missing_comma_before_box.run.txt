@@ -1,0 +1,1 @@
+tests/expanded/f006_missing_comma_before_box.st:73.0: error: 0x44000004: 'RungiecTmp'; INVALID_SYNTAX

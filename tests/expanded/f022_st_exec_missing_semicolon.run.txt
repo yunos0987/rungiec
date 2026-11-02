@@ -1,0 +1,1 @@
+tests/expanded/f022_st_exec_missing_semicolon.st:71.0: error: 0x44000004: 'M'; INVALID_SYNTAX

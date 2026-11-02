@@ -1,0 +1,22 @@
+{#include 'rungiec.iec'}
+(* Example: master control. Between BEGIN_MC() and END_MC() the left rail is the MC condition (Auto and not EStop). *)
+(* When the zone is OFF: coils and NOT_COIL are FALSE, SET/RESET hold, and the power-gated boxes are not executed. Networks after END_MC() are not affected. *)
+function_block master_control
+var_input Auto, EStop, Go: bool; end_var
+var_output Pump, Valve, Latched, Always: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Auto |--|/EStop |--(MC)--|   the zone is ON while Auto and not EStop  *)
+BEGIN_MC(CONTACT(Auto), NOT_CONTACT(EStop))
+(*  |--| Go |--( Pump )--|  *)
+RUNG(CONTACT(Go), COIL(Pump))
+(*  |--| Go |--(/ Valve )--|  *)
+RUNG(CONTACT(Go), NOT_COIL(Valve))
+(*  |--| Go |--(S Latched )--|  *)
+RUNG(CONTACT(Go), SET_COIL(Latched))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--| Go |--( Always )--|   outside the zone  *)
+RUNG(CONTACT(Go), COIL(Always))
+END_RUNGIEC()
+end_function_block

@@ -1,0 +1,39 @@
+(* @expect pass *)
+(* @cycles 9 *)
+(* Purpose: last-input-priority (the latest button wins) forward/reverse circuit, the counterpart of the first-input-priority interlock of t015: each rung holds itself and is cut by the opposite START button (not by the opposite output). Note: this circuit has no output interlock, so it switches from forward to reverse within the same scan (Cyc 3). On a real reversing motor that can short the supply through the arc of the contactor that is still opening; real machines add an output interlock, a hardware interlock with the auxiliary contacts of the contactors, and a reversal delay timer. *)
+(* Source: common textbook pattern -- a variant of the start/stop self-holding circuit and the forward/reverse interlock; the newer command replaces the running one, pressing both stops both *)
+(* Source: https://en.wikipedia.org/wiki/Ladder_logic, "Industrial STOP/START" -- the self-holding (seal-in) circuit this variant is built on *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t060_latest_input_priority))
+TEST_M(t060_latest_input_priority)
+var
+    StF, StR, Stop, Fw, Rv: bool;
+    InStF: array[1..9] of bool := [true, false, false, false, true, false, false, true, false];
+    InStR: array[1..9] of bool := [false, false, true, false, true, false, true, false, false];
+    InStop: array[1..9] of bool := [false, false, false, false, false, false, false, false, true];
+    ExpFw: array[1..9] of bool := [true, true, false, false, false, false, false, true, false];
+    ExpRv: array[1..9] of bool := [false, false, true, true, false, false, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+StF := InStF[Cyc]; StR := InStR[Cyc]; Stop := InStop[Cyc];
+(*  |--+--| StF |--+--|/StR |--|/Stop |--( Fw )--|  *)
+(*  |  |           |                             |  *)
+(*  |  +--| Fw |---+                             |  *)
+RUNG(PARALLEL(CONTACT(StF), CONTACT(Fw)), NOT_CONTACT(StR), NOT_CONTACT(Stop), COIL(Fw))
+(*  |--+--| StR |--+--|/StF |--|/Stop |--( Rv )--|  *)
+(*  |  |           |                             |  *)
+(*  |  +--| Rv |---+                             |  *)
+RUNG(PARALLEL(CONTACT(StR), CONTACT(Rv)), NOT_CONTACT(StF), NOT_CONTACT(Stop), COIL(Rv))
+EXPECT_TRUE(Fw = ExpFw[Cyc], 'fw_matches_expected');
+EXPECT_TRUE(Rv = ExpRv[Cyc], 'rv_matches_expected');
+EXPECT_TRUE(not (Fw and Rv), 'never_both_on');
+EXPECT_TRUE((Cyc <> 3) or ((not Fw) and Rv), 'reverse_button_overrides_running_forward');
+EXPECT_TRUE((Cyc <> 5) or ((not Fw) and (not Rv)), 'pressing_both_buttons_stops_both');
+EXPECT_TRUE((Cyc <> 8) or (Fw and (not Rv)), 'forward_button_overrides_running_reverse');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

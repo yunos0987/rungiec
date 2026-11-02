@@ -1,0 +1,26 @@
+(* @expect pass *)
+(* @cycles 5 *)
+(* Purpose: Three RISE_CONTACTs on the same operand each keep their own previous value. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t023_edge_prev_per_contact))
+TEST_M(t023_edge_prev_per_contact)
+var
+    A, Y1, Y2: bool;
+    InA: array[1..5] of bool := [false, true, true, false, true];
+    ExpP: array[1..5] of bool := [false, true, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc];
+(*  |--|P A |--|P A |--( Y1 )--|  *)
+RUNG(RISE_CONTACT(A), RISE_CONTACT(A), COIL(Y1))
+(*  |--|P A |--( Y2 )--|  *)
+RUNG(RISE_CONTACT(A), COIL(Y2))
+EXPECT_TRUE(Y1 = ExpP[Cyc], 'same_rung_second_contact_has_own_previous_value');
+EXPECT_TRUE(Y2 = ExpP[Cyc], 'other_rung_contact_has_own_previous_value');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

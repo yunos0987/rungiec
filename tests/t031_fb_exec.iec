@@ -1,0 +1,31 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: FB_EXEC: the instance is not executed when the power is OFF (its counter stays), executed and power ON otherwise. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t031_fb_exec))
+function_block CntFb
+var_input sig: bool; end_var
+var_output q: bool; n: dint; end_var
+n := n + 1;
+q := sig;
+end_function_block
+TEST_M(t031_fb_exec)
+var
+    P, Y1: bool;
+    Fb0: CntFb;
+    InP: array[1..4] of bool := [false, true, false, true];
+    ExpN: array[1..4] of dint := [0, 1, 1, 2];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+P := InP[Cyc];
+(*  |--| P |--[ Fb0(sig := true) ]--( Y1 )--|  *)
+RUNG(CONTACT(P), FB_EXEC(Fb0, sig := true), COIL(Y1))
+EXPECT_TRUE(Fb0.n = ExpN[Cyc], 'instance_not_executed_when_power_off');
+EXPECT_TRUE(Y1 = P, 'power_after_box_follows_execution');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

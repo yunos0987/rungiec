@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="www.iec.ch/public/TC65SC65BWG7TF10" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smcext="https://www.ia.omron.com/Smc" xsi:schemaLocation="https://www.ia.omron.com/Smc%20IEC61131_10_Ed1_0_SmcExt1_0_Spc1_0.xsd" schemaVersion="1">
+<FileHeader companyName="" productName="" productVersion="" />
+<ContentHeader name="" creationDateTime="2026-11-01T00:00:00+09:00">
+<AddDataInfo><Info name="https://www.ia.omron.com/Smc IEC61131_10_Ed1_0_SmcExt1_0_Spc1_0.xsd" vendor="https://www.ia.omron.com/Smc" /></AddDataInfo>
+</ContentHeader>
+<Types><GlobalNamespace>
+<FunctionBlock name="on_delay_timer">
+	<Parameters>
+	<InputVars>
+		<Variable name="Start" orderWithinParamSet="1">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</InputVars>
+	<OutputVars>
+		<Variable name="Lamp" orderWithinParamSet="2">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</OutputVars>
+	</Parameters>
+	<Vars accessSpecifier="private">
+		<Variable name="Tm">
+			<Type><TypeName>TON</TypeName></Type>
+		</Variable>
+	</Vars>
+	<MainBody>
+		<BodyContent xsi:type="LD">
+<Rung evaluationOrder="1">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="1"/></LdObject>
+<LdObject xsi:type="Contact" operand="Start"><ConnectionPointIn><Connection refConnectionPointOutId="1"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="2"/></LdObject>
+<FbdObject xsi:type="DataSource" identifier="T#1s"><ConnectionPointOut connectionPointOutId="3"/></FbdObject>
+<FbdObject xsi:type="Block" typeName="TON" instanceName="Tm"><InputVariables><InputVariable parameterName="IN"><ConnectionPointIn><Connection refConnectionPointOutId="2"/></ConnectionPointIn></InputVariable><InputVariable parameterName="PT"><ConnectionPointIn><Connection refConnectionPointOutId="3"/></ConnectionPointIn></InputVariable></InputVariables><OutputVariables><OutputVariable parameterName="Q"><ConnectionPointOut connectionPointOutId="4"/></OutputVariable></OutputVariables></FbdObject>
+<LdObject xsi:type="Coil" operand="Lamp"><ConnectionPointIn><Connection refConnectionPointOutId="4"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="5"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="5"/></ConnectionPointIn></LdObject>
+</Rung>
+      </BodyContent>
+	</MainBody>
+</FunctionBlock>
+</GlobalNamespace></Types>
+<Instances>
+</Instances>
+</Project>

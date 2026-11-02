@@ -1,0 +1,18 @@
+(* @expect pp-error PP91: .RUNGIEC RUNG inside BEGIN_NET *)
+(* @cycles 1 *)
+(* Purpose: RUNG between BEGIN_NET() and END_NET() is a preprocessing error. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y, Y2: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(1)--( Y2 )--|   a RUNG is deliberately written inside the network  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+RUNG(COIL(Y))
+WIRE(1, 2, COIL(Y2))
+END_NET()
+END_RUNGIEC()
+end_program

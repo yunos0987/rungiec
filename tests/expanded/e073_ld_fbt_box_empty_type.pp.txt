@@ -1,0 +1,1 @@
+tests/e073_ld_fbt_box_empty_type.iec:14.0: error: PP91: 'RUNGIEC LD: FBT_BOX has an empty name before its call arguments'

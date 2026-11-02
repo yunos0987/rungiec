@@ -1,0 +1,18 @@
+(* @expect pp-error PP91: .RUNGIEC BEGIN_MC has 0 elements *)
+(* @cycles 1 *)
+(* Purpose: BEGIN_MC() with no condition is a preprocessing error (BEGIN_MC checks its own arity). *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--(MC)--|   no condition  *)
+BEGIN_MC()
+(*  |--( Y )--|  *)
+RUNG(COIL(Y))
+(*  |--(MCR)--|  *)
+END_MC()
+END_RUNGIEC()
+end_program

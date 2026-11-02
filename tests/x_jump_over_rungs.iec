@@ -1,0 +1,22 @@
+(* @expect pass *)
+(* @cycles 5 *)
+(* Check for examples/jump_over_rungs.iec: feeds inputs and verifies the ladder. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_jump_over_rungs))
+{#include 'jump_over_rungs.iec'}
+TEST_M(x_jump_over_rungs)
+var
+    Ctl: jump_over_rungs;
+    InAuto: array[1..5] of bool := [false, false, true, true, false];
+    InJog: array[1..5] of bool := [true, false, true, false, true];
+    InCmd: array[1..5] of bool := [false, true, false, true, true];
+    ExpMotor: array[1..5] of bool := [true, false, false, true, true];
+    Cyc: dint;
+end_var
+T_BEGIN()
+Ctl(Auto := InAuto[Cyc], Jog := InJog[Cyc], Cmd := InCmd[Cyc]);
+EXPECT_TRUE(Ctl.Motor = ExpMotor[Cyc], 'motor_follows_the_mode');
+EXPECT_TRUE(Ctl.Lamp = InAuto[Cyc], 'lamp_follows_auto');
+EXPECT_TRUE((Cyc <> 3) or (not Ctl.Motor), 'auto_ignores_jog');
+EXPECT_TRUE((Cyc <> 2) or (not Ctl.Motor), 'manual_ignores_cmd');
+END_TEST_M

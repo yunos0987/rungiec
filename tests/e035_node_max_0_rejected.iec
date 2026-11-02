@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC node limit 0 must be an integer literal of 1 or more *)
+(* @cycles 1 *)
+(* Purpose: RUNGIEC_NODE_MAX 0 is below 1 and is rejected when rungiec.iec is included. *)
+{#define RUNGIEC_NODE_MAX 0}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

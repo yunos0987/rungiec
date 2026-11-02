@@ -1,0 +1,51 @@
+(* @expect pass *)
+(* @cycles 12 *)
+(* Purpose: step progression with a single step-number register: each step rung is "step number = n, transition condition, call a function that writes the next step number". The step outputs are decoded from the register with EQ_CONTACT. The stored step number keeps the sequence where it is when the condition is not met. *)
+(* Source: common textbook pattern -- step control with one integer step register (data-register style) instead of one bit per step *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t081_step_number_register))
+function GoStep : dint
+var_in_out reg: dint; end_var
+var_input next: dint; end_var
+reg := next;
+GoStep := reg;
+end_function
+TEST_M(t081_step_number_register)
+var
+    Start, Sw1, Sw2, Sw3: bool;
+    StepNo: dint;
+    Out1, Out2, Out3: bool;
+    InStart: array[1..12] of bool := [false, true, false, false, false, false, false, false, false, false, false, false];
+    InSw1: array[1..12] of bool := [false, false, false, false, true, false, false, false, false, false, false, false];
+    InSw2: array[1..12] of bool := [false, false, true, false, false, false, true, true, false, false, false, false];
+    InSw3: array[1..12] of bool := [false, false, false, false, false, false, false, false, false, true, false, false];
+    ExpStep: array[1..12] of dint := [0, 1, 1, 1, 2, 2, 3, 3, 3, 0, 0, 0];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Sw1 := InSw1[Cyc]; Sw2 := InSw2[Cyc]; Sw3 := InSw3[Cyc];
+(*  |--| StepNo = 3 |--| Sw3 |--[ GoStep(reg := StepNo, next := 0) ]--|   later steps first: one step per scan  *)
+RUNG(EQ_CONTACT(StepNo, 3), CONTACT(Sw3), FUN_EXEC(GoStep, reg := StepNo, next := 0))
+(*  |--| StepNo = 2 |--| Sw2 |--[ GoStep(reg := StepNo, next := 3) ]--|  *)
+RUNG(EQ_CONTACT(StepNo, 2), CONTACT(Sw2), FUN_EXEC(GoStep, reg := StepNo, next := 3))
+(*  |--| StepNo = 1 |--| Sw1 |--[ GoStep(reg := StepNo, next := 2) ]--|  *)
+RUNG(EQ_CONTACT(StepNo, 1), CONTACT(Sw1), FUN_EXEC(GoStep, reg := StepNo, next := 2))
+(*  |--| StepNo = 0 |--| Start |--[ GoStep(reg := StepNo, next := 1) ]--|  *)
+RUNG(EQ_CONTACT(StepNo, 0), CONTACT(Start), FUN_EXEC(GoStep, reg := StepNo, next := 1))
+(*  |--| StepNo = 1 |--( Out1 )--|  *)
+RUNG(EQ_CONTACT(StepNo, 1), COIL(Out1))
+(*  |--| StepNo = 2 |--( Out2 )--|  *)
+RUNG(EQ_CONTACT(StepNo, 2), COIL(Out2))
+(*  |--| StepNo = 3 |--( Out3 )--|  *)
+RUNG(EQ_CONTACT(StepNo, 3), COIL(Out3))
+EXPECT_TRUE(StepNo = ExpStep[Cyc], 'step_matches_expected');
+EXPECT_TRUE((Out1 = (StepNo = 1)) and (Out2 = (StepNo = 2)) and (Out3 = (StepNo = 3)), 'outputs_decoded_from_step');
+EXPECT_TRUE((Cyc <> 4) or (StepNo = 1), 'step_holds_without_condition');
+EXPECT_TRUE((Cyc <> 3) or (StepNo = 1), 'sw2_ignored_in_step_one');
+EXPECT_TRUE((Cyc <> 7) or (StepNo = 3), 'sw2_moves_step_two_to_three');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

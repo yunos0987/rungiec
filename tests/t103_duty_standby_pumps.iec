@@ -1,0 +1,49 @@
+(* @expect pass *)
+(* @cycles 17 *)
+(* Purpose: duty / standby control of two pumps with alternation. Demand (a level switch) runs the lead pump; Lead2 selects pump 2 as lead (FALSE: pump 1 is lead). The lead alternates at the end of each demand cycle (falling edge of Demand), so both pumps wear evenly. The standby pump starts when the lead pump is faulted during demand, and both pumps run on HighLevel. A faulted pump never runs, and with both pumps faulted none runs. The alternation is written as an ST statement (Lead2 := not Lead2) on the falling edge: a toggle written as two branches | Lead2 |--(R Lead2 ) and |/Lead2 |--(S Lead2 ) in one rung would set the bit again in the second branch, because the branches are evaluated in order. *)
+(* Source: common textbook pattern -- lead / lag (duty / standby) pump control with an alternating relay that changes the lead pump after each pumping cycle *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t103_duty_standby_pumps))
+TEST_M(t103_duty_standby_pumps)
+var
+    Demand, HighLevel, P1Flt, P2Flt, Lead2, P1, P2: bool;
+    InDemand: array[1..17] of bool := [false, true, true, false, true, true, true, false, true, true, false, true, true, false, true, false, true];
+    InHigh: array[1..17] of bool := [false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false];
+    InP1Flt: array[1..17] of bool := [false, false, false, false, false, false, false, false, false, true, true, true, false, false, false, false, true];
+    InP2Flt: array[1..17] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, true];
+    ExpLead2: array[1..17] of bool := [false, false, false, true, true, true, true, false, false, false, true, true, true, false, false, true, true];
+    ExpP1: array[1..17] of bool := [false, true, true, false, false, true, false, false, true, false, false, false, true, false, true, false, false];
+    ExpP2: array[1..17] of bool := [false, false, false, false, true, true, true, false, false, true, false, true, false, false, false, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Demand := InDemand[Cyc]; HighLevel := InHigh[Cyc]; P1Flt := InP1Flt[Cyc]; P2Flt := InP2Flt[Cyc];
+(*  |--|N Demand |--[[ ST: Lead2 := not Lead2; ]]--|   alternate the lead pump at the end of each demand cycle  *)
+RUNG(FALL_CONTACT(Demand), ST_EXEC(Lead2 := not Lead2;))
+(*  |--+--| Demand |--|/Lead2 |-------------+--|/P1Flt |--( P1 )--|   lead, standby for a faulted pump 2, or high level  *)
+(*  |  |                                    |                     |  *)
+(*  |  +--| Demand |--| Lead2 |--| P2Flt |--+                     |  *)
+(*  |  |                                    |                     |  *)
+(*  |  +--| HighLevel |---------------------+                     |  *)
+RUNG(PARALLEL(SERIES(CONTACT(Demand), NOT_CONTACT(Lead2)), SERIES(CONTACT(Demand), CONTACT(Lead2), CONTACT(P2Flt)), CONTACT(HighLevel)), NOT_CONTACT(P1Flt), COIL(P1))
+(*  |--+--| Demand |--| Lead2 |-------------+--|/P2Flt |--( P2 )--|   lead, standby for a faulted pump 1, or high level  *)
+(*  |  |                                    |                     |  *)
+(*  |  +--| Demand |--|/Lead2 |--| P1Flt |--+                     |  *)
+(*  |  |                                    |                     |  *)
+(*  |  +--| HighLevel |---------------------+                     |  *)
+RUNG(PARALLEL(SERIES(CONTACT(Demand), CONTACT(Lead2)), SERIES(CONTACT(Demand), NOT_CONTACT(Lead2), CONTACT(P1Flt)), CONTACT(HighLevel)), NOT_CONTACT(P2Flt), COIL(P2))
+EXPECT_TRUE(Lead2 = ExpLead2[Cyc], 'lead_matches_expected');
+EXPECT_TRUE(P1 = ExpP1[Cyc], 'pump_1_matches_expected');
+EXPECT_TRUE(P2 = ExpP2[Cyc], 'pump_2_matches_expected');
+EXPECT_TRUE((Cyc <> 5) or (P2 and (not P1)), 'lead_alternates_after_a_demand_cycle');
+EXPECT_TRUE((Cyc <> 6) or (P1 and P2), 'high_level_runs_both_pumps');
+EXPECT_TRUE((Cyc <> 10) or ((not P1) and P2), 'standby_starts_on_lead_fault');
+EXPECT_TRUE((Cyc <> 13) or (P1 and (not P2)), 'standby_starts_on_fault_of_lead_pump_2');
+EXPECT_TRUE((Cyc <> 17) or ((not P1) and (not P2)), 'no_pump_with_both_faulted');
+EXPECT_TRUE((not P1Flt or not P1) and (not P2Flt or not P2), 'faulted_pump_never_runs');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

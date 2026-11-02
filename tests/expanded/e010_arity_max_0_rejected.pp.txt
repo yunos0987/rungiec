@@ -1,0 +1,2 @@
+rungiec.iec:39.0: error: PP91: 'RUNGIEC arity limit 0 is out of range 1 to 32'
+tests/e010_arity_max_0_rejected.iec:13.0: error: PP91: 'RUNGIEC RUNG has 2 elements, allowed 1 to 0'

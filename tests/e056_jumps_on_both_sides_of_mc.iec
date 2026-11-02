@@ -1,0 +1,24 @@
+(* @expect pp-error PP91: .RUNGIEC JMP to Skip and an earlier JMP to Skip are on different sides of BEGIN_MC or END_MC *)
+(* @cycles 1 *)
+(* Purpose: Two forward JMP() to one label, one before and one inside an MC zone, cannot both be in the segment of the label, so the second JMP() is PP91. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    Mode, A, B, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Mode |-->>Skip  *)
+RUNG(CONTACT(Mode), JMP(Skip))
+(*  |--| A |--(MC)--|  *)
+BEGIN_MC(CONTACT(A))
+(*  |--| B |-->>Skip  *)
+RUNG(CONTACT(B), JMP(Skip))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  Skip:  *)
+LABEL(Skip)
+(*  |--( Y )--|  *)
+RUNG(COIL(Y))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,52 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: WIRE node numbers may be skipped (RUNGIEC_NODE_MAX 5): the first WIRE goes to node 2, a node receives WIREs from different from nodes, and to = 5 is exactly the limit. A node that no WIRE writes reads FALSE when used as a from node (the accepted consequence of the numbering rule), and a node written in an earlier network reads FALSE in the next one (BEGIN_NET() clears the nodes). The state after the networks is idle. *)
+{#define RUNGIEC_NODE_MAX 5}
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t091_net_node_skip))
+TEST_M(t091_net_node_skip)
+var
+    A, B, C, D, E, Y1, Y2, Y3: bool;
+    InA: array[1..6] of bool := [true, false, true, false, true, false];
+    InB: array[1..6] of bool := [false, true, false, false, true, false];
+    InC: array[1..6] of bool := [true, false, false, true, true, false];
+    InD: array[1..6] of bool := [false, true, true, false, true, false];
+    InE: array[1..6] of bool := [false, false, false, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc]; D := InD[Cyc]; E := InE[Cyc];
+(*  |--| A |--+--(2)--| C |--+--(4)--( Y1 )--|   nodes 1 and 3 are skipped  *)
+(*  |         |              |                 *)
+(*  |--| B |--+              |                 *)
+(*  |                        |                 *)
+(*  |--| E |-----------------+                 *)
+BEGIN_NET()
+WIRE(0, 2, CONTACT(A))
+WIRE(0, 2, CONTACT(B))
+WIRE(2, 4, CONTACT(C))
+WIRE(0, 4, CONTACT(E))
+WIRE(4, 5, COIL(Y1))
+END_NET()
+(*  |--| A |--(1)--| D |--+--(4)--( Y2 )--|  *)
+(*  |                     |                 *)
+(*  |        (3)--|/D |---+   node 3 is written by no WIRE, so it reads FALSE  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(3, 4, NOT_CONTACT(D))
+WIRE(1, 4, CONTACT(D))
+WIRE(4, 5, COIL(Y2))
+END_NET()
+(*  |        (2)--( Y3 )--|   node 2 was written by the first network, but BEGIN_NET() cleared it  *)
+BEGIN_NET()
+WIRE(2, 3, COIL(Y3))
+END_NET()
+EXPECT_TRUE(Y1 = (((A or B) and C) or E), 'skipped_numbers');
+EXPECT_TRUE(Y2 = (A and D), 'unwritten_node_reads_false');
+EXPECT_TRUE(not Y3, 'no_leak_from_earlier_network');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

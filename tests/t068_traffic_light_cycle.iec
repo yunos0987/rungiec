@@ -1,0 +1,64 @@
+(* @expect pass *)
+(* @cycles 26 *)
+(* Purpose: two-way traffic light driven by one cyclic timer and comparison contacts on its elapsed time: north-south green 4 scans, north-south yellow 1 scan, all-red 1 scan, east-west green 4 scans, east-west yellow 1 scan, all-red 1 scan, then the cycle repeats (12 scans = 1.2 s). The timer restarts itself through its own Q: the scan after Q (Gate OFF, the timer resets to ET = 0) is the all-red after the east-west yellow, so the north-south green rung also needs Gate. Safety invariants: the two greens are never ON together, a green never follows the yellow or the green of the other direction in the next scan (there is always an all-red scan between), and each direction shows exactly one lamp. *)
+(* Source: https://learn.automationcommunity.com/?p=288 -- a traffic light controller built from chained timers with a start/stop seal-in; this test uses the single cyclic timer variant with comparison contacts on ET *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t068_traffic_light_cycle))
+{#include 't_stdfb.iec'}
+TEST_M(t068_traffic_light_cycle)
+var
+    Run, Gate, NsG, NsY, NsR, EwG, EwY, EwR: bool;
+    PNsG, PNsY, PEwG, PEwY: bool;
+    Cy: TON;
+    InRun: array[1..26] of bool := [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false];
+    ExpNsG: array[1..26] of bool := [true, true, true, true, false, false, false, false, false, false, false, false, true, true, true, true, false, false, false, false, false, false, false, false, false, false];
+    ExpNsY: array[1..26] of bool := [false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false];
+    ExpEwG: array[1..26] of bool := [false, false, false, false, false, false, true, true, true, true, false, false, false, false, false, false, false, false, true, true, true, true, false, false, false, false];
+    ExpEwY: array[1..26] of bool := [false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Run := InRun[Cyc];
+(*  |--| Run |--|/Cy.Q |--( Gate )--|   the cycle timer restarts when it has expired  *)
+RUNG(CONTACT(Run), NOT_CONTACT(Cy.Q), COIL(Gate))
+(*  |--[ Cy(IN := Gate, PT := T#1000ms) ]--|   ET = 0, 100, ..., 1000 ms, then one scan with Gate OFF  *)
+RUNG(FB_SCAN(Cy, IN := Gate, PT := T#1000ms))
+(*  |--| Run |--| Gate |--| Cy.ET < T#400ms |--( NsG )--|   not in the reset scan (Gate OFF, ET = 0): that scan is all-red  *)
+RUNG(CONTACT(Run), CONTACT(Gate), LT_CONTACT(Cy.ET, T#400ms), COIL(NsG))
+(*  |--| Run |--| Cy.ET >= T#400ms |--| Cy.ET < T#500ms |--( NsY )--|  *)
+RUNG(CONTACT(Run), GE_CONTACT(Cy.ET, T#400ms), LT_CONTACT(Cy.ET, T#500ms), COIL(NsY))
+(*  |--| Run |--|/NsG |--|/NsY |--( NsR )--|  *)
+RUNG(CONTACT(Run), NOT_CONTACT(NsG), NOT_CONTACT(NsY), COIL(NsR))
+(*  |--| Run |--| Cy.ET >= T#600ms |--| Cy.ET < T#1000ms |--( EwG )--|  *)
+RUNG(CONTACT(Run), GE_CONTACT(Cy.ET, T#600ms), LT_CONTACT(Cy.ET, T#1000ms), COIL(EwG))
+(*  |--| Run |--| Cy.ET >= T#1000ms |--( EwY )--|  *)
+RUNG(CONTACT(Run), GE_CONTACT(Cy.ET, T#1000ms), COIL(EwY))
+(*  |--| Run |--|/EwG |--|/EwY |--( EwR )--|  *)
+RUNG(CONTACT(Run), NOT_CONTACT(EwG), NOT_CONTACT(EwY), COIL(EwR))
+EXPECT_TRUE(NsG = ExpNsG[Cyc], 'ns_green_matches_expected');
+EXPECT_TRUE(NsY = ExpNsY[Cyc], 'ns_yellow_matches_expected');
+EXPECT_TRUE(EwG = ExpEwG[Cyc], 'ew_green_matches_expected');
+EXPECT_TRUE(EwY = ExpEwY[Cyc], 'ew_yellow_matches_expected');
+EXPECT_TRUE(not (NsG and EwG), 'greens_never_together');
+EXPECT_TRUE((not (NsG and (PEwY or PEwG))) and (not (EwG and (PNsY or PNsG))), 'no_cross_green_right_after_yellow_or_green');
+EXPECT_TRUE((not Run) or ((NsG and (not NsY) and (not NsR)) or ((not NsG) and NsY and (not NsR)) or ((not NsG) and (not NsY) and NsR)), 'ns_shows_one_lamp_while_running');
+EXPECT_TRUE((not Run) or ((EwG and (not EwY) and (not EwR)) or ((not EwG) and EwY and (not EwR)) or ((not EwG) and (not EwY) and EwR)), 'ew_shows_one_lamp_while_running');
+EXPECT_TRUE(Run or not (NsG or NsY or NsR or EwG or EwY or EwR), 'all_lamps_off_when_stopped');
+EXPECT_TRUE((Cyc <> 2) or NsG, 'ns_green_first');
+EXPECT_TRUE((Cyc <> 2) or EwR, 'ew_red_while_ns_green');
+EXPECT_TRUE((Cyc <> 5) or (NsY and EwR), 'ns_yellow_after_green');
+EXPECT_TRUE((Cyc <> 6) or (NsR and EwR), 'all_red_between_ns_and_ew');
+EXPECT_TRUE((Cyc <> 7) or (EwG and NsR), 'ew_green_after_all_red');
+EXPECT_TRUE((Cyc <> 11) or (EwY and NsR), 'ew_yellow_after_green');
+EXPECT_TRUE(((Cyc <> 12) and (Cyc <> 24)) or (NsR and EwR), 'all_red_between_ew_and_ns');
+EXPECT_TRUE((Cyc <> 13) or (NsG and EwR), 'cycle_repeats_with_ns_green');
+EXPECT_TRUE((Cyc <> 17) or (NsY and EwR), 'second_cycle_ns_yellow');
+EXPECT_TRUE((Cyc <> 19) or (EwG and NsR), 'second_cycle_ew_green');
+(*  previous-scan lamps for the no_cross_green check; not part of the ladder  *)
+PNsG := NsG; PNsY := NsY; PEwG := EwG; PEwY := EwY;
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

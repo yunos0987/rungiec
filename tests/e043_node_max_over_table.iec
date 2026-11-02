@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC node limit 65 exceeds 64 *)
+(* @cycles 1 *)
+(* Purpose: RUNGIEC_NODE_MAX above 64, the last entry of the node table, is rejected when rungiec.iec is included. *)
+{#define RUNGIEC_NODE_MAX 65}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC needs Jiecc 9.2.0 or later *)
+(* @cycles 1 *)
+(* Purpose: A jiecc older than 9.2.0 (its _JIECC_FULL_VER below 90200; jiecc defines it, plain jiepp does not) stops preprocessing at the version check of rungiec.iec: the ST mode writes the statements directly in the POU body, which an older jiecc does not read. *)
+{#define _JIECC_FULL_VER 80000}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

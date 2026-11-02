@@ -1,0 +1,49 @@
+(* @expect pass *)
+(* @cycles 20 *)
+(* Purpose: motor overcurrent trip with a definite-time delay and a latched fault. Ovl is a current measurement compared with a limit (current-measurement overcurrent protection), not a thermal overload relay: a thermal overload relay has an inverse-time characteristic and its contact is wired in hardware into the contactor coil circuit, so it is not delayed again in software. An overcurrent shorter than PT = 300 ms is ignored; an overcurrent that lasts 300 ms while the motor runs (the 4th consecutive scan: the TON counts ET = 0 on the scan where Sense rises, IEC Figure 17) trips the motor (SET coil), stops it, lights the fault lamp and blocks restart; Reset clears the trip only when the overcurrent is gone; Stop stops the running motor. Start/stop is the self-holding circuit of t013 with the trip contact (b contact) in series. *)
+(* Source: https://en.wikipedia.org/wiki/Ladder_logic, "Industrial STOP/START" -- the self-holding start/stop circuit with protective contacts in series *)
+(* Source: common textbook pattern -- definite-time overcurrent trip latched by a set coil and reset only after the overcurrent is gone *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t075_overload_trip_latch))
+{#include 't_stdfb.iec'}
+TEST_M(t075_overload_trip_latch)
+var
+    Start, Stop, Reset, Ovl, Motor, Sense, Trip, Fault: bool;
+    TmOv: TON;
+    InStart: array[1..20] of bool := [false, true, false, false, false, false, false, false, false, false, false, true, false, false, false, false, true, false, false, false];
+    InOvl: array[1..20] of bool := [false, false, false, true, false, false, true, true, true, true, true, true, false, false, false, false, false, false, false, false];
+    InReset: array[1..20] of bool := [false, false, false, false, false, false, false, false, false, false, true, false, false, true, false, false, false, false, false, false];
+    InStop: array[1..20] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false];
+    ExpMotor: array[1..20] of bool := [false, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, true, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Stop := InStop[Cyc]; Reset := InReset[Cyc]; Ovl := InOvl[Cyc];
+(*  |--| Ovl |--| Motor |--( Sense )--|   overcurrent counts only while the motor runs  *)
+RUNG(CONTACT(Ovl), CONTACT(Motor), COIL(Sense))
+(*  |--[ TmOv(IN := Sense, PT := T#300ms) ]--| TmOv.Q |--(S Trip )--|  *)
+RUNG(FB_SCAN(TmOv, IN := Sense, PT := T#300ms), CONTACT(TmOv.Q), SET_COIL(Trip))
+(*  |--| Reset |--|/Ovl |--(R Trip )--|   reset works only when the overcurrent is gone  *)
+RUNG(CONTACT(Reset), NOT_CONTACT(Ovl), RESET_COIL(Trip))
+(*  |--+--| Start |--+--|/Stop |--|/Trip |--( Motor )--|  *)
+(*  |  |             |                                 |  *)
+(*  |  +--| Motor |--+                                 |  *)
+RUNG(PARALLEL(CONTACT(Start), CONTACT(Motor)), NOT_CONTACT(Stop), NOT_CONTACT(Trip), COIL(Motor))
+(*  |--| Trip |--( Fault )--|  *)
+RUNG(CONTACT(Trip), COIL(Fault))
+EXPECT_TRUE(Motor = ExpMotor[Cyc], 'motor_matches_expected');
+EXPECT_TRUE(((Cyc <> 4) and (Cyc <> 5)) or Motor, 'short_overcurrent_ignored');
+EXPECT_TRUE((Cyc <> 9) or (Motor and (not Trip)), 'no_trip_on_third_scan_of_overcurrent');
+EXPECT_TRUE((Cyc <> 10) or ((not Motor) and Trip and Fault), 'trip_after_300ms_stops_motor_and_lights_fault');
+EXPECT_TRUE((Cyc <> 11) or Trip, 'reset_refused_while_overload_present');
+EXPECT_TRUE((Cyc <> 12) or ((not Motor) and Trip), 'start_refused_while_tripped');
+EXPECT_TRUE((Cyc <> 14) or ((not Trip) and (not Fault)), 'reset_accepted_when_overload_gone');
+EXPECT_TRUE((Cyc <> 15) or (not Motor), 'motor_stays_off_after_reset_until_start');
+EXPECT_TRUE((Cyc <> 17) or Motor, 'start_after_reset_runs_motor');
+EXPECT_TRUE((Cyc <> 19) or ((not Motor) and (not Trip)), 'stop_stops_running_motor');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

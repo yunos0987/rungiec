@@ -1,0 +1,4 @@
+tests/e062_ld_positional_box_argument.iec:15.0: error: PP81: No ':=' or '=>' in the argument of a built-in macro; '__arg_dir: no ':=' or '=>' at the top level'
+tests/e062_ld_positional_box_argument.iec:15.0: error: PP81: No ':=' or '=>' in the argument of a built-in macro; '__arg_dir: no ':=' or '=>' at the top level'
+tests/e062_ld_positional_box_argument.iec:15.0: error: PP81: No ':=' or '=>' in the argument of a built-in macro; '__arg_dir: no ':=' or '=>' at the top level'
+tests/e062_ld_positional_box_argument.iec:15.0: error: PP81: No ':=' or '=>' in the argument of a built-in macro; '__arg_dir: no ':=' or '=>' at the top level'

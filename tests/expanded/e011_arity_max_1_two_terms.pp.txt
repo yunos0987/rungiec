@@ -1,0 +1,1 @@
+tests/e011_arity_max_1_two_terms.iec:13.0: error: PP91: 'RUNGIEC RUNG has 2 elements, allowed 1 to 1'

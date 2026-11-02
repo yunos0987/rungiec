@@ -1,0 +1,1 @@
+tests/e055_label_inside_net.iec:16.0: error: PP91: 'RUNGIEC LABEL inside BEGIN_NET and END_NET'

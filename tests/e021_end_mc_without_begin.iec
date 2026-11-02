@@ -1,0 +1,16 @@
+(* @expect pp-error PP91: .RUNGIEC END_MC without BEGIN_MC *)
+(* @cycles 1 *)
+(* Purpose: END_MC() with no open BEGIN_MC is a preprocessing error. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+(*  |--(MCR)--|   no matching BEGIN_MC  *)
+END_MC()
+END_RUNGIEC()
+end_program

@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC RUNG has 2 elements, allowed 1 to 1 *)
+(* @cycles 1 *)
+(* Purpose: With RUNGIEC_ARITY_MAX 1, a 2-term RUNG is a preprocessing error (the arity check uses the limit, not the dispatch table, which always has N = 1..32). *)
+{#define RUNGIEC_ARITY_MAX 1}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|   2 terms  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

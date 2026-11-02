@@ -1,0 +1,17 @@
+(* @expect pp-error PP91: .RUNGIEC edge slot 2 exceeds 1 *)
+(* @cycles 1 *)
+(* Purpose: Transition-sensing coils take edge slots too: one edge contact and one RISE_COIL exceed RUNGIEC_EDGE_MAX 1, and the coil's slot 2 is a preprocessing error. *)
+{#define RUNGIEC_EDGE_MAX 1}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y1, Y2: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--|P A |--( Y1 )--|  *)
+RUNG(RISE_CONTACT(A), COIL(Y1))
+(*  |--| A |--(P Y2 )--|  *)
+RUNG(CONTACT(A), RISE_COIL(Y2))
+END_RUNGIEC()
+end_program

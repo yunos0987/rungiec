@@ -1,0 +1,1 @@
+tests/e002_series_17_terms.iec:12.0: error: PP91: 'RUNGIEC RUNG has 17 elements, allowed 1 to 16'

@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC RUNG has 5 elements, allowed 1 to 4 *)
+(* @cycles 1 *)
+(* Purpose: With RUNGIEC_ARITY_MAX 4, a 5-term RUNG is a preprocessing error. *)
+{#define RUNGIEC_ARITY_MAX 4}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--| A |--| A |--| A |--( Y )--|   5 terms  *)
+RUNG(CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

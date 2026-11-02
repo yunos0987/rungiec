@@ -1,0 +1,37 @@
+(* @expect pass *)
+(* @cycles 14 *)
+(* Purpose: one-shot (pulse) use cases. A pulse timer (TP) gives a fixed-width pulse (3 scans) on the rising edge of the sensor and ignores the sensor while the pulse runs; RISE_COIL (like PLS) and FALL_COIL (like PLF) give a one-scan pulse on the edges of the sensor. *)
+(* Source: IEC 61131-3 Ed. 4.0 (CDV), 6.6.3.5.5 Table 47 / Figure 17 a -- TP: a rising edge of IN starts a pulse of length PT; IN changes during the pulse have no effect *)
+(* Source: https://dl.mitsubishielectric.com/dl/fa/document/manual/plc/sh081266eng/sh081266engae.pdf, PLS p.191 / PLF p.193 / TP p.1545 -- PLS and PLF turn a device ON for one scan on the rising or falling edge; TP is the pulse timer *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t064_one_shot_pulse))
+{#include 't_stdfb.iec'}
+TEST_M(t064_one_shot_pulse)
+var
+    Sensor, Blow, OnEdge, OffEdge: bool;
+    Tp: TP;
+    InSensor: array[1..14] of bool := [false, true, false, true, false, false, false, false, false, true, true, false, false, false];
+    ExpBlow: array[1..14] of bool := [false, true, true, true, false, false, false, false, false, true, true, true, false, false];
+    ExpOn: array[1..14] of bool := [false, true, false, true, false, false, false, false, false, true, false, false, false, false];
+    ExpOff: array[1..14] of bool := [false, false, true, false, true, false, false, false, false, false, false, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Sensor := InSensor[Cyc];
+(*  |--[ Tp(IN := Sensor, PT := T#300ms) ]--| Tp.Q |--( Blow )--|  *)
+RUNG(FB_SCAN(Tp, IN := Sensor, PT := T#300ms), CONTACT(Tp.Q), COIL(Blow))
+(*  |--| Sensor |--(P OnEdge )--|   one scan on the rising edge (PLS)  *)
+RUNG(CONTACT(Sensor), RISE_COIL(OnEdge))
+(*  |--| Sensor |--(N OffEdge )--|   one scan on the falling edge (PLF)  *)
+RUNG(CONTACT(Sensor), FALL_COIL(OffEdge))
+EXPECT_TRUE(Blow = ExpBlow[Cyc], 'blow_pulse_matches_expected');
+EXPECT_TRUE(OnEdge = ExpOn[Cyc], 'rising_edge_pulse');
+EXPECT_TRUE(OffEdge = ExpOff[Cyc], 'falling_edge_pulse');
+EXPECT_TRUE((Cyc <> 3) or Blow, 'pulse_keeps_running_after_sensor_drops');
+EXPECT_TRUE((Cyc <> 5) or (not Blow), 'retrigger_during_pulse_does_not_extend_it');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

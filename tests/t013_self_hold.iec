@@ -1,0 +1,30 @@
+(* @expect pass *)
+(* @cycles 7 *)
+(* Purpose: Self-holding circuit: start, hold, stop priority, stop. Run starts FALSE. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t013_self_hold))
+TEST_M(t013_self_hold)
+var
+    Start, Stop, Run: bool;
+    InStart: array[1..7] of bool := [false, true, false, true, false, true, false];
+    InStop: array[1..7] of bool := [false, false, false, true, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Stop := InStop[Cyc];
+(*  |--+--| Start |--+--|/Stop |--( Run )--|  *)
+(*  |  |             |                     |  *)
+(*  |  +--| Run |----+                     |  *)
+RUNG(PARALLEL(CONTACT(Start), CONTACT(Run)), NOT_CONTACT(Stop), COIL(Run))
+EXPECT_TRUE(((Cyc <> 1) and (Cyc <> 5)) or (not Run), 'idle_stays_off');
+EXPECT_TRUE((Cyc <> 2) or Run, 'start_turns_on');
+EXPECT_TRUE((Cyc <> 3) or Run, 'hold_after_start_released');
+EXPECT_TRUE((Cyc <> 4) or (not Run), 'stop_priority_over_start');
+EXPECT_TRUE((Cyc <> 6) or Run, 'start_again_turns_on');
+EXPECT_TRUE((Cyc <> 7) or (not Run), 'stop_turns_off');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,47 @@
+(* @expect pass *)
+(* @cycles 54 *)
+(* Purpose: tank level control with hysteresis: the pump turns ON below the low level (20), stays ON (self-holding) until the high level (80) is reached, then stays OFF until the level falls below the low level again. The level comes from a tiny plant model written in ST between the networks (pump +10 per scan, outflow -4 per scan); the pump rung reads the level transmitter LevelTx with comparison contacts. The high-high switch (ON at 95 or more) reads the true level independently of the transmitter; its rung comes first and its b contact in the pump rung stops the pump and breaks the seal. From Cyc 43 the transmitter is stuck at its last reading: the pump runs past the high level and the high-high switch stops it (Cyc 51); it stays OFF because the seal is broken and the stuck reading is not below the low level. *)
+(* Source: common textbook pattern -- two-point (hysteresis) level control with a seal-in contact between the low and the high level *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t072_tank_level_hysteresis))
+TEST_M(t072_tank_level_hysteresis)
+var
+    Level: dint := 50;
+    LevelTx: dint;
+    Pump, HighHigh: bool;
+    InTxStuck: array[1..54] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true, true, true, true, true];
+    PumpStarts: dint;
+    PrevPump: bool;
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+(*  transmitter model: the reading follows the level unless it is stuck; not part of the ladder  *)
+if not InTxStuck[Cyc] then LevelTx := Level; end_if;
+(*  |--| Level >= 95 |--( HighHigh )--|   independent high-high switch on the true level  *)
+RUNG(GE_CONTACT(Level, 95), COIL(HighHigh))
+(*  |--+--| LevelTx < 20 |--+--| LevelTx < 80 |--|/HighHigh |--( Pump )--|   below low starts, the pump seals itself in until high  *)
+(*  |  |                    |                                            |  *)
+(*  |  +--| Pump |----------+                                            |  *)
+RUNG(PARALLEL(LT_CONTACT(LevelTx, 20), CONTACT(Pump)), LT_CONTACT(LevelTx, 80), NOT_CONTACT(HighHigh), COIL(Pump))
+(*  plant model: not part of the ladder  *)
+if Pump then Level := Level + 10; end_if;
+if Level >= 4 then Level := Level - 4; else Level := 0; end_if;
+if Pump and (not PrevPump) then PumpStarts := PumpStarts + 1; end_if;
+PrevPump := Pump;
+EXPECT_TRUE((Cyc > 42) or (Level <= 86), 'level_never_above_high_plus_one_step');
+EXPECT_TRUE(Level <= 100, 'level_never_above_high_high_plus_one_step');
+EXPECT_TRUE(Level >= 12, 'level_never_below_low_minus_one_step');
+EXPECT_TRUE((Cyc < 20) or (Cyc > 34) or (not Pump), 'pump_off_while_level_falls_from_high');
+EXPECT_TRUE((Cyc < 10) or (Cyc > 19) or Pump, 'pump_holds_on_between_low_and_high');
+EXPECT_TRUE((Cyc <> 42) or (PumpStarts = 2), 'pump_started_twice_by_the_end');
+EXPECT_TRUE((Cyc > 42) or (not HighHigh), 'no_high_high_alarm_in_normal_operation');
+EXPECT_TRUE((Cyc <> 48) or (Pump and (Level > 80)), 'stuck_transmitter_lets_pump_run_past_high');
+EXPECT_TRUE((Cyc <> 51) or (HighHigh and (not Pump)), 'high_high_stops_pump');
+EXPECT_TRUE((Cyc < 51) or (not Pump), 'pump_stays_off_after_high_high');
+EXPECT_TRUE((Cyc <> 54) or (PumpStarts = 2), 'no_restart_after_high_high');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

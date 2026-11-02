@@ -1,0 +1,15 @@
+(* @expect pp-error PP91: .RUNGIEC LD: CONTACT has an empty operand *)
+(* @cycles 1 *)
+(* Purpose: In the LD mode an element with an empty operand (CONTACT()) would write operand="" into the XML, so it is PP91. *)
+{#define RUNGIEC_LD 1}
+{#include 'rungiec.iec'}
+program __main__
+var
+    Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--|   |--( Y )--|   the operand of the contact is empty  *)
+RUNG(CONTACT(), COIL(Y))
+END_RUNGIEC()
+end_program

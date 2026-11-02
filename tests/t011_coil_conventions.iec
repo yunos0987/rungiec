@@ -1,0 +1,43 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: The four coil convention diagrams of the requirement. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t011_coil_conventions))
+TEST_M(t011_coil_conventions)
+var
+    A, B, C, Ya, Yb, Yc1, Yc2, Yd1, Yd2: bool;
+    InA: array[1..8] of bool := [false, true, false, true, false, true, false, true];
+    InB: array[1..8] of bool := [false, false, true, true, false, false, true, true];
+    InC: array[1..8] of bool := [false, false, false, false, true, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc];
+(*  |--| A |--| B |--( Ya )--|  *)
+RUNG(CONTACT(A), CONTACT(B), COIL(Ya))
+(*  |--+--| A |--+--( Yb )--|  *)
+(*  |  |         |          |  *)
+(*  |  +--| B |--+          |  *)
+RUNG(PARALLEL(CONTACT(A), CONTACT(B)), COIL(Yb))
+(*  |--| A |--+--( Yc1 )--|  *)
+(*  |         |           |  *)
+(*  |         +--( Yc2 )--|  *)
+RUNG(CONTACT(A), PARALLEL(COIL(Yc1), COIL(Yc2)))
+(*  |--| A |--+--| B |--( Yd1 )--|  *)
+(*  |         |                  |  *)
+(*  |         +--| C |--( Yd2 )--|  *)
+RUNG(CONTACT(A), PARALLEL(
+    SERIES(CONTACT(B), COIL(Yd1)),
+    SERIES(CONTACT(C), COIL(Yd2))))
+EXPECT_TRUE(Ya = (A and B), 'diagram1_series');
+EXPECT_TRUE(Yb = (A or B), 'diagram2_merge_coil');
+EXPECT_TRUE(Yc1 = A, 'diagram3_fork_coil_1');
+EXPECT_TRUE(Yc2 = A, 'diagram3_fork_coil_2');
+EXPECT_TRUE(Yd1 = (A and B), 'diagram4_branch_coil_1');
+EXPECT_TRUE(Yd2 = (A and C), 'diagram4_branch_coil_2');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

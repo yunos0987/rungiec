@@ -1,0 +1,16 @@
+(* @expect run-error rungiecrail .PLACE __main__.tm.*TYPE_ERROR *)
+(* @cycles 1 *)
+(* Purpose: The output pin of FBT_BOX gives the power after the box, so it is a BOOL output. ET of a TON (TIME) as the output pin is the jiecc compile error TYPE_ERROR of RungiecRail and Tm.ET. *)
+{#include 'rungiec.iec'}
+{#include 't_stdfb.iec'}
+program __main__
+var
+    A, Y: bool;
+    Tm: TON;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--[ Tm:TON(PT := T#1s) IN ET ]--( Y )--|   ET is a TIME output  *)
+RUNG(CONTACT(A), FBT_BOX(Tm, TON, IN, ET, PT := T#1s), COIL(Y))
+END_RUNGIEC()
+end_program

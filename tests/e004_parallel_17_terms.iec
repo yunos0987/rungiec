@@ -1,0 +1,16 @@
+(* @expect pp-error PP91: .RUNGIEC PARALLEL has 17 elements, allowed 1 to 16 *)
+(* @cycles 1 *)
+(* Purpose: PARALLEL with 17 terms is above the default limit 16 and is a preprocessing error. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--+--| A |--+--( Y )--|   17 branches  *)
+(*  |  :         :         |  *)
+(*  |  +--| A |--+         |  *)
+RUNG(PARALLEL(CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A)), COIL(Y))
+END_RUNGIEC()
+end_program

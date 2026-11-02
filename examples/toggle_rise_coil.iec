@@ -1,0 +1,15 @@
+{#include 'rungiec.iec'}
+(* Example: push-button toggle. RISE_COIL (IEC -(P)-) makes a one-scan pulse from the button; the toggle circuit flips the lamp on each pulse. *)
+function_block toggle_rise_coil
+var_input Btn: bool; end_var
+var_output Lamp, Pulse: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Btn |--(P Pulse )--|   one-scan pulse on the rising edge  *)
+RUNG(CONTACT(Btn), RISE_COIL(Pulse))
+(*  |--+--| Pulse |--|/Lamp |--+--( Lamp )--|  *)
+(*  |  |                       |            |  *)
+(*  |  +--| Lamp |--|/Pulse |--+            |  *)
+RUNG(PARALLEL(SERIES(CONTACT(Pulse), NOT_CONTACT(Lamp)), SERIES(CONTACT(Lamp), NOT_CONTACT(Pulse))), COIL(Lamp))
+END_RUNGIEC()
+end_function_block

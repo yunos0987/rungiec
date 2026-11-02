@@ -1,0 +1,16 @@
+(* @expect pp-error PP91: .RUNGIEC LD: a child is not an element, SERIES or PARALLEL *)
+(* @cycles 1 *)
+(* Purpose: In the LD mode a bare name as a child of RUNG (A instead of CONTACT(A)) is PP91 by the tag table. *)
+(* @lint-allow LN14 *)
+{#define RUNGIEC_LD 1}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|   A is written without CONTACT  *)
+RUNG(A, COIL(Y))
+END_RUNGIEC()
+end_program

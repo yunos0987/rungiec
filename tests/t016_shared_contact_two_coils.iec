@@ -1,0 +1,33 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: A shared contact feeding two coils, with and without branch contacts. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t016_shared_contact_two_coils))
+TEST_M(t016_shared_contact_two_coils)
+var
+    A, B, C, Y1, Y2, Y3, Y4: bool;
+    InA: array[1..8] of bool := [false, true, false, true, false, true, false, true];
+    InB: array[1..8] of bool := [false, false, true, true, false, false, true, true];
+    InC: array[1..8] of bool := [false, false, false, false, true, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc];
+(*  |--| A |--+--| B |--( Y1 )--|  *)
+(*  |         |                 |  *)
+(*  |         +--| C |--( Y2 )--|  *)
+RUNG(CONTACT(A), PARALLEL(SERIES(CONTACT(B), COIL(Y1)), SERIES(CONTACT(C), COIL(Y2))))
+(*  |--| A |--+--( Y3 )--|  *)
+(*  |         |          |  *)
+(*  |         +--( Y4 )--|  *)
+RUNG(CONTACT(A), PARALLEL(COIL(Y3), COIL(Y4)))
+EXPECT_TRUE(Y1 = (A and B), 'y1_shared_a_and_b');
+EXPECT_TRUE(Y2 = (A and C), 'y2_shared_a_and_c');
+EXPECT_TRUE(Y3 = A, 'y3_fork_follows_a');
+EXPECT_TRUE(Y4 = A, 'y4_fork_follows_a');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

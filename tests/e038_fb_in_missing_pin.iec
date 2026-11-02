@@ -1,0 +1,15 @@
+(* @expect pp-error PP34.*FB_IN: expected 2 *)
+(* @cycles 1 *)
+(* Purpose: FB_IN without the pin name is an argument count error reported by jiepp with the macro name. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+    Tm: TON;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--[ Tm ]--( Y )--|   the pin name is missing  *)
+RUNG(CONTACT(A), FB_IN(Tm), COIL(Y))
+END_RUNGIEC()
+end_program

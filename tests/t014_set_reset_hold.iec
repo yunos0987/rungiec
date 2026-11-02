@@ -1,0 +1,30 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: Set/reset latch; the R coil is placed after the S coil so reset has priority. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t014_set_reset_hold))
+TEST_M(t014_set_reset_hold)
+var
+    Set, Rst, Y: bool;
+    InSet: array[1..8] of bool := [false, true, false, false, true, true, false, false];
+    InRst: array[1..8] of bool := [false, false, false, true, true, false, false, true];
+    ExpY: array[1..8] of bool := [false, true, true, false, false, true, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Set := InSet[Cyc]; Rst := InRst[Cyc];
+(*  |--| Set |--(S Y )--|  *)
+RUNG(CONTACT(Set), SET_COIL(Y))
+(*  |--| Rst |--(R Y )--|  *)
+RUNG(CONTACT(Rst), RESET_COIL(Y))
+EXPECT_TRUE(Y = ExpY[Cyc], 'y_matches_expected_sequence');
+EXPECT_TRUE((Cyc <> 2) or Y, 'set_turns_on');
+EXPECT_TRUE((Cyc <> 3) or Y, 'hold_when_both_off');
+EXPECT_TRUE((Cyc <> 4) or (not Y), 'reset_turns_off');
+EXPECT_TRUE((Cyc <> 5) or (not Y), 'reset_priority_over_set');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

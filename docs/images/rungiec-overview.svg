@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="630" viewBox="0 0 960 630">
+  <title>RUNGIEC: a ladder diagram, the RUNGIEC code that writes it, and the ST and the LD XML generated from the same code</title>
+  <rect x="0" y="0" width="960" height="630" fill="#ffffff"/>
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <text x="30" y="36" font-size="19" font-weight="bold" fill="#24292f">Ladder diagram (LD)</text>
+    <text x="625" y="36" font-size="19" font-weight="bold" fill="#24292f">RUNGIEC (jiepp macros)</text>
+    <text x="30" y="350" font-size="19" font-weight="bold" fill="#24292f">ST mode: IEC 61131-3 ST</text>
+    <text x="450" y="350" font-size="19" font-weight="bold" fill="#24292f">LD mode: IEC 61131-10 LD XML</text>
+    <text x="30" y="612" font-size="14" fill="#57606a">One source, two outputs. Source: examples/self_hold.iec. Excerpts of the jiepp -P -nC output; ... marks omitted parts.</text>
+    <text x="240" y="318" font-size="15" font-weight="bold" fill="#57606a">jiepp</text>
+    <text x="700" y="318" font-size="15" font-weight="bold" fill="#57606a">jiepp -D RUNGIEC_LD</text>
+  </g>
+
+  <!-- PARALLEL group highlight -->
+  <rect x="66" y="86" width="148" height="138" rx="8" fill="#ddf4ff" stroke="#0969da" stroke-width="1.5" stroke-dasharray="5 4"/>
+
+  <!-- power rails (RUNG) -->
+  <g stroke="#8250df" stroke-width="4">
+    <line x1="50" y1="80" x2="50" y2="240"/>
+    <line x1="550" y1="80" x2="550" y2="240"/>
+  </g>
+
+  <!-- wires -->
+  <g stroke="#24292f" stroke-width="2" fill="none">
+    <line x1="50" y1="130" x2="128" y2="130"/>
+    <line x1="152" y1="130" x2="258" y2="130"/>
+    <line x1="282" y1="130" x2="368" y2="130"/>
+    <line x1="392" y1="130" x2="476" y2="130"/>
+    <line x1="504" y1="130" x2="550" y2="130"/>
+    <line x1="80" y1="130" x2="80" y2="200"/>
+    <line x1="200" y1="130" x2="200" y2="200"/>
+    <line x1="80" y1="200" x2="128" y2="200"/>
+    <line x1="152" y1="200" x2="200" y2="200"/>
+  </g>
+
+  <!-- NO contacts Start and Run (PARALLEL) -->
+  <g stroke="#0969da" stroke-width="3">
+    <line x1="128" y1="114" x2="128" y2="146"/>
+    <line x1="152" y1="114" x2="152" y2="146"/>
+    <line x1="128" y1="184" x2="128" y2="216"/>
+    <line x1="152" y1="184" x2="152" y2="216"/>
+  </g>
+
+  <!-- NC contacts Stop and Overload -->
+  <g stroke="#bc4c00" stroke-width="3">
+    <line x1="258" y1="114" x2="258" y2="146"/>
+    <line x1="282" y1="114" x2="282" y2="146"/>
+    <line x1="261" y1="143" x2="279" y2="117" stroke-width="2"/>
+    <line x1="368" y1="114" x2="368" y2="146"/>
+    <line x1="392" y1="114" x2="392" y2="146"/>
+    <line x1="371" y1="143" x2="389" y2="117" stroke-width="2"/>
+  </g>
+
+  <!-- coil Run -->
+  <g stroke="#1a7f37" stroke-width="3" fill="none">
+    <path d="M 484 116 A 16 16 0 0 0 484 144"/>
+    <path d="M 496 116 A 16 16 0 0 1 496 144"/>
+  </g>
+
+  <!-- operand labels -->
+  <g font-family="Consolas, Menlo, monospace" font-size="15" text-anchor="middle">
+    <text x="140" y="106" fill="#0969da">Start</text>
+    <text x="140" y="176" fill="#0969da">Run</text>
+    <text x="270" y="106" fill="#bc4c00">Stop</text>
+    <text x="380" y="106" fill="#bc4c00">Overload</text>
+    <text x="490" y="106" fill="#1a7f37">Run</text>
+  </g>
+
+  <!-- element tags -->
+  <g font-family="Consolas, Menlo, monospace" font-size="13" text-anchor="middle">
+    <text x="140" y="240" fill="#0969da">PARALLEL</text>
+    <text x="270" y="168" fill="#bc4c00">NOT_CONTACT</text>
+    <text x="380" y="168" fill="#bc4c00">NOT_CONTACT</text>
+    <text x="490" y="168" fill="#1a7f37">COIL</text>
+  </g>
+
+  <!-- RUNG bracket -->
+  <path d="M 50 256 L 50 264 L 550 264 L 550 256" stroke="#8250df" stroke-width="2" fill="none"/>
+  <text x="300" y="284" font-family="Consolas, Menlo, monospace" font-size="13" text-anchor="middle" fill="#8250df">RUNG (one rung between the rails)</text>
+
+  <!-- arrow -->
+  <path d="M 568 150 L 598 150" stroke="#57606a" stroke-width="3" fill="none"/>
+  <path d="M 596 142 L 608 150 L 596 158 Z" fill="#57606a"/>
+
+  <!-- code panel -->
+  <rect x="615" y="62" width="320" height="200" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+  <g font-family="Consolas, Menlo, monospace" font-size="17" fill="#24292f" xml:space="preserve" style="white-space: pre">
+    <text x="630" y="104"><tspan fill="#8250df" font-weight="bold">RUNG(</tspan><tspan fill="#0969da" font-weight="bold">PARALLEL(</tspan><tspan fill="#0969da">CONTACT(Start)</tspan>,</text>
+    <text x="630" y="134"><tspan>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan><tspan fill="#0969da">CONTACT(Run)</tspan><tspan fill="#0969da" font-weight="bold">)</tspan>,</text>
+    <text x="630" y="164"><tspan>&#160;&#160;&#160;&#160;&#160;</tspan><tspan fill="#bc4c00">NOT_CONTACT(Stop)</tspan>,</text>
+    <text x="630" y="194"><tspan>&#160;&#160;&#160;&#160;&#160;</tspan><tspan fill="#bc4c00">NOT_CONTACT(Overload)</tspan>,</text>
+    <text x="630" y="224"><tspan>&#160;&#160;&#160;&#160;&#160;</tspan><tspan fill="#1a7f37">COIL(Run)</tspan><tspan fill="#8250df" font-weight="bold">)</tspan></text>
+  </g>
+
+  <!-- arrows from the code to the two outputs -->
+  <path d="M 775 262 L 775 300 M 230 300 L 775 300 M 230 300 L 230 328 M 690 300 L 690 328" stroke="#57606a" stroke-width="3" fill="none"/>
+  <path d="M 222 326 L 230 338 L 238 326 Z" fill="#57606a"/>
+  <path d="M 682 326 L 690 338 L 698 326 Z" fill="#57606a"/>
+
+  <!-- ST panel (excerpts of the jiepp -P -nC output for examples/self_hold.iec) -->
+  <rect x="30" y="362" width="400" height="232" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+  <g font-family="Consolas, Menlo, monospace" font-size="13" xml:space="preserve" style="white-space: pre">
+    <text x="45" y="382" fill="#6e7781" font-weight="bold">...</text>
+    <text x="45" y="402" fill="#0969da">RungiecTmp := (Start);</text>
+    <text x="45" y="422" fill="#0969da">RungiecVal := RungiecEn and RungiecTmp;</text>
+    <text x="45" y="442" fill="#0969da">RungiecAcc := RungiecAcc or RungiecVal;</text>
+    <text x="45" y="462" fill="#6e7781" font-weight="bold">...</text>
+    <text x="45" y="482" fill="#bc4c00">RungiecTmp := (Stop);</text>
+    <text x="45" y="502" fill="#bc4c00">RungiecVal := RungiecEn and not RungiecTmp;</text>
+    <text x="45" y="522" fill="#bc4c00">RungiecAcc := RungiecVal;</text>
+    <text x="45" y="542" fill="#6e7781" font-weight="bold">...</text>
+    <text x="45" y="562" fill="#1a7f37">Run := RungiecEn;</text>
+    <text x="45" y="582" fill="#6e7781" font-weight="bold">...</text>
+  </g>
+
+  <!-- LD panel (excerpts of the jiepp -P -nC -D RUNGIEC_LD output for examples/self_hold.iec) -->
+  <rect x="450" y="362" width="480" height="232" rx="8" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1"/>
+  <g font-family="Consolas, Menlo, monospace" font-size="12" xml:space="preserve" style="white-space: pre">
+    <text x="465" y="384" fill="#8250df">&lt;Rung evaluationOrder="1"&gt;</text>
+    <text x="465" y="408" fill="#8250df">&lt;LdObject xsi:type="LeftPowerRail"&gt;...</text>
+    <text x="465" y="432" fill="#0969da">&lt;LdObject xsi:type="Contact" operand="Start"&gt;...</text>
+    <text x="465" y="456" fill="#0969da">&lt;LdObject xsi:type="Contact" operand="Run"&gt;...</text>
+    <text x="465" y="480" fill="#bc4c00">&lt;LdObject xsi:type="Contact" negated="true" operand="Stop"&gt;...</text>
+    <text x="465" y="504" fill="#bc4c00">&lt;LdObject xsi:type="Contact" negated="true" operand="Overload"&gt;...</text>
+    <text x="465" y="528" fill="#1a7f37">&lt;LdObject xsi:type="Coil" operand="Run"&gt;...</text>
+    <text x="465" y="552" fill="#8250df">&lt;LdObject xsi:type="RightPowerRail"&gt;...</text>
+    <text x="465" y="576" fill="#8250df">&lt;/Rung&gt;</text>
+  </g>
+</svg>

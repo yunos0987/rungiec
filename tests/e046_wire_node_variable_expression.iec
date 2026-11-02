@@ -1,0 +1,18 @@
+(* @expect pp-error PP91: .RUNGIEC WIRE from node 1 . K is not an integer literal from 0 to 64 *)
+(* @cycles 1 *)
+(* Purpose: An expression with a variable as a WIRE node number is rejected by the integer-literal check itself (PP91), not only by the -Werror=undef of the runner: without that option the variable is 0 and 1 + K would pass the range checks. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+    K: dint := 1;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(1)--( Y )--(3)--|   the from node of the second WIRE is written as 1 + K  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(1 + K, 3, COIL(Y))
+END_NET()
+END_RUNGIEC()
+end_program

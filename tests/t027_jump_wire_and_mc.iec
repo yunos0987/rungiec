@@ -1,0 +1,55 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: JMP() as the last child of the last WIRE leaves the network for a label after END_NET() (the WIREs before it run on every scan, the rung before the label keeps its coil). JMP() inside an MC zone jumps within the zone when the zone is ON and does not jump when it is OFF (the coils then follow the OFF rail). The rail after END_MC() is back to ON on every scan. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t027_jump_wire_and_mc))
+TEST_M(t027_jump_wire_and_mc)
+var
+    A, J1, N1, Mid, M, J2, B, Y2, Z2, Out: bool;
+    Cyc: dint;
+    InA: array[1..4] of bool := [true, false, true, true];
+    InJ1: array[1..4] of bool := [false, false, true, false];
+    InM: array[1..4] of bool := [true, true, false, true];
+    InJ2: array[1..4] of bool := [false, true, true, false];
+    InB: array[1..4] of bool := [true, false, false, true];
+    ExpMid: array[1..4] of bool := [true, false, false, true];
+    ExpY2: array[1..4] of bool := [true, true, false, true];
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; J1 := InJ1[Cyc]; M := InM[Cyc]; J2 := InJ2[Cyc]; B := InB[Cyc];
+(*  |--| A |--(1)--( N1 )--|  *)
+(*  |         (1)--| J1 |-->>Out1  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(1, 2, COIL(N1))
+WIRE(1, 3, CONTACT(J1), JMP(Out1))
+END_NET()
+(*  |--| A |--( Mid )--|  *)
+RUNG(CONTACT(A), COIL(Mid))
+(*  Out1:  *)
+LABEL(Out1)
+EXPECT_TRUE(N1 = A, 'n1_written_before_jump_out_of_net');
+EXPECT_TRUE(Mid = ExpMid[Cyc], 'mid_held_after_jump_out_of_net');
+(*  |--| M |--(MC)--|  *)
+BEGIN_MC(CONTACT(M))
+(*  |--| J2 |-->>In2  *)
+RUNG(CONTACT(J2), JMP(In2))
+(*  |--| B |--( Y2 )--|  *)
+RUNG(CONTACT(B), COIL(Y2))
+(*  In2:  *)
+LABEL(In2)
+(*  |--| B |--( Z2 )--|  *)
+RUNG(CONTACT(B), COIL(Z2))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--( Out )--|  *)
+RUNG(COIL(Out))
+EXPECT_TRUE(Y2 = ExpY2[Cyc], 'y2_held_on_jump_and_off_in_off_zone');
+EXPECT_TRUE(Z2 = (M and B), 'z2_follows_zone_rail');
+EXPECT_TRUE(Out, 'rail_on_after_end_mc');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

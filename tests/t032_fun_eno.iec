@@ -1,0 +1,50 @@
+(* @expect pass *)
+(* @cycles 5 *)
+(* Purpose: FUN_ENO and FUN_ENO_RET: OFF gives no execution and power OFF; ON gives execution and power = ENO. The BOOL-return form is written with FUN_EXEC and CONTACT. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t032_fun_eno))
+function EnoFn : dint
+var_input ok_in: bool; end_var
+var_in_out cnt: dint; end_var
+cnt := cnt + 1;
+EnoFn := cnt;
+eno := ok_in;
+end_function
+function BoolFn : bool
+var_input res: bool; end_var
+var_in_out cnt: dint; end_var
+cnt := cnt + 1;
+BoolFn := res;
+end_function
+TEST_M(t032_fun_eno)
+var
+    P, Good, B, Y1, Y2, Y3: bool;
+    N1, N2, N3, R1: dint;
+    InP: array[1..5] of bool := [false, true, true, false, true];
+    InGood: array[1..5] of bool := [true, true, false, false, true];
+    ExpN: array[1..5] of dint := [0, 1, 2, 2, 3];
+    ExpY: array[1..5] of bool := [false, true, false, false, true];
+    ExpR1: array[1..5] of dint := [0, 1, 2, 2, 3];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+P := InP[Cyc]; Good := InGood[Cyc];
+(*  |--| P |--[ EnoFn(ok_in := Good, cnt := N1) ENO ]--( Y1 )--|   power after box = ENO  *)
+RUNG(CONTACT(P), FUN_ENO(EnoFn, ok_in := Good, cnt := N1), COIL(Y1))
+(*  |--| P |--[ R1 := EnoFn(ok_in := Good, cnt := N2) ENO ]--( Y2 )--|   result stored in R1, power after box = ENO  *)
+RUNG(CONTACT(P), FUN_ENO_RET(R1, EnoFn, ok_in := Good, cnt := N2), COIL(Y2))
+(*  |--| P |--[ B := BoolFn(res := Good, cnt := N3) ]--| B |--( Y3 )--|   BOOL-return form: FUN_EXEC_RET plus CONTACT  *)
+RUNG(CONTACT(P), FUN_EXEC_RET(B, BoolFn, res := Good, cnt := N3), CONTACT(B), COIL(Y3))
+EXPECT_TRUE(N1 = ExpN[Cyc], 'eno_form_not_executed_when_power_off');
+EXPECT_TRUE(N2 = ExpN[Cyc], 'eno_ret_form_not_executed_when_power_off');
+EXPECT_TRUE(N3 = ExpN[Cyc], 'bool_return_form_not_executed_when_power_off');
+EXPECT_TRUE(Y1 = ExpY[Cyc], 'eno_form_power_is_eno_and_off_without_power');
+EXPECT_TRUE(Y2 = ExpY[Cyc], 'eno_ret_form_power_is_eno_and_off_without_power');
+EXPECT_TRUE(R1 = ExpR1[Cyc], 'eno_ret_form_updates_r1_only_when_executed');
+EXPECT_TRUE(Y3 = ExpY[Cyc], 'bool_return_form_power_is_return_value');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,52 @@
+(* @expect pass *)
+(* @cycles 14 *)
+(* Purpose: process step progression with bit steps: Idle -> Fill -> Heat -> Drain -> Idle. A transition rung is "step bit, transition condition, set next step, reset own step"; the SET coil passes its power on to the RESET coil. Exactly one step is active at any time and the outputs follow the step bits. A Start pressed while the sequence runs is ignored. Notes: the transition rungs are written front to back, so when the conditions of several successive steps are already TRUE the sequence passes through several steps in one scan (t070 shows this and the reverse-order fix); the inputs here change one step at a time. The initial step S0 is made by the initial value of the variable (S0: bool := true); many ladder programs instead set the initial step and reset the other steps with a first-scan pulse (Mitsubishi SM402 / FX M8002) each time the PLC goes to RUN, which this test does not show. *)
+(* Source: common textbook pattern -- sequential control with one latched bit per step and one transition rung per step *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t069_step_sequence))
+TEST_M(t069_step_sequence)
+var
+    Start, LevelHigh, TempOk, LevelLow: bool;
+    S0: bool := true;
+    S1, S2, S3: bool;
+    Valve, Heater, Pump: bool;
+    InStart: array[1..14] of bool := [false, true, true, false, false, false, false, false, false, true, false, true, false, false];
+    InLevelHigh: array[1..14] of bool := [false, false, false, false, true, true, true, true, false, false, false, false, false, false];
+    InTempOk: array[1..14] of bool := [false, false, false, false, false, false, true, true, true, false, false, false, false, false];
+    InLevelLow: array[1..14] of bool := [true, true, false, false, false, false, false, false, false, false, true, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; LevelHigh := InLevelHigh[Cyc]; TempOk := InTempOk[Cyc]; LevelLow := InLevelLow[Cyc];
+(*  |--| S0 |--| Start |--(S S1 )--(R S0 )--|   Idle -> Fill  *)
+RUNG(CONTACT(S0), CONTACT(Start), SET_COIL(S1), RESET_COIL(S0))
+(*  |--| S1 |--| LevelHigh |--(S S2 )--(R S1 )--|   Fill -> Heat  *)
+RUNG(CONTACT(S1), CONTACT(LevelHigh), SET_COIL(S2), RESET_COIL(S1))
+(*  |--| S2 |--| TempOk |--(S S3 )--(R S2 )--|   Heat -> Drain  *)
+RUNG(CONTACT(S2), CONTACT(TempOk), SET_COIL(S3), RESET_COIL(S2))
+(*  |--| S3 |--| LevelLow |--(S S0 )--(R S3 )--|   Drain -> Idle  *)
+RUNG(CONTACT(S3), CONTACT(LevelLow), SET_COIL(S0), RESET_COIL(S3))
+(*  |--| S1 |--( Valve )--|  *)
+RUNG(CONTACT(S1), COIL(Valve))
+(*  |--| S2 |--( Heater )--|  *)
+RUNG(CONTACT(S2), COIL(Heater))
+(*  |--| S3 |--( Pump )--|  *)
+RUNG(CONTACT(S3), COIL(Pump))
+EXPECT_TRUE((S0 and (not S1) and (not S2) and (not S3)) or ((not S0) and S1 and (not S2) and (not S3)) or ((not S0) and (not S1) and S2 and (not S3)) or ((not S0) and (not S1) and (not S2) and S3), 'exactly_one_step_active');
+EXPECT_TRUE((Valve = S1) and (Heater = S2) and (Pump = S3), 'outputs_follow_steps');
+EXPECT_TRUE((Cyc <> 1) or (S0 and (not S1)), 'initial_step_is_idle');
+EXPECT_TRUE((Cyc <> 10) or (S3 and (not S1)), 'start_ignored_while_not_idle');
+EXPECT_TRUE((Cyc <> 2) or S1, 'start_moves_to_fill');
+EXPECT_TRUE((Cyc <> 4) or S1, 'fill_waits_for_level');
+EXPECT_TRUE((Cyc <> 5) or S2, 'level_high_moves_to_heat');
+EXPECT_TRUE((Cyc <> 6) or S2, 'heat_waits_for_temperature');
+EXPECT_TRUE((Cyc <> 7) or S3, 'temperature_ok_moves_to_drain');
+EXPECT_TRUE((Cyc <> 10) or S3, 'drain_waits_for_level_low');
+EXPECT_TRUE((Cyc <> 11) or S0, 'level_low_returns_to_idle');
+EXPECT_TRUE((Cyc <> 12) or S1, 'second_start_begins_new_batch');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

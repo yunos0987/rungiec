@@ -1,0 +1,35 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: the output of FB_BOX replaces the power at any depth. As a direct child of PARALLEL the branch gives Q of the TOF, and the merge reaches the coil when A is OFF (scans 3 and 4), so Y = Tf.Q or (A and B), not A and (Tf.Q or B). In a series a contact after the box reads the power of Q (Z = Tg.Q and C). *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t117_fb_box_replaces_power))
+{#include 't_stdfb.iec'}
+TEST_M(t117_fb_box_replaces_power)
+var
+    A, B, C, Y, Z: bool;
+    Tf, Tg: TOF;
+    InA: array[1..6] of bool := [true, true, false, false, false, true];
+    InB: array[1..6] of bool := [false, false, false, true, false, false];
+    InC: array[1..6] of bool := [true, false, true, true, true, true];
+    ExpQ: array[1..6] of bool := [true, true, true, true, false, true];
+    ExpY: array[1..6] of bool := [true, true, true, true, false, true];
+    ExpZ: array[1..6] of bool := [true, false, true, true, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc];
+(*  |--| A |--+--[ Tf(PT := T#200ms) IN Q ]--+--( Y )--|   TOF: PT = 200 ms  *)
+(*  |         |                              |         |  *)
+(*  |         +--| B |-----------------------+         |  *)
+RUNG(CONTACT(A), PARALLEL(FB_BOX(Tf, IN, Q, PT := T#200ms), CONTACT(B)), COIL(Y))
+(*  |--| A |--[ Tg(PT := T#200ms) IN Q ]--| C |--( Z )--|  *)
+RUNG(CONTACT(A), FB_BOX(Tg, IN, Q, PT := T#200ms), CONTACT(C), COIL(Z))
+EXPECT_TRUE(Tf.Q = ExpQ[Cyc], 'tof_q');
+EXPECT_TRUE(Y = ExpY[Cyc], 'parallel_branch_gives_q_without_power_before');
+EXPECT_TRUE(Z = ExpZ[Cyc], 'contact_after_box_reads_q');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

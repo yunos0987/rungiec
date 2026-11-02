@@ -1,0 +1,16 @@
+(* @expect pp-error PP91: .RUNGIEC LD: nest limit 17 exceeds 16, the depth of the generated LD tables *)
+(* @cycles 1 *)
+(* Purpose: In the LD mode RUNGIEC_NEST_MAX 17 exceeds the depth of the generated LD tables and is rejected when rungiec.iec is included. *)
+{#define RUNGIEC_LD 1}
+{#define RUNGIEC_NEST_MAX 17}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

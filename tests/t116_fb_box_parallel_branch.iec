@@ -1,0 +1,32 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: FB_BOX at the end of a PARALLEL branch after a contact. The pin gets the power of the branch (Pe and Pa), and the branch gives Q, which merges with the other branch and reaches the coil also when Pe is OFF (scans 3 and 4: Q of the TOF is still TRUE). *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t116_fb_box_parallel_branch))
+{#include 't_stdfb.iec'}
+TEST_M(t116_fb_box_parallel_branch)
+var
+    Pe, Pa, Pb, Yp: bool;
+    Tf: TOF;
+    InPe: array[1..6] of bool := [true, true, false, false, false, true];
+    InPa: array[1..6] of bool := [true, true, true, true, true, false];
+    InPb: array[1..6] of bool := [false, false, false, true, false, true];
+    ExpQ: array[1..6] of bool := [true, true, true, true, false, false];
+    ExpYp: array[1..6] of bool := [true, true, true, true, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Pe := InPe[Cyc]; Pa := InPa[Cyc]; Pb := InPb[Cyc];
+(*  |--| Pe |--+--| Pa |--[ Tf(PT := T#200ms) IN Q ]--+--( Yp )--|   TOF: PT = 200 ms  *)
+(*  |          |                                      |          |  *)
+(*  |          +--| Pb |------------------------------+          |  *)
+RUNG(CONTACT(Pe), PARALLEL(SERIES(CONTACT(Pa), FB_BOX(Tf, IN, Q, PT := T#200ms)), CONTACT(Pb)), COIL(Yp))
+EXPECT_TRUE(Tf.Q = ExpQ[Cyc], 'tof_q_from_branch_power');
+EXPECT_TRUE(Yp = ExpYp[Cyc], 'branch_gives_q');
+EXPECT_TRUE(Yp = (Tf.Q or (Pe and Pb)), 'merge_of_q_and_other_branch');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

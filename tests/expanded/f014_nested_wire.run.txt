@@ -1,0 +1,1 @@
+tests/expanded/f014_nested_wire.st:71.0: error: InterpreterFault: array index 0 out of bounds

@@ -1,0 +1,35 @@
+(* @expect pass *)
+(* @cycles 5 *)
+(* Purpose: ST_EXEC runs its ST statements only when powered, and the power after it equals the power before it (a coil after it follows the contact before it). Several statements, with and without the ';' after the last one, and ST_EXEC as the first child of RUNG (powered by the rail on every scan). The state after the networks is idle. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t096_st_exec))
+TEST_M(t096_st_exec)
+var
+    A, Y1, Y2: bool;
+    N, M, S, K: dint;
+    InA: array[1..5] of bool := [false, true, true, false, true];
+    ExpN: array[1..5] of dint := [0, 1, 2, 2, 3];
+    ExpM: array[1..5] of dint := [0, 10, 20, 20, 30];
+    ExpS: array[1..5] of dint := [0, 11, 22, 22, 33];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc];
+(*  |--| A |--[[ ST: N := N + 1; M := M + 10; ]]--( Y1 )--|  *)
+RUNG(CONTACT(A), ST_EXEC(N := N + 1; M := M + 10;), COIL(Y1))
+(*  |--| A |--[[ ST: S := N + M ]]--|   no ';' after the last statement  *)
+RUNG(CONTACT(A), ST_EXEC(S := N + M))
+(*  |--[[ ST: K := K + 1; ]]--( Y2 )--|   first child: powered by the rail  *)
+RUNG(ST_EXEC(K := K + 1;), COIL(Y2))
+EXPECT_TRUE(N = ExpN[Cyc], 'runs_only_when_powered');
+EXPECT_TRUE(M = ExpM[Cyc], 'second_statement_runs_too');
+EXPECT_TRUE(S = ExpS[Cyc], 'last_semicolon_optional');
+EXPECT_TRUE(Y1 = A, 'power_after_equals_power_before');
+EXPECT_TRUE(K = Cyc, 'first_child_runs_every_scan');
+EXPECT_TRUE(Y2, 'first_child_power_is_rail');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

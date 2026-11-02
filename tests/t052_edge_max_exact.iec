@@ -1,0 +1,29 @@
+(* @expect pass *)
+(* @cycles 3 *)
+(* Purpose: RUNGIEC_EDGE_MAX is a slot count: exactly 3 slots serve 2 edge contacts and 1 transition-sensing coil (slots 1..3). *)
+{#define RUNGIEC_EDGE_MAX 3}
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t052_edge_max_exact))
+TEST_M(t052_edge_max_exact)
+var
+    A, Yr, Yf, Yc: bool;
+    InA: array[1..3] of bool := [false, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc];
+(*  |--|P A |--( Yr )--|  *)
+RUNG(RISE_CONTACT(A), COIL(Yr))
+(*  |--|N A |--( Yf )--|  *)
+RUNG(FALL_CONTACT(A), COIL(Yf))
+(*  |--| A |--(P Yc )--|  *)
+RUNG(CONTACT(A), RISE_COIL(Yc))
+EXPECT_TRUE(Yr = (Cyc = 2), 'rise_contact');
+EXPECT_TRUE(Yf = (Cyc = 3), 'fall_contact');
+EXPECT_TRUE(Yc = (Cyc = 2), 'rise_coil');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

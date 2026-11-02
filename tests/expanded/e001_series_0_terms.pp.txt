@@ -1,0 +1,1 @@
+tests/e001_series_0_terms.iec:12.0: error: PP91: 'RUNGIEC SERIES has 0 elements, allowed 1 to 16'

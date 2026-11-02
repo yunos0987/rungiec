@@ -1,0 +1,1 @@
+tests/e049_st_exec_empty.iec:12.0: error: PP91: 'RUNGIEC ST_EXEC has no statements'

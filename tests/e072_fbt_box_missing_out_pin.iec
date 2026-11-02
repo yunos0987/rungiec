@@ -1,0 +1,15 @@
+(* @expect pp-error PP34.*FBT_BOX: expected 4 *)
+(* @cycles 1 *)
+(* Purpose: FBT_BOX without the output pin is an argument count error reported by jiepp with the macro name. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+    Tm: TON;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--[ Tm:TON IN ]--( Y )--|   the output pin is missing  *)
+RUNG(CONTACT(A), FBT_BOX(Tm, TON, IN), COIL(Y))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,1 @@
+tests/e018_edge_max_counts_coils.iec:15.0: error: PP91: 'RUNGIEC edge slot 2 exceeds 1, the edge contacts and transition coils of this POU need more slots'

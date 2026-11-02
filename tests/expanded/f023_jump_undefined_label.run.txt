@@ -1,0 +1,1 @@
+tests/expanded/f023_jump_undefined_label.st:70.0: error: 0x40010801: Skip; UNDEFINED_SYMBOL

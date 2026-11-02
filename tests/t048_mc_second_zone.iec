@@ -1,0 +1,43 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: BEGIN_MC() / END_MC(): a second independent zone after the first END_MC(); the left rail is ON before, between and after the zones. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t048_mc_second_zone))
+TEST_M(t048_mc_second_zone)
+var
+    X, Y, Head, Zone1, AfterMcr, Zone2, AfterMcr2: bool;
+    InX: array[1..4] of bool := [false, true, false, true];
+    InY: array[1..4] of bool := [false, false, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+X := InX[Cyc]; Y := InY[Cyc];
+(*  |--( Head )--|   before the zones: left rail ON  *)
+RUNG(COIL(Head))
+(*  |--| X |--(MC)--|  *)
+BEGIN_MC(CONTACT(X))
+(*  |--( Zone1 )--|  *)
+RUNG(COIL(Zone1))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--( AfterMcr )--|  *)
+RUNG(COIL(AfterMcr))
+(*  |--| Y |--(MC)--|   second zone  *)
+BEGIN_MC(CONTACT(Y))
+(*  |--( Zone2 )--|  *)
+RUNG(COIL(Zone2))
+(*  |--(MCR)--|  *)
+END_MC()
+(*  |--( AfterMcr2 )--|  *)
+RUNG(COIL(AfterMcr2))
+EXPECT_TRUE(Head, 'head_rail_on');
+EXPECT_TRUE(Zone1 = X, 'first_zone_follows_condition');
+EXPECT_TRUE(AfterMcr, 'rail_on_after_mcr');
+EXPECT_TRUE(Zone2 = Y, 'second_zone_follows_its_condition');
+EXPECT_TRUE(AfterMcr2, 'rail_on_after_second_mcr');
+T_EXPECT_IDLE(idle_after_mcr);
+END_RUNGIEC()
+END_TEST_M

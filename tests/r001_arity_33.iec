@@ -1,0 +1,15 @@
+(* @expect residual _RUNGIEC_SERIES_33\( *)
+(* @cycles 1 *)
+(* Purpose: With the arity error PP91 ignored, arity 33 has no dispatch entry, so the call stays unexpanded and is detected as residual text. *)
+{#ignore PP91}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |-- ... --| A |--|   33 contacts, 33 terms  *)
+RUNG(CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A), CONTACT(A))
+END_RUNGIEC()
+end_program

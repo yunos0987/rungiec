@@ -1,0 +1,36 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: Boxes in PARALLEL branches run according to their own branch power, all branches are evaluated. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t036_fun_in_parallel))
+function Bump : dint
+var_in_out cnt: dint; end_var
+cnt := cnt + 1;
+Bump := cnt;
+end_function
+TEST_M(t036_fun_in_parallel)
+var
+    A, B1, B2, Y: bool;
+    N1, N2: dint;
+    InA: array[1..8] of bool := [false, true, false, true, false, true, false, true];
+    InB1: array[1..8] of bool := [false, false, true, true, false, false, true, true];
+    InB2: array[1..8] of bool := [false, false, false, false, true, true, true, true];
+    ExpN1: array[1..8] of dint := [0, 0, 0, 1, 1, 1, 1, 2];
+    ExpN2: array[1..8] of dint := [0, 0, 0, 0, 0, 1, 1, 2];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B1 := InB1[Cyc]; B2 := InB2[Cyc];
+(*  |--| A |--+--| B1 |--[ Bump(cnt := N1) ]--+--( Y )--|  *)
+(*  |         |                               |         |  *)
+(*  |         +--| B2 |--[ Bump(cnt := N2) ]--+         |  *)
+RUNG(CONTACT(A), PARALLEL(SERIES(CONTACT(B1), FUN_EXEC(Bump, cnt := N1)), SERIES(CONTACT(B2), FUN_EXEC(Bump, cnt := N2))), COIL(Y))
+EXPECT_TRUE(N1 = ExpN1[Cyc], 'first_branch_box_runs_when_its_branch_power_is_on');
+EXPECT_TRUE(N2 = ExpN2[Cyc], 'second_branch_box_runs_even_if_first_branch_is_on');
+EXPECT_TRUE(Y = (A and (B1 or B2)), 'y_is_a_and_either_branch');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

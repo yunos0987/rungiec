@@ -1,0 +1,1 @@
+tests/expanded/f019_end_net_inside_rung.st:73.0: error: InterpreterFault: array index 0 out of bounds

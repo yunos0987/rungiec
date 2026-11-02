@@ -1,0 +1,41 @@
+(* @expect pass *)
+(* @cycles 16 *)
+(* Purpose: A function block that uses the DSL internally can be called in the middle of a network without disturbing the caller. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t035_fb_internal_dsl))
+function_block InnerFb
+var_input a1, b1: bool; end_var
+var_output q: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| a1 |--| b1 |--( q )--|  *)
+RUNG(CONTACT(a1), CONTACT(b1), COIL(q))
+END_RUNGIEC()
+end_function_block
+TEST_M(t035_fb_internal_dsl)
+var
+    A, B, C, D, Y1, Y2: bool;
+    In0, In1: InnerFb;
+    InA: array[1..16] of bool := [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true];
+    InB: array[1..16] of bool := [false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true];
+    InC: array[1..16] of bool := [false, false, false, false, true, true, true, true, false, false, false, false, true, true, true, true];
+    InD: array[1..16] of bool := [false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc]; D := InD[Cyc];
+(*  |--| A |--[ In0(a1 := B, b1 := C) ]--| In0.q |--( Y1 )--|  *)
+RUNG(CONTACT(A), FB_EXEC(In0, a1 := B, b1 := C), CONTACT(In0.q), COIL(Y1))
+T_EXPECT_IDLE(idle_after_net1);
+(*  |--| A |--+--[ In1(a1 := B, b1 := C) ]--| In1.q |--+--( Y2 )--|  *)
+(*  |         |                                        |          |  *)
+(*  |         +--| D |---------------------------------+          |  *)
+RUNG(CONTACT(A), PARALLEL(SERIES(FB_EXEC(In1, a1 := B, b1 := C), CONTACT(In1.q)), CONTACT(D)), COIL(Y2))
+EXPECT_TRUE(Y1 = (A and B and C), 'y1_through_inner_dsl_fb');
+EXPECT_TRUE(Y2 = (A and ((B and C) or D)), 'y2_through_inner_dsl_fb_in_branch');
+T_EXPECT_IDLE(idle_after_net2);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,76 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: JMP() and LABEL() in a FUNCTION (RUNGIEC_VAR_NOEDGE()) and in a FUNCTION_BLOCK, with the label last before END_RUNGIEC(). The same label name is used in each POU. A RETURN() after a label still returns. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t029_jump_in_function_and_fb))
+function SkipFn : dint
+var_input
+    Mode: bool;
+end_var
+RUNGIEC_VAR_NOEDGE()
+BEGIN_RUNGIEC()
+SkipFn := 1;
+(*  |--| Mode |-->>Done  *)
+RUNG(CONTACT(Mode), JMP(Done))
+(*  |--[[ ST: SkipFn := 2; ]]--|  *)
+RUNG(ST_EXEC(SkipFn := 2;))
+(*  Done:  *)
+LABEL(Done)
+END_RUNGIEC()
+end_function
+function_block SkipFb
+var_input
+    Mode, A, R: bool;
+end_var
+var_output
+    Y, Z: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Mode |-->>Done  *)
+RUNG(CONTACT(Mode), JMP(Done))
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+(*  Done:  *)
+LABEL(Done)
+(*  |--| R |--<RETURN>  *)
+RUNG(CONTACT(R), RETURN())
+(*  |--| A |--( Z )--|  *)
+RUNG(CONTACT(A), COIL(Z))
+END_RUNGIEC()
+end_function_block
+TEST_M(t029_jump_in_function_and_fb)
+var
+    Fb: SkipFb;
+    Mode, Ran: bool;
+    R1, R2: dint;
+    Cyc: dint;
+    InMode: array[1..4] of bool := [false, true, true, false];
+    InA: array[1..4] of bool := [true, false, true, false];
+    InR: array[1..4] of bool := [false, false, true, true];
+    ExpY: array[1..4] of bool := [true, true, true, false];
+    ExpZ: array[1..4] of bool := [true, false, false, false];
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Mode := InMode[Cyc];
+R1 := SkipFn(Mode := true);
+R2 := SkipFn(Mode := false);
+EXPECT_TRUE(R1 = 1, 'function_jumps_to_label_at_end');
+EXPECT_TRUE(R2 = 2, 'function_runs_rung_without_jump');
+Fb(Mode := Mode, A := InA[Cyc], R := InR[Cyc]);
+EXPECT_TRUE(Fb.Y = ExpY[Cyc], 'fb_coil_held_while_skipped');
+EXPECT_TRUE(Fb.Z = ExpZ[Cyc], 'fb_return_after_label');
+Ran := false;
+(*  |--| Mode |-->>Done  *)
+RUNG(CONTACT(Mode), JMP(Done))
+(*  |--[[ ST: Ran := true; ]]--|  *)
+RUNG(ST_EXEC(Ran := true;))
+(*  Done:  *)
+LABEL(Done)
+EXPECT_TRUE(Ran = not Mode, 'program_label_with_same_name');
+T_EXPECT_IDLE(idle_after_label);
+END_RUNGIEC()
+END_TEST_M

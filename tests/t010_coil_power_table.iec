@@ -1,0 +1,33 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: Coil behaviour for power ON/OFF and preset output values (S/R hold their previous value when OFF). *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t010_coil_power_table))
+TEST_M(t010_coil_power_table)
+var
+    P, Pre, Y1, Y2, Y3, Y4: bool;
+    InP: array[1..4] of bool := [false, true, false, true];
+    InPre: array[1..4] of bool := [false, false, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+P := InP[Cyc]; Pre := InPre[Cyc];
+Y1 := Pre; Y2 := Pre; Y3 := Pre; Y4 := Pre;
+(*  |--| P |--( Y1 )--|  *)
+RUNG(CONTACT(P), COIL(Y1))
+(*  |--| P |--(/ Y2 )--|  *)
+RUNG(CONTACT(P), NOT_COIL(Y2))
+(*  |--| P |--(S Y3 )--|  *)
+RUNG(CONTACT(P), SET_COIL(Y3))
+(*  |--| P |--(R Y4 )--|  *)
+RUNG(CONTACT(P), RESET_COIL(Y4))
+EXPECT_TRUE(Y1 = P, 'coil_writes_power');
+EXPECT_TRUE(Y2 = (not P), 'n_coil_writes_inverted_power');
+EXPECT_TRUE(Y3 = (Pre or P), 's_coil_sets_or_holds');
+EXPECT_TRUE(Y4 = (Pre and (not P)), 'r_coil_resets_or_holds');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

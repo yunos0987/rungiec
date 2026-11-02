@@ -1,0 +1,37 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: edge detection written with the standard blocks (R_TRIG / F_TRIG) and with edge contacts must agree on every scan except the first scan of a FALSE input: F_TRIG (M starts FALSE, Q := not CLK and not M) reports a falling edge there, FALL_CONTACT does not (DESIGN D9). *)
+(* Source: IEC 61131-3 Ed. 4.0 (CDV), 6.6.3.5.3 Table 45 and its NOTE -- R_TRIG / F_TRIG definitions; with the initial memory, F_TRIG gives Q = TRUE on the first execution when CLK is FALSE *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t079_edge_contacts_vs_trig_fbs))
+TEST_M(t079_edge_contacts_vs_trig_fbs)
+var
+    X, RiseFb, FallFb, RiseContact, FallContact: bool;
+    Rt: R_TRIG;
+    Ft: F_TRIG;
+    InX: array[1..8] of bool := [false, true, true, false, false, true, false, false];
+    ExpRise: array[1..8] of bool := [false, true, false, false, false, true, false, false];
+    ExpFall: array[1..8] of bool := [false, false, false, true, false, false, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+X := InX[Cyc];
+(*  |--[ Rt(CLK := X) ]--| Rt.Q |--( RiseFb )--|  *)
+RUNG(FB_SCAN(Rt, CLK := X), CONTACT(Rt.Q), COIL(RiseFb))
+(*  |--[ Ft(CLK := X) ]--| Ft.Q |--( FallFb )--|  *)
+RUNG(FB_SCAN(Ft, CLK := X), CONTACT(Ft.Q), COIL(FallFb))
+(*  |--|P X |--( RiseContact )--|  *)
+RUNG(RISE_CONTACT(X), COIL(RiseContact))
+(*  |--|N X |--( FallContact )--|  *)
+RUNG(FALL_CONTACT(X), COIL(FallContact))
+EXPECT_TRUE(RiseFb = ExpRise[Cyc], 'r_trig_matches_expected');
+EXPECT_TRUE(RiseContact = ExpRise[Cyc], 'rise_contact_matches_expected');
+EXPECT_TRUE(FallContact = ExpFall[Cyc], 'fall_contact_matches_expected');
+EXPECT_TRUE((Cyc = 1) or (FallFb = ExpFall[Cyc]), 'f_trig_agrees_with_fall_contact_after_first_scan');
+EXPECT_TRUE((Cyc <> 1) or (FallFb and (not FallContact)), 'f_trig_reports_edge_on_first_false_scan');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

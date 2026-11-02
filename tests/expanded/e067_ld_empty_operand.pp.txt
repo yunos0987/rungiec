@@ -1,0 +1,1 @@
+tests/e067_ld_empty_operand.iec:13.0: error: PP91: 'RUNGIEC LD: CONTACT has an empty operand'

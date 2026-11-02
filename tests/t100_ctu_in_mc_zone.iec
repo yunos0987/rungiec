@@ -1,0 +1,36 @@
+(* @expect pass *)
+(* @cycles 10 *)
+(* Purpose: an up counter (the built-in CTU of jiecc) inside an MC zone, with the count input P held ON while the zone goes OFF and back ON. Cu1 is called by FB_IN behind the contact | P |: while the zone is OFF its CU is FALSE, it keeps CV, and when the zone turns ON again with P still ON, CU rises and it counts again. Cu2 is called by FB_SCAN with CU := P: it is called on every scan whatever the zone, keeps CV and does not count again when the zone turns ON (P did not change). A new rise of P is counted by both. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t100_ctu_in_mc_zone))
+TEST_M(t100_ctu_in_mc_zone)
+var
+    Z, P: bool;
+    Cu1, Cu2: CTU;
+    InZ: array[1..10] of bool := [true, true, false, false, true, true, false, true, true, true];
+    InP: array[1..10] of bool := [false, true, true, true, true, true, true, false, true, true];
+    ExpCv1: array[1..10] of int := [0, 1, 1, 1, 2, 2, 2, 2, 3, 3];
+    ExpCv2: array[1..10] of int := [0, 1, 1, 1, 1, 1, 1, 1, 2, 2];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Z := InZ[Cyc]; P := InP[Cyc];
+(*  |--| Z |--(MC)--|   the zone is OFF in scans 3, 4 and 7  *)
+BEGIN_MC(CONTACT(Z))
+(*  |--| P |--[ Cu1(PV := 100) CU ]--|   CU = FALSE while the zone is OFF  *)
+RUNG(CONTACT(P), FB_IN(Cu1, CU, PV := 100))
+(*  |--[ Cu2(CU := P, PV := 100) ]--|   called on every scan, CU follows P  *)
+RUNG(FB_SCAN(Cu2, CU := P, PV := 100))
+(*  |--(MCR)--|  *)
+END_MC()
+EXPECT_TRUE(Cu1.CV = ExpCv1[Cyc], 'fb_in_counter_cv');
+EXPECT_TRUE(Cu2.CV = ExpCv2[Cyc], 'fb_scan_counter_cv');
+EXPECT_TRUE(((Cyc <> 3) and (Cyc <> 4)) or (Cu1.CV = 1), 'fb_in_counter_keeps_cv_while_zone_off');
+EXPECT_TRUE((Cyc <> 5) or (Cu1.CV = 2), 'fb_in_counter_counts_again_when_zone_turns_on');
+EXPECT_TRUE((Cyc <> 5) or (Cu2.CV = 1), 'fb_scan_counter_does_not_count_again');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

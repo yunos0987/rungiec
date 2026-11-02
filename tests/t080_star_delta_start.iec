@@ -1,0 +1,54 @@
+(* @expect pass *)
+(* @cycles 22 *)
+(* Purpose: star-delta motor starter: Start seals in a request; the main contactor KM1 and the star contactor KMY close at once; after the star time (PT = 400 ms: KMY is ON for 4 scans) KMY opens, after the dead time (PT = 200 ms: 2 scans with neither contactor) KMD closes. The commands KMY and KMD interlock each other with b contacts, so the commands are never ON together. An interlock on the command bits does not see a welded contactor, so each rung also has the b contact of the other contactor's auxiliary contact (feedback KMYFb / KMDFb): when KMY is welded (KMYFb stays ON after its command is OFF), KMD is not energized, the fault is latched at the end of the dead time and the request drops. Stop drops everything. *)
+(* Source: common textbook pattern -- star-delta starting with a star timer, a changeover dead time and a star/delta interlock *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t080_star_delta_start))
+{#include 't_stdfb.iec'}
+TEST_M(t080_star_delta_start)
+var
+    Start, Stop, Req, StarDone, KM1, KMY, KMD, KMYFb, KMDFb, Fault: bool;
+    TStar, TDead: TON;
+    InStart: array[1..22] of bool := [false, true, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false];
+    InStop: array[1..22] of bool := [false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false];
+    InKmyWeld: array[1..22] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, true];
+    ExpKMY: array[1..22] of bool := [false, true, true, true, true, false, false, false, false, false, false, false, false, true, true, true, true, false, false, false, false, false];
+    ExpKMD: array[1..22] of bool := [false, false, false, false, false, false, false, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Stop := InStop[Cyc];
+(*  plant model: the auxiliary contacts follow the commands of the previous scan; InKmyWeld keeps KMY closed (welded)  *)
+KMYFb := KMY or InKmyWeld[Cyc]; KMDFb := KMD;
+(*  |--+--| Start |--+--|/Stop |--|/Fault |--( Req )--|  *)
+(*  |  |             |                                |  *)
+(*  |  +--| Req |----+                                |  *)
+RUNG(PARALLEL(CONTACT(Start), CONTACT(Req)), NOT_CONTACT(Stop), NOT_CONTACT(Fault), COIL(Req))
+(*  |--[ TStar(IN := Req, PT := T#400ms) ]--| TStar.Q |--( StarDone )--|  *)
+RUNG(FB_SCAN(TStar, IN := Req, PT := T#400ms), CONTACT(TStar.Q), COIL(StarDone))
+(*  |--[ TDead(IN := StarDone, PT := T#200ms) ]--|   dead time after the star time  *)
+RUNG(FB_SCAN(TDead, IN := StarDone, PT := T#200ms))
+(*  |--| TDead.Q |--| KMYFb |--(S Fault )--|   KMY still closed after the dead time: welded  *)
+RUNG(CONTACT(TDead.Q), CONTACT(KMYFb), SET_COIL(Fault))
+(*  |--| Req |--( KM1 )--|  *)
+RUNG(CONTACT(Req), COIL(KM1))
+(*  |--| Req |--|/StarDone |--|/KMD |--|/KMDFb |--( KMY )--|  *)
+RUNG(CONTACT(Req), NOT_CONTACT(StarDone), NOT_CONTACT(KMD), NOT_CONTACT(KMDFb), COIL(KMY))
+(*  |--| Req |--| TDead.Q |--|/KMY |--|/KMYFb |--( KMD )--|  *)
+RUNG(CONTACT(Req), CONTACT(TDead.Q), NOT_CONTACT(KMY), NOT_CONTACT(KMYFb), COIL(KMD))
+EXPECT_TRUE(KMY = ExpKMY[Cyc], 'kmy_matches_expected');
+EXPECT_TRUE(KMD = ExpKMD[Cyc], 'kmd_matches_expected');
+EXPECT_TRUE(not (KMY and KMD), 'star_and_delta_commands_never_together');
+EXPECT_TRUE(not (KMD and KMYFb), 'delta_never_while_star_feedback_on');
+EXPECT_TRUE(KM1 = Req, 'main_contactor_with_request');
+EXPECT_TRUE(((Cyc <> 6) and (Cyc <> 7)) or ((not KMY) and (not KMD)), 'dead_time_two_scans_between_star_and_delta');
+EXPECT_TRUE((Cyc <> 12) or ((not KM1) and (not KMY) and (not KMD)), 'stop_drops_all');
+EXPECT_TRUE((Cyc > 19) or (not Fault), 'no_fault_in_normal_start');
+EXPECT_TRUE((Cyc <> 20) or ((not KMD) and Fault), 'welded_star_blocks_delta_and_latches_fault');
+EXPECT_TRUE((Cyc < 21) or ((not Req) and (not KM1) and Fault), 'fault_drops_request_and_main_contactor');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

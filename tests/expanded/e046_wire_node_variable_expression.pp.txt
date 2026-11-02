@@ -1,0 +1,5 @@
+tests/e046_wire_node_variable_expression.iec:15.0: error: PP54: '_RUNGIEC_IS_NODE_1' is not defined, evaluates to 0
+tests/e046_wire_node_variable_expression.iec:15.0: error: PP54: 'K0' is not defined, evaluates to 0
+tests/e046_wire_node_variable_expression.iec:15.0: error: PP91: 'RUNGIEC WIRE from node 1 + K is not an integer literal from 0 to 64'
+tests/e046_wire_node_variable_expression.iec:15.0: error: PP54: 'K' is not defined, evaluates to 0
+tests/e046_wire_node_variable_expression.iec:15.0: error: PP54: 'K' is not defined, evaluates to 0

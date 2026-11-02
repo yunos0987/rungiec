@@ -1,0 +1,16 @@
+(* @expect pp-error PP91: .RUNGIEC LD: FBT_BOX has an empty name before its call arguments *)
+(* @cycles 1 *)
+(* Purpose: In the LD mode an empty type of FBT_BOX is PP91, because the type is written into the typeName attribute of the box. *)
+{#define RUNGIEC_LD 1}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+    Tm: TON;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--[ Tm:(PT := T#1s) IN Q ]--( Y )--|   the type is empty  *)
+RUNG(CONTACT(A), FBT_BOX(Tm, , IN, Q, PT := T#1s), COIL(Y))
+END_RUNGIEC()
+end_program

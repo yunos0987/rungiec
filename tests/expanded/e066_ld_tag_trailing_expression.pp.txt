@@ -1,0 +1,3 @@
+tests/e066_ld_tag_trailing_expression.iec:14.0: error: PP54: '_RUNGIEC_LD_TAGOF__RUNGIEC_LD_TAG' is not defined, evaluates to 0
+tests/e066_ld_tag_trailing_expression.iec:14.0: error: PP54: 'B_' is not defined, evaluates to 0
+tests/e066_ld_tag_trailing_expression.iec:14.0: error: PP91: 'RUNGIEC LD: a child is not an element, SERIES or PARALLEL'

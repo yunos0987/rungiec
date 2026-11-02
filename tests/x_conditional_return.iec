@@ -1,0 +1,24 @@
+(* @expect pass *)
+(* @cycles 5 *)
+(* Check for examples/conditional_return.iec: feeds inputs and verifies the ladder. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_conditional_return))
+{#include 'conditional_return.iec'}
+TEST_M(x_conditional_return)
+var
+    Ctl: conditional_return;
+    Maint, Cmd: bool;
+    InMaint: array[1..5] of bool := [false, false, true, false, true];
+    InCmd: array[1..5] of bool := [false, true, false, false, true];
+    ExpOut: array[1..5] of bool := [false, true, true, false, false];
+    Cyc: dint;
+end_var
+T_BEGIN()
+Maint := InMaint[Cyc]; Cmd := InCmd[Cyc];
+Ctl(Maint := Maint, Cmd := Cmd);
+EXPECT_TRUE(Ctl.Out = ExpOut[Cyc], 'out_follows_expected_sequence');
+EXPECT_TRUE(Ctl.Lamp = Maint, 'lamp_follows_maint');
+EXPECT_TRUE((Cyc <> 3) or Ctl.Out, 'out_holds_on_during_maintenance');
+EXPECT_TRUE((Cyc <> 4) or (not Ctl.Out), 'out_resumes_after_maintenance');
+EXPECT_TRUE((Cyc <> 5) or (not Ctl.Out), 'out_holds_off_during_maintenance');
+END_TEST_M

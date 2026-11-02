@@ -1,0 +1,35 @@
+(* @expect pass *)
+(* @cycles 7 *)
+(* Purpose: P/N/NP/PN contacts over x = F,T,T,F,F,T,F (previous value starts FALSE). *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t020_edge_truth_table))
+TEST_M(t020_edge_truth_table)
+var
+    X, Yp, Yn, Ynp, Ypn: bool;
+    InX: array[1..7] of bool := [false, true, true, false, false, true, false];
+    ExpP: array[1..7] of bool := [false, true, false, false, false, true, false];
+    ExpN: array[1..7] of bool := [false, false, false, true, false, false, true];
+    ExpNP: array[1..7] of bool := [true, false, true, true, true, false, true];
+    ExpPN: array[1..7] of bool := [true, true, true, false, true, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+X := InX[Cyc];
+(*  |--|P X |--( Yp )--|  *)
+RUNG(RISE_CONTACT(X), COIL(Yp))
+(*  |--|N X |--( Yn )--|  *)
+RUNG(FALL_CONTACT(X), COIL(Yn))
+(*  |--|/P X |--( Ynp )--|  *)
+RUNG(NOT_RISE_CONTACT(X), COIL(Ynp))
+(*  |--|/N X |--( Ypn )--|  *)
+RUNG(NOT_FALL_CONTACT(X), COIL(Ypn))
+EXPECT_TRUE(Yp = ExpP[Cyc], 'p_contact_matches_table');
+EXPECT_TRUE(Yn = ExpN[Cyc], 'n_contact_matches_table');
+EXPECT_TRUE(Ynp = ExpNP[Cyc], 'np_contact_matches_table');
+EXPECT_TRUE(Ypn = ExpPN[Cyc], 'pn_contact_matches_table');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

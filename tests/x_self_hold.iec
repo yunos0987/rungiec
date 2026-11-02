@@ -1,0 +1,26 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Check for examples/self_hold.iec: feeds inputs and verifies the ladder. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_self_hold))
+{#include 'self_hold.iec'}
+TEST_M(x_self_hold)
+var
+    Ctl: self_hold;
+    Start, Stop, Overload: bool;
+    InStart: array[1..8] of bool := [false, true, false, true, true, false, false, true];
+    InStop: array[1..8] of bool := [false, false, false, true, false, false, false, false];
+    InOverload: array[1..8] of bool := [false, false, false, false, false, true, false, true];
+    ExpRun: array[1..8] of bool := [false, true, true, false, true, false, false, false];
+    Cyc: dint;
+end_var
+T_BEGIN()
+Start := InStart[Cyc]; Stop := InStop[Cyc]; Overload := InOverload[Cyc];
+Ctl(Start := Start, Stop := Stop, Overload := Overload);
+EXPECT_TRUE(Ctl.Run = ExpRun[Cyc], 'run_follows_expected_sequence');
+EXPECT_TRUE((Cyc <> 2) or Ctl.Run, 'start_turns_on');
+EXPECT_TRUE((Cyc <> 3) or Ctl.Run, 'self_hold_after_start_released');
+EXPECT_TRUE((Cyc <> 4) or (not Ctl.Run), 'stop_has_priority_over_start');
+EXPECT_TRUE((Cyc <> 6) or (not Ctl.Run), 'overload_stops_the_motor');
+EXPECT_TRUE((Cyc <> 8) or (not Ctl.Run), 'start_is_ignored_during_overload');
+END_TEST_M

@@ -1,0 +1,1 @@
+tests/expanded/f024_label_nested_in_rung.st:70.0: error: InterpreterFault: array index 0 out of bounds

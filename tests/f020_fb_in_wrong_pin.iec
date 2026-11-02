@@ -1,0 +1,16 @@
+(* @expect run-error CLK; UNDEFINED_SYMBOL *)
+(* @cycles 1 *)
+(* Purpose: FB_IN with a pin name that the function block does not have (CLK on a TON) is a jiecc error that names the pin. *)
+{#include 'rungiec.iec'}
+{#include 't_stdfb.iec'}
+program __main__
+var
+    A, Y: bool;
+    Tm: TON;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--[ Tm(PT := T#300ms) CLK ]--( Y )--|   TON has no input CLK  *)
+RUNG(CONTACT(A), FB_IN(Tm, CLK, PT := T#300ms), COIL(Y))
+END_RUNGIEC()
+end_program

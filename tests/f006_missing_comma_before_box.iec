@@ -1,0 +1,17 @@
+(* @expect run-error INVALID_SYNTAX *)
+(* @cycles 1 *)
+(* Purpose: An element followed by a box without a comma is a jiecc syntax error (every element starts with an assignment, not with if). *)
+{#include 'rungiec.iec'}
+function_block Fb0
+end_function_block
+program __main__
+var
+    A, B, Y, Y2: bool;
+    Fb0: Fb0;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--[ Fb0 ]--( Y )--|   comma missing before the box  *)
+RUNG(CONTACT(A) FB_EXEC(Fb0), COIL(Y))
+END_RUNGIEC()
+end_program

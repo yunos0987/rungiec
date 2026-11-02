@@ -1,0 +1,1 @@
+tests/e047_begin_rungiec_twice.iec:12.0: error: PP91: 'RUNGIEC END_RUNGIEC is missing before BEGIN_RUNGIEC'

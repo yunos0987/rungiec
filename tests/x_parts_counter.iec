@@ -1,0 +1,26 @@
+(* @expect pass *)
+(* @cycles 10 *)
+(* Check for examples/parts_counter.iec: feeds inputs and verifies the ladder. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_parts_counter))
+{#include 'parts_counter.iec'}
+TEST_M(x_parts_counter)
+var
+    Ctl: parts_counter;
+    Sensor, Reset: bool;
+    InSensor: array[1..10] of bool := [true, false, true, false, true, false, true, false, false, true];
+    InReset: array[1..10] of bool := [false, false, false, false, false, false, false, false, true, false];
+    ExpCount: array[1..10] of dint := [1, 1, 2, 2, 3, 3, 3, 3, 0, 1];
+    ExpFull: array[1..10] of bool := [false, false, false, false, true, true, true, true, false, false];
+    Cyc: dint;
+end_var
+T_BEGIN()
+Sensor := InSensor[Cyc]; Reset := InReset[Cyc];
+Ctl(Sensor := Sensor, Reset := Reset);
+EXPECT_TRUE(Ctl.Count = ExpCount[Cyc], 'count_follows_expected_sequence');
+EXPECT_TRUE(Ctl.Full = ExpFull[Cyc], 'full_follows_expected_sequence');
+EXPECT_TRUE((Cyc <> 5) or (Ctl.Full and (Ctl.Count = 3)), 'full_when_third_part_counted');
+EXPECT_TRUE((Cyc <> 7) or (Ctl.Count = 3), 'count_stops_at_full');
+EXPECT_TRUE((Cyc <> 9) or ((Ctl.Count = 0) and (not Ctl.Full)), 'reset_clears_count_and_full');
+EXPECT_TRUE((Cyc <> 10) or (Ctl.Count = 1), 'counting_restarts_after_reset');
+END_TEST_M

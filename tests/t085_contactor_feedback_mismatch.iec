@@ -1,0 +1,54 @@
+(* @expect pass *)
+(* @cycles 25 *)
+(* Purpose: contactor command / feedback discrepancy monitor. Km is the contactor command and KmFb its auxiliary contact (answer-back). Mismatch = Km XOR KmFb; a TON (PT = 300 ms) tolerates the short mismatch while the contactor operates (1 scan here) and latches Fault when the mismatch lasts 300 ms (the 4th consecutive scan, ET = 0 on the first). Fault cuts the command on the next scan and blocks Start; Reset clears Fault only while command and feedback agree. Two faults are tested: no answer (command ON, feedback stays OFF, e.g. a broken coil) and welded (command OFF, feedback stays ON). The plant model makes KmFb follow the command of the previous scan. *)
+(* Source: common textbook pattern -- contactor feedback (answer-back) supervision: a discrepancy timer between the command and the auxiliary contact latches a fault that is reset only when both agree *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t085_contactor_feedback_mismatch))
+{#include 't_stdfb.iec'}
+TEST_M(t085_contactor_feedback_mismatch)
+var
+    Start, Stop, Reset, Km, KmFb, Mismatch, Fault: bool;
+    TDisc: TON;
+    InStart: array[1..25] of bool := [false, true, false, false, false, false, false, true, false, false, false, false, true, false, true, false, false, false, false, false, false, false, true, false, false];
+    InStop: array[1..25] of bool := [false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false];
+    InReset: array[1..25] of bool := [false, false, false, false, false, false, false, false, false, false, true, false, false, true, false, false, false, false, false, false, false, true, false, false, true];
+    InNoAnswer: array[1..25] of bool := [false, false, false, false, false, false, false, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false];
+    InWeld: array[1..25] of bool := [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, true, true, true, true, false, false];
+    ExpKm: array[1..25] of bool := [false, true, true, true, false, false, false, true, true, true, true, false, false, false, true, true, true, false, false, false, false, false, false, false, false];
+    ExpFault: array[1..25] of bool := [false, false, false, false, false, false, false, false, false, false, true, true, true, false, false, false, false, false, false, false, true, true, true, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Start := InStart[Cyc]; Stop := InStop[Cyc]; Reset := InReset[Cyc];
+(*  plant model: the auxiliary contact follows the command of the previous scan; InNoAnswer keeps it open, InWeld keeps it closed  *)
+KmFb := (Km and (not InNoAnswer[Cyc])) or InWeld[Cyc];
+(*  |--+--| Start |--+--|/Stop |--|/Fault |--( Km )--|  *)
+(*  |  |             |                               |  *)
+(*  |  +--| Km |-----+                               |  *)
+RUNG(PARALLEL(CONTACT(Start), CONTACT(Km)), NOT_CONTACT(Stop), NOT_CONTACT(Fault), COIL(Km))
+(*  |--+--| Km |--|/KmFb |--+--( Mismatch )--|   command and feedback disagree  *)
+(*  |  |                    |                |  *)
+(*  |  +--|/Km |--| KmFb |--+                |  *)
+RUNG(PARALLEL(SERIES(CONTACT(Km), NOT_CONTACT(KmFb)), SERIES(NOT_CONTACT(Km), CONTACT(KmFb))), COIL(Mismatch))
+(*  |--[ TDisc(IN := Mismatch, PT := T#300ms) ]--| TDisc.Q |--(S Fault )--|  *)
+RUNG(FB_SCAN(TDisc, IN := Mismatch, PT := T#300ms), CONTACT(TDisc.Q), SET_COIL(Fault))
+(*  |--| Reset |--|/Mismatch |--(R Fault )--|   reset only when command and feedback agree  *)
+RUNG(CONTACT(Reset), NOT_CONTACT(Mismatch), RESET_COIL(Fault))
+EXPECT_TRUE(Km = ExpKm[Cyc], 'command_matches_expected');
+EXPECT_TRUE(Fault = ExpFault[Cyc], 'fault_matches_expected');
+EXPECT_TRUE(Mismatch = (Km <> KmFb), 'mismatch_follows_command_and_feedback');
+EXPECT_TRUE(((Cyc <> 2) and (Cyc <> 5) and (Cyc <> 15)) or (Mismatch and (not Fault)), 'short_mismatch_while_switching_tolerated');
+EXPECT_TRUE((Cyc <> 10) or (Mismatch and (not Fault)), 'no_answer_not_yet_fault_on_third_scan');
+EXPECT_TRUE((Cyc <> 11) or (Fault and Km and (not KmFb)), 'no_answer_latches_fault');
+EXPECT_TRUE((Cyc <> 12) or ((not Km) and Fault), 'fault_cuts_command');
+EXPECT_TRUE(((Cyc <> 11) and (Cyc <> 22)) or Fault, 'reset_refused_while_mismatch');
+EXPECT_TRUE(((Cyc <> 13) and (Cyc <> 23)) or (not Km), 'start_refused_while_fault');
+EXPECT_TRUE(((Cyc <> 14) and (Cyc <> 25)) or ((not Fault) and (not Mismatch)), 'reset_accepted_when_consistent');
+EXPECT_TRUE((Cyc <> 21) or (Fault and (not Km) and KmFb), 'welded_contactor_latches_fault');
+EXPECT_TRUE((Cyc <> 24) or (Fault and (not Mismatch)), 'fault_stays_after_weld_clears_until_reset');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

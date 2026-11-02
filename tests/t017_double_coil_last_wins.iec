@@ -1,0 +1,30 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: Two coils on the same output: the later one wins. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t017_double_coil_last_wins))
+TEST_M(t017_double_coil_last_wins)
+var
+    A, B, Y, Z: bool;
+    InA: array[1..4] of bool := [false, true, false, true];
+    InB: array[1..4] of bool := [false, false, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc];
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+(*  |--| B |--( Y )--|  *)
+RUNG(CONTACT(B), COIL(Y))
+(*  |--| A |--( Z )--|  *)
+RUNG(CONTACT(A), COIL(Z))
+(*  |--| B |--(/ Z )--|  *)
+RUNG(CONTACT(B), NOT_COIL(Z))
+EXPECT_TRUE(Y = B, 'y_last_coil_wins');
+EXPECT_TRUE(Z = (not B), 'z_last_coil_wins');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

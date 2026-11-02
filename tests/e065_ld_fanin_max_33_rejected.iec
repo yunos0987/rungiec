@@ -1,0 +1,16 @@
+(* @expect pp-error PP91: .RUNGIEC LD: merge limit 33 is out of range 1 to 32 *)
+(* @cycles 1 *)
+(* Purpose: In the LD mode RUNGIEC_LD_FANIN_MAX 33 is above the generated set operations and is rejected when rungiec.iec is included. *)
+{#define RUNGIEC_LD 1}
+{#define RUNGIEC_LD_FANIN_MAX 33}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

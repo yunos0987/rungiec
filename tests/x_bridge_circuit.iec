@@ -1,0 +1,25 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Check for examples/bridge_circuit.iec: feeds inputs and verifies the ladder. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_bridge_circuit))
+{#include 'bridge_circuit.iec'}
+TEST_M(x_bridge_circuit)
+var
+    Br: bridge_circuit;
+    InA: array[1..8] of bool := [false, true, false, true, false, true, false, true];
+    InB: array[1..8] of bool := [false, false, true, false, true, false, true, true];
+    InC: array[1..8] of bool := [false, true, false, false, true, false, true, true];
+    InD: array[1..8] of bool := [false, false, true, true, false, true, false, true];
+    InE: array[1..8] of bool := [false, false, false, true, true, false, false, true];
+    ExpY: array[1..8] of bool := [false, true, true, true, false, false, false, true];
+    Cyc: dint;
+end_var
+T_BEGIN()
+Br(A := InA[Cyc], B := InB[Cyc], C := InC[Cyc], D := InD[Cyc], E := InE[Cyc]);
+EXPECT_TRUE(Br.Y = ExpY[Cyc], 'y_follows_expected_sequence');
+EXPECT_TRUE((Cyc <> 2) or Br.Y, 'upper_path_a_c');
+EXPECT_TRUE((Cyc <> 3) or Br.Y, 'lower_path_b_d');
+EXPECT_TRUE((Cyc <> 4) or Br.Y, 'bridge_path_a_e_d');
+EXPECT_TRUE((Cyc <> 5) or (not Br.Y), 'bridge_does_not_conduct_b_e_c');
+END_TEST_M

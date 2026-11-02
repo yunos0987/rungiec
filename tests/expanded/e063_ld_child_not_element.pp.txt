@@ -1,0 +1,2 @@
+tests/e063_ld_child_not_element.iec:14.0: error: PP54: '_RUNGIEC_LD_TAGOF__RUNGIEC_LD_IS_A_' is not defined, evaluates to 0
+tests/e063_ld_child_not_element.iec:14.0: error: PP91: 'RUNGIEC LD: a child is not an element, SERIES or PARALLEL'

@@ -1,0 +1,35 @@
+(* @expect pass *)
+(* @cycles 16 *)
+(* Purpose: With RUNGIEC_ARITY_MAX 4, a 4-term SERIES (3 contacts + coil) and a 4-term PARALLEL work for all input combinations. *)
+{#define RUNGIEC_ARITY_MAX 4}
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t041_arity_max_4))
+TEST_M(t041_arity_max_4)
+var
+    A, B, C, D, Y1, Y2: bool;
+    InA: array[1..16] of bool := [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true];
+    InB: array[1..16] of bool := [false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true];
+    InC: array[1..16] of bool := [false, false, false, false, true, true, true, true, false, false, false, false, true, true, true, true];
+    InD: array[1..16] of bool := [false, false, false, false, false, false, false, false, true, true, true, true, true, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc]; C := InC[Cyc]; D := InD[Cyc];
+(*  |--| A |--| B |--| C |--( Y1 )--|   4-term SERIES  *)
+RUNG(CONTACT(A), CONTACT(B), CONTACT(C), COIL(Y1))
+(*  |--+--| A |--+--( Y2 )--|   4-term PARALLEL  *)
+(*  |  |         |          |  *)
+(*  |  +--| B |--+          |  *)
+(*  |  |         |          |  *)
+(*  |  +--| C |--+          |  *)
+(*  |  |         |          |  *)
+(*  |  +--| D |--+          |  *)
+RUNG(PARALLEL(CONTACT(A), CONTACT(B), CONTACT(C), CONTACT(D)), COIL(Y2))
+EXPECT_TRUE(Y1 = (A and B and C), 'y1_four_term_series');
+EXPECT_TRUE(Y2 = (A or B or C or D), 'y2_four_term_parallel');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

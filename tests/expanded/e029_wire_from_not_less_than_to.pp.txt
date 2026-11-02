@@ -1,0 +1,1 @@
+tests/e029_wire_from_not_less_than_to.iec:14.0: error: PP91: 'RUNGIEC WIRE from node 1 must be 0 or more and less than to node 1'

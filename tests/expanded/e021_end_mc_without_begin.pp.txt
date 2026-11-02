@@ -1,0 +1,2 @@
+tests/e021_end_mc_without_begin.iec:14.0: error: PP91: 'RUNGIEC END_MC without BEGIN_MC'
+tests/e021_end_mc_without_begin.iec:14.0: error: PP39: Invalid operand for built-in macro; '__counter_set: value out of range 0..2147483647: -1'

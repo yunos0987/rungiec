@@ -1,0 +1,33 @@
+(* @expect pass *)
+(* @cycles 5 *)
+(* Purpose: FB_ENO: OFF gives no execution and power OFF; ON gives execution and power = ENO. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t033_fb_eno))
+function_block EnoFb
+var_input ok_in: bool; end_var
+var_output n: dint; end_var
+n := n + 1;
+eno := ok_in;
+end_function_block
+TEST_M(t033_fb_eno)
+var
+    P, Good, Y1: bool;
+    Fb0: EnoFb;
+    InP: array[1..5] of bool := [false, true, true, false, true];
+    InGood: array[1..5] of bool := [true, true, false, false, true];
+    ExpN: array[1..5] of dint := [0, 1, 2, 2, 3];
+    ExpY: array[1..5] of bool := [false, true, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+P := InP[Cyc]; Good := InGood[Cyc];
+(*  |--| P |--[ Fb0(ok_in := Good) ENO ]--( Y1 )--|   power after box = ENO  *)
+RUNG(CONTACT(P), FB_ENO(Fb0, ok_in := Good), COIL(Y1))
+EXPECT_TRUE(Fb0.n = ExpN[Cyc], 'instance_not_executed_when_power_off');
+EXPECT_TRUE(Y1 = ExpY[Cyc], 'power_after_box_is_eno_and_off_without_power');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

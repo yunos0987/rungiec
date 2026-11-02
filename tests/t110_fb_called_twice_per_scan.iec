@@ -1,0 +1,48 @@
+(* @expect pass *)
+(* @cycles 6 *)
+(* Purpose: A function block with RUNGIEC_VAR() and RETURN() is called several times in one scan. F1 returns on some scans and F2, called right after it, never does: the outputs of F2 do not depend on F1, because each instance has its own work variables. F3 is called twice on every scan, first with R TRUE (it returns after Y) and then with R FALSE: the second call runs the whole body again with the stack that the first call left reset by BEGIN_RUNGIEC(), and its edge contact sees the previous value of its own last full call. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t110_fb_called_twice_per_scan))
+function_block RetTwiceFb
+var_input R, A: bool; end_var
+var_output Y, Z: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+(*  |--| R |--<RETURN>  *)
+RUNG(CONTACT(R), RETURN())
+(*  |--|P A |--( Z )--|  *)
+RUNG(RISE_CONTACT(A), COIL(Z))
+END_RUNGIEC()
+end_function_block
+TEST_M(t110_fb_called_twice_per_scan)
+var
+    F1, F2, F3: RetTwiceFb;
+    Cyc: dint;
+    InR1: array[1..6] of bool := [false, true, true, false, true, false];
+    InA1: array[1..6] of bool := [true, true, false, true, true, false];
+    InA2: array[1..6] of bool := [true, false, true, true, false, true];
+    InA3: array[1..6] of bool := [true, false, true, true, false, true];
+    ExpY1: array[1..6] of bool := [true, true, false, true, true, false];
+    ExpZ1: array[1..6] of bool := [true, true, true, false, false, false];
+    ExpY2: array[1..6] of bool := [true, false, true, true, false, true];
+    ExpZ2: array[1..6] of bool := [true, false, true, false, false, true];
+    ExpZ3First: array[1..6] of bool := [false, true, false, true, false, false];
+    ExpZ3: array[1..6] of bool := [true, false, true, false, false, true];
+end_var
+T_BEGIN()
+F1(R := InR1[Cyc], A := InA1[Cyc]);
+F2(R := false, A := InA2[Cyc]);
+EXPECT_TRUE(F1.Y = ExpY1[Cyc], 'f1_y_written_before_return');
+EXPECT_TRUE(F1.Z = ExpZ1[Cyc], 'f1_z_held_on_return');
+EXPECT_TRUE(F2.Y = ExpY2[Cyc], 'f2_y_independent_of_f1');
+EXPECT_TRUE(F2.Z = ExpZ2[Cyc], 'f2_z_independent_of_f1');
+F3(R := true, A := InA3[Cyc]);
+EXPECT_TRUE(F3.Y = InA3[Cyc], 'f3_first_call_y');
+EXPECT_TRUE(F3.Z = ExpZ3First[Cyc], 'f3_first_call_returns_before_z');
+F3(R := false, A := InA3[Cyc]);
+EXPECT_TRUE(F3.Y = InA3[Cyc], 'f3_second_call_y');
+EXPECT_TRUE(F3.Z = ExpZ3[Cyc], 'f3_second_call_edge');
+END_TEST_M

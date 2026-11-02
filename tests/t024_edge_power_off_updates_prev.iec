@@ -1,0 +1,26 @@
+(* @expect pass *)
+(* @cycles 5 *)
+(* Purpose: The previous value is updated even while the power is OFF, so a rise during OFF is not seen later. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t024_edge_power_off_updates_prev))
+TEST_M(t024_edge_power_off_updates_prev)
+var
+    Pw, X, Y: bool;
+    InPw: array[1..5] of bool := [false, false, true, true, true];
+    InX: array[1..5] of bool := [false, true, true, false, true];
+    ExpY: array[1..5] of bool := [false, false, false, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Pw := InPw[Cyc]; X := InX[Cyc];
+(*  |--| Pw |--|P X |--( Y )--|  *)
+RUNG(CONTACT(Pw), RISE_CONTACT(X), COIL(Y))
+EXPECT_TRUE(Y = ExpY[Cyc], 'y_matches_expected');
+EXPECT_TRUE((Cyc <> 3) or (not Y), 'rise_while_power_off_does_not_fire_later');
+EXPECT_TRUE((Cyc <> 5) or Y, 'rise_with_power_on_fires');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

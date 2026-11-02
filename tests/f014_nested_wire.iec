@@ -1,0 +1,17 @@
+(* @expect run-error array index 0 out of bounds *)
+(* @cycles 1 *)
+(* Purpose: A WIRE nested inside the elements of another WIRE cannot be seen by the preprocessor (the argument is expanded first), so the nesting trap at the start of WIRE faults at run time (RungiecStIn[1 - RungiecSp] with RungiecSp = 1). *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, B, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(1)--( Y )--|   a WIRE is deliberately written inside a WIRE  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A), WIRE(0, 1, CONTACT(B)))
+WIRE(1, 2, COIL(Y))
+END_NET()
+END_RUNGIEC()
+end_program

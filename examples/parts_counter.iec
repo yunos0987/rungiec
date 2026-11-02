@@ -1,0 +1,15 @@
+{#include 'rungiec.iec'}
+(* Example: parts counter. Each sensor rising edge counts one part until the target of 3 is reached (Full); Reset clears the count. *)
+function_block parts_counter
+var_input Sensor, Reset: bool; end_var
+var_output Full: bool; Count: dint; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--|P Sensor |--|/Full |--[[ ST: Count := Count + 1; ]]--|   count on the rising edge while not full  *)
+RUNG(RISE_CONTACT(Sensor), NOT_CONTACT(Full), ST_EXEC(Count := Count + 1;))
+(*  |--| Reset |--[[ ST: Count := 0; ]]--|  *)
+RUNG(CONTACT(Reset), ST_EXEC(Count := 0;))
+(*  |--| Count >= 3 |--( Full )--|  *)
+RUNG(GE_CONTACT(Count, 3), COIL(Full))
+END_RUNGIEC()
+end_function_block

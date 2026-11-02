@@ -1,0 +1,24 @@
+{#include 'rungiec.iec'}
+(* Example: jump over rungs. In auto mode the manual rung is skipped and the auto rung drives Motor; in manual mode the jump to Done skips the auto rung. Only one of the two coils of Motor runs on a scan. *)
+(* JMP() is written as the last child of a RUNG, and LABEL() on its own line between networks. *)
+function_block jump_over_rungs
+var_input Auto, Jog, Cmd: bool; end_var
+var_output Motor, Lamp: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Auto |-->>AutoMode  *)
+RUNG(CONTACT(Auto), JMP(AutoMode))
+(*  |--| Jog |--( Motor )--|   manual mode  *)
+RUNG(CONTACT(Jog), COIL(Motor))
+(*  |-->>Done  *)
+RUNG(JMP(Done))
+(*  AutoMode:  *)
+LABEL(AutoMode)
+(*  |--| Cmd |--( Motor )--|   auto mode  *)
+RUNG(CONTACT(Cmd), COIL(Motor))
+(*  Done:  *)
+LABEL(Done)
+(*  |--| Auto |--( Lamp )--|  *)
+RUNG(CONTACT(Auto), COIL(Lamp))
+END_RUNGIEC()
+end_function_block

@@ -1,0 +1,14 @@
+(* @expect pp-error PP91: .RUNGIEC BEGIN_RUNGIEC is missing before END_RUNGIEC *)
+(* @cycles 1 *)
+(* Purpose: A POU that declares the work variables with RUNGIEC_VAR() but forgets BEGIN_RUNGIEC() is a preprocessing error at END_RUNGIEC(). *)
+(* @lint-allow LN16 *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+(*  |--| A |--( Y )--|   BEGIN_RUNGIEC() is deliberately omitted  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

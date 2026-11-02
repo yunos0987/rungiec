@@ -1,0 +1,16 @@
+(* @expect run-error Skip; UNDEFINED_SYMBOL *)
+(* @cycles 1 *)
+(* Purpose: A JMP() to a label that the POU never defines passes the preprocessor checks (the label could come later) and is the jiecc error UNDEFINED_SYMBOL. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    Mode, A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Mode |-->>Skip   no LABEL(Skip) in this POU  *)
+RUNG(CONTACT(Mode), JMP(Skip))
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

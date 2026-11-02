@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="www.iec.ch/public/TC65SC65BWG7TF10" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smcext="https://www.ia.omron.com/Smc" xsi:schemaLocation="https://www.ia.omron.com/Smc%20IEC61131_10_Ed1_0_SmcExt1_0_Spc1_0.xsd" schemaVersion="1">
+<FileHeader companyName="" productName="" productVersion="" />
+<ContentHeader name="" creationDateTime="2026-11-01T00:00:00+09:00">
+<AddDataInfo><Info name="https://www.ia.omron.com/Smc IEC61131_10_Ed1_0_SmcExt1_0_Spc1_0.xsd" vendor="https://www.ia.omron.com/Smc" /></AddDataInfo>
+</ContentHeader>
+<Types><GlobalNamespace>
+<FunctionBlock name="traffic_light">
+	<Parameters>
+	<InputVars>
+		<Variable name="Run" orderWithinParamSet="1">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</InputVars>
+	<InputVars>
+		<Variable name="PedBtn" orderWithinParamSet="2">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</InputVars>
+	<OutputVars>
+		<Variable name="Red" orderWithinParamSet="3">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</OutputVars>
+	<OutputVars>
+		<Variable name="Yellow" orderWithinParamSet="4">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</OutputVars>
+	<OutputVars>
+		<Variable name="Green" orderWithinParamSet="5">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</OutputVars>
+	<OutputVars>
+		<Variable name="Request" orderWithinParamSet="6">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</OutputVars>
+	</Parameters>
+	<Vars accessSpecifier="private">
+		<Variable name="TmRed">
+			<Type><TypeName>TON</TypeName></Type>
+		</Variable>
+	</Vars>
+	<Vars accessSpecifier="private">
+		<Variable name="TmGreen">
+			<Type><TypeName>TON</TypeName></Type>
+		</Variable>
+	</Vars>
+	<Vars accessSpecifier="private">
+		<Variable name="TmLong">
+			<Type><TypeName>TON</TypeName></Type>
+		</Variable>
+	</Vars>
+	<Vars accessSpecifier="private">
+		<Variable name="TmYellow">
+			<Type><TypeName>TON</TypeName></Type>
+		</Variable>
+	</Vars>
+	<MainBody>
+		<BodyContent xsi:type="LD">
+<Rung evaluationOrder="1">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="1"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="Run"><ConnectionPointIn><Connection refConnectionPointOutId="1"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="2"/></LdObject>
+<LdObject xsi:type="Coil" latch="reset" operand="Red"><ConnectionPointIn><Connection refConnectionPointOutId="2"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="3"/></LdObject>
+<LdObject xsi:type="Coil" latch="reset" operand="Yellow"><ConnectionPointIn><Connection refConnectionPointOutId="3"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="4"/></LdObject>
+<LdObject xsi:type="Coil" latch="reset" operand="Green"><ConnectionPointIn><Connection refConnectionPointOutId="4"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="5"/></LdObject>
+<LdObject xsi:type="Coil" latch="reset" operand="Request"><ConnectionPointIn><Connection refConnectionPointOutId="5"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="6"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="6"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="2">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="7"/></LdObject>
+<LdObject xsi:type="Contact" operand="Run"><ConnectionPointIn><Connection refConnectionPointOutId="7"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="8"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="Red"><ConnectionPointIn><Connection refConnectionPointOutId="8"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="9"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="Yellow"><ConnectionPointIn><Connection refConnectionPointOutId="9"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="10"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="Green"><ConnectionPointIn><Connection refConnectionPointOutId="10"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="11"/></LdObject>
+<LdObject xsi:type="Coil" latch="set" operand="Red"><ConnectionPointIn><Connection refConnectionPointOutId="11"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="12"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="12"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="3">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="13"/></LdObject>
+<LdObject xsi:type="Contact" operand="Red"><ConnectionPointIn><Connection refConnectionPointOutId="13"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="14"/></LdObject>
+<LdObject xsi:type="Contact" operand="TmRed.Q"><ConnectionPointIn><Connection refConnectionPointOutId="14"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="15"/></LdObject>
+<LdObject xsi:type="Coil" latch="reset" operand="Red"><ConnectionPointIn><Connection refConnectionPointOutId="15"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="16"/></LdObject>
+<LdObject xsi:type="Coil" latch="set" operand="Green"><ConnectionPointIn><Connection refConnectionPointOutId="16"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="17"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="17"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="4">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="18"/></LdObject>
+<LdObject xsi:type="Contact" operand="Green"><ConnectionPointIn><Connection refConnectionPointOutId="18"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="19"/></LdObject>
+<LdObject xsi:type="Contact" operand="TmGreen.Q"><ConnectionPointIn><Connection refConnectionPointOutId="19"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="20"/></LdObject>
+<LdObject xsi:type="Contact" negated="true" operand="Request"><ConnectionPointIn><Connection refConnectionPointOutId="20"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="21"/></LdObject>
+<LdObject xsi:type="Contact" operand="TmLong.Q"><ConnectionPointIn><Connection refConnectionPointOutId="19"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="22"/></LdObject>
+<LdObject xsi:type="Coil" latch="reset" operand="Green"><ConnectionPointIn><Connection refConnectionPointOutId="21"/><Connection refConnectionPointOutId="22"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="23"/></LdObject>
+<LdObject xsi:type="Coil" latch="reset" operand="Request"><ConnectionPointIn><Connection refConnectionPointOutId="23"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="24"/></LdObject>
+<LdObject xsi:type="Coil" latch="set" operand="Yellow"><ConnectionPointIn><Connection refConnectionPointOutId="24"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="25"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="25"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="5">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="26"/></LdObject>
+<LdObject xsi:type="Contact" operand="Yellow"><ConnectionPointIn><Connection refConnectionPointOutId="26"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="27"/></LdObject>
+<LdObject xsi:type="Contact" operand="TmYellow.Q"><ConnectionPointIn><Connection refConnectionPointOutId="27"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="28"/></LdObject>
+<LdObject xsi:type="Coil" latch="reset" operand="Yellow"><ConnectionPointIn><Connection refConnectionPointOutId="28"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="29"/></LdObject>
+<LdObject xsi:type="Coil" latch="set" operand="Red"><ConnectionPointIn><Connection refConnectionPointOutId="29"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="30"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="30"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="6">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="31"/></LdObject>
+<LdObject xsi:type="Contact" operand="Green"><ConnectionPointIn><Connection refConnectionPointOutId="31"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="32"/></LdObject>
+<LdObject xsi:type="Contact" operand="PedBtn"><ConnectionPointIn><Connection refConnectionPointOutId="32"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="33"/></LdObject>
+<LdObject xsi:type="Coil" latch="set" operand="Request"><ConnectionPointIn><Connection refConnectionPointOutId="33"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="34"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="34"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="7">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="35"/></LdObject>
+<LdObject xsi:type="Contact" operand="Red"><ConnectionPointIn><Connection refConnectionPointOutId="35"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="36"/></LdObject>
+<FbdObject xsi:type="DataSource" identifier="T#3s"><ConnectionPointOut connectionPointOutId="37"/></FbdObject>
+<FbdObject xsi:type="Block" typeName="TON" instanceName="TmRed"><InputVariables><InputVariable parameterName="IN"><ConnectionPointIn><Connection refConnectionPointOutId="36"/></ConnectionPointIn></InputVariable><InputVariable parameterName="PT"><ConnectionPointIn><Connection refConnectionPointOutId="37"/></ConnectionPointIn></InputVariable></InputVariables><OutputVariables><OutputVariable parameterName="Q"><ConnectionPointOut connectionPointOutId="38"/></OutputVariable></OutputVariables></FbdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="38"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="8">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="39"/></LdObject>
+<LdObject xsi:type="Contact" operand="Green"><ConnectionPointIn><Connection refConnectionPointOutId="39"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="40"/></LdObject>
+<FbdObject xsi:type="DataSource" identifier="T#3s"><ConnectionPointOut connectionPointOutId="41"/></FbdObject>
+<FbdObject xsi:type="Block" typeName="TON" instanceName="TmGreen"><InputVariables><InputVariable parameterName="IN"><ConnectionPointIn><Connection refConnectionPointOutId="40"/></ConnectionPointIn></InputVariable><InputVariable parameterName="PT"><ConnectionPointIn><Connection refConnectionPointOutId="41"/></ConnectionPointIn></InputVariable></InputVariables><OutputVariables><OutputVariable parameterName="Q"><ConnectionPointOut connectionPointOutId="42"/></OutputVariable></OutputVariables></FbdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="42"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="9">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="43"/></LdObject>
+<LdObject xsi:type="Contact" operand="Green"><ConnectionPointIn><Connection refConnectionPointOutId="43"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="44"/></LdObject>
+<FbdObject xsi:type="DataSource" identifier="T#5s"><ConnectionPointOut connectionPointOutId="45"/></FbdObject>
+<FbdObject xsi:type="Block" typeName="TON" instanceName="TmLong"><InputVariables><InputVariable parameterName="IN"><ConnectionPointIn><Connection refConnectionPointOutId="44"/></ConnectionPointIn></InputVariable><InputVariable parameterName="PT"><ConnectionPointIn><Connection refConnectionPointOutId="45"/></ConnectionPointIn></InputVariable></InputVariables><OutputVariables><OutputVariable parameterName="Q"><ConnectionPointOut connectionPointOutId="46"/></OutputVariable></OutputVariables></FbdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="46"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="10">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="47"/></LdObject>
+<LdObject xsi:type="Contact" operand="Yellow"><ConnectionPointIn><Connection refConnectionPointOutId="47"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="48"/></LdObject>
+<FbdObject xsi:type="DataSource" identifier="T#1s"><ConnectionPointOut connectionPointOutId="49"/></FbdObject>
+<FbdObject xsi:type="Block" typeName="TON" instanceName="TmYellow"><InputVariables><InputVariable parameterName="IN"><ConnectionPointIn><Connection refConnectionPointOutId="48"/></ConnectionPointIn></InputVariable><InputVariable parameterName="PT"><ConnectionPointIn><Connection refConnectionPointOutId="49"/></ConnectionPointIn></InputVariable></InputVariables><OutputVariables><OutputVariable parameterName="Q"><ConnectionPointOut connectionPointOutId="50"/></OutputVariable></OutputVariables></FbdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="50"/></ConnectionPointIn></LdObject>
+</Rung>
+      </BodyContent>
+	</MainBody>
+</FunctionBlock>
+</GlobalNamespace></Types>
+<Instances>
+</Instances>
+</Project>

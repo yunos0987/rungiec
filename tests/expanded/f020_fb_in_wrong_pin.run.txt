@@ -1,0 +1,1 @@
+tests/expanded/f020_fb_in_wrong_pin.st:157.0: error: 0x40010801: CLK; UNDEFINED_SYMBOL

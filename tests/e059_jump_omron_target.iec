@@ -1,0 +1,19 @@
+(* @expect pp-error PP91: .RUNGIEC JMP to Skip is not supported for the jiecc targets omron, keyence and mitsubishi *)
+(* @cycles 1 *)
+(* Purpose: For the jiecc targets omron, keyence and mitsubishi, JMP() and LABEL() are PP91. jiecc -t omron predefines _OMRON as true; jiepp alone does not, so the test defines it before rungiec.iec. *)
+{#define _OMRON true}
+{#include 'rungiec.iec'}
+program __main__
+var
+    Mode, A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| Mode |-->>Skip  *)
+RUNG(CONTACT(Mode), JMP(Skip))
+(*  |--| A |--( Y )--|  *)
+RUNG(CONTACT(A), COIL(Y))
+(*  Skip:  *)
+LABEL(Skip)
+END_RUNGIEC()
+end_program

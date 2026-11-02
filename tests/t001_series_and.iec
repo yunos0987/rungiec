@@ -1,0 +1,23 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: SERIES is AND. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t001_series_and))
+TEST_M(t001_series_and)
+var
+    A, B, Y: bool;
+    InA: array[1..4] of bool := [false, true, false, true];
+    InB: array[1..4] of bool := [false, false, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc];
+(*  |--| A |--| B |--( Y )--|  *)
+RUNG(CONTACT(A), CONTACT(B), COIL(Y))
+EXPECT_TRUE(Y = (A and B), 'y_eq_a_and_b');
+T_EXPECT_IDLE(idle_after_net1);
+END_RUNGIEC()
+END_TEST_M

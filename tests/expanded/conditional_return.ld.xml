@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="www.iec.ch/public/TC65SC65BWG7TF10" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smcext="https://www.ia.omron.com/Smc" xsi:schemaLocation="https://www.ia.omron.com/Smc%20IEC61131_10_Ed1_0_SmcExt1_0_Spc1_0.xsd" schemaVersion="1">
+<FileHeader companyName="" productName="" productVersion="" />
+<ContentHeader name="" creationDateTime="2026-10-31T00:00:00+09:00">
+<AddDataInfo><Info name="https://www.ia.omron.com/Smc IEC61131_10_Ed1_0_SmcExt1_0_Spc1_0.xsd" vendor="https://www.ia.omron.com/Smc" /></AddDataInfo>
+</ContentHeader>
+<Types><GlobalNamespace>
+<FunctionBlock name="conditional_return">
+	<Parameters>
+	<InputVars>
+		<Variable name="Maint" orderWithinParamSet="1">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</InputVars>
+	<InputVars>
+		<Variable name="Cmd" orderWithinParamSet="2">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</InputVars>
+	<OutputVars>
+		<Variable name="Out" orderWithinParamSet="3">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</OutputVars>
+	<OutputVars>
+		<Variable name="Lamp" orderWithinParamSet="4">
+			<Type><TypeName>bool</TypeName></Type>
+		</Variable>
+	</OutputVars>
+	</Parameters>
+	<MainBody>
+		<BodyContent xsi:type="LD">
+<Rung evaluationOrder="1">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="1"/></LdObject>
+<LdObject xsi:type="Contact" operand="Maint"><ConnectionPointIn><Connection refConnectionPointOutId="1"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="2"/></LdObject>
+<LdObject xsi:type="Coil" operand="Lamp"><ConnectionPointIn><Connection refConnectionPointOutId="2"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="3"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="3"/></ConnectionPointIn></LdObject>
+</Rung>
+<Rung evaluationOrder="2">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="4"/></LdObject>
+<LdObject xsi:type="Contact" operand="Maint"><ConnectionPointIn><Connection refConnectionPointOutId="4"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="5"/></LdObject>
+<FbdObject xsi:type="Return"><ConnectionPointIn><Connection refConnectionPointOutId="5"/></ConnectionPointIn></FbdObject>
+</Rung>
+<Rung evaluationOrder="3">
+<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId="6"/></LdObject>
+<LdObject xsi:type="Contact" operand="Cmd"><ConnectionPointIn><Connection refConnectionPointOutId="6"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="7"/></LdObject>
+<LdObject xsi:type="Coil" operand="Out"><ConnectionPointIn><Connection refConnectionPointOutId="7"/></ConnectionPointIn><ConnectionPointOut connectionPointOutId="8"/></LdObject>
+<LdObject xsi:type="RightPowerRail"><ConnectionPointIn><Connection refConnectionPointOutId="8"/></ConnectionPointIn></LdObject>
+</Rung>
+      </BodyContent>
+	</MainBody>
+</FunctionBlock>
+</GlobalNamespace></Types>
+<Instances>
+</Instances>
+</Project>

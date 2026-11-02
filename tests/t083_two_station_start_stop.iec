@@ -1,0 +1,44 @@
+(* @expect pass *)
+(* @cycles 12 *)
+(* Purpose: conveyor started and stopped from either end plus an end-of-belt sensor: two parallel START contacts feed a SET coil, two parallel STOP contacts and the normally closed end sensor feed a RESET coil placed after it, so stop wins. *)
+(* Source: https://cache.industry.siemens.com/dl/files/822/45523822/att_82001/v1/s7kop__b.pdf, Appendix B.2 Example 1, p.200-201 -- a belt with start and stop buttons at both ends and a sensor that stops it at the end of the belt *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t083_two_station_start_stop))
+TEST_M(t083_two_station_start_stop)
+var
+    S1, S2, S3, S4, Motor: bool;
+    S5Clear: bool := true;
+    InS1: array[1..12] of bool := [false, true, false, false, false, false, false, false, false, false, false, false];
+    InS2: array[1..12] of bool := [false, false, false, true, false, false, false, false, false, false, false, false];
+    InS3: array[1..12] of bool := [false, false, false, false, true, false, true, false, true, false, false, false];
+    InS4: array[1..12] of bool := [false, false, false, false, false, false, false, false, false, false, true, false];
+    InS5Clear: array[1..12] of bool := [true, true, true, true, true, true, false, true, true, true, true, true];
+    ExpMotor: array[1..12] of bool := [false, true, true, false, true, true, false, false, true, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+S1 := InS1[Cyc]; S2 := InS2[Cyc]; S3 := InS3[Cyc]; S4 := InS4[Cyc]; S5Clear := InS5Clear[Cyc];
+(*  |--+--| S1 |--+--(S Motor )--|   either START button  *)
+(*  |  |          |              |  *)
+(*  |  +--| S3 |--+              |  *)
+RUNG(PARALLEL(CONTACT(S1), CONTACT(S3)), SET_COIL(Motor))
+(*  |--+--| S2 |-------+--(R Motor )--|   either STOP button or the sensor opening its contact  *)
+(*  |  |               |              |  *)
+(*  |  +--| S4 |-------+              |  *)
+(*  |  |               |              |  *)
+(*  |  +--|/S5Clear |--+              |  *)
+RUNG(PARALLEL(CONTACT(S2), CONTACT(S4), NOT_CONTACT(S5Clear)), RESET_COIL(Motor))
+EXPECT_TRUE(Motor = ExpMotor[Cyc], 'motor_matches_expected');
+EXPECT_TRUE((Cyc <> 2) or Motor, 'start_from_first_station');
+EXPECT_TRUE((Cyc <> 4) or (not Motor), 'stop_from_first_station');
+EXPECT_TRUE((Cyc <> 5) or Motor, 'start_from_second_station');
+EXPECT_TRUE((Cyc <> 7) or (not Motor), 'end_sensor_stops_belt_even_with_start_pressed');
+EXPECT_TRUE((Cyc <> 8) or (not Motor), 'motor_stays_off_after_sensor_clears');
+EXPECT_TRUE((Cyc <> 10) or Motor, 'motor_holds_after_start_released');
+EXPECT_TRUE((Cyc <> 11) or (not Motor), 'stop_from_second_station_alone');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

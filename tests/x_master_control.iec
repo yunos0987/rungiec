@@ -1,0 +1,30 @@
+(* @expect pass *)
+(* @cycles 5 *)
+(* Check for examples/master_control.iec: feeds inputs and verifies the ladder. *)
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_master_control))
+{#include 'master_control.iec'}
+TEST_M(x_master_control)
+var
+    Ctl: master_control;
+    Auto, EStop, Go: bool;
+    InAuto: array[1..5] of bool := [false, true, true, true, true];
+    InEStop: array[1..5] of bool := [false, false, false, true, false];
+    InGo: array[1..5] of bool := [true, true, false, true, true];
+    ExpPump: array[1..5] of bool := [false, true, false, false, true];
+    ExpValve: array[1..5] of bool := [false, false, true, false, false];
+    ExpLatched: array[1..5] of bool := [false, true, true, true, true];
+    Cyc: dint;
+end_var
+T_BEGIN()
+Auto := InAuto[Cyc]; EStop := InEStop[Cyc]; Go := InGo[Cyc];
+Ctl(Auto := Auto, EStop := EStop, Go := Go);
+EXPECT_TRUE(Ctl.Pump = ExpPump[Cyc], 'pump_follows_expected_sequence');
+EXPECT_TRUE(Ctl.Valve = ExpValve[Cyc], 'valve_follows_expected_sequence');
+EXPECT_TRUE(Ctl.Latched = ExpLatched[Cyc], 'latched_follows_expected_sequence');
+EXPECT_TRUE((Cyc <> 1) or (not Ctl.Pump), 'coil_off_when_zone_off');
+EXPECT_TRUE((Cyc <> 1) or (not Ctl.Latched), 'set_not_executed_when_zone_off');
+EXPECT_TRUE((Cyc <> 4) or Ctl.Latched, 'set_held_when_zone_off');
+EXPECT_TRUE((Cyc <> 4) or (not Ctl.Valve), 'not_coil_false_when_zone_off');
+EXPECT_TRUE(Ctl.Always = Go, 'network_after_mcr_unaffected');
+END_TEST_M

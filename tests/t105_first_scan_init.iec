@@ -1,0 +1,48 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: first-scan initialization written in the ladder. FirstScan is TRUE on the first scan only: it is the coil of |/InitDone |, and the last rung of the initialization sets InitDone. On that scan the initialization rungs write the initial setpoint (ST_EXEC), select automatic mode (SET) and clear an alarm memory (RESET; AlmMem starts TRUE here, like a value left from before). After the first scan the operator values are kept: a new setpoint, a switch to manual mode and a new alarm are not overwritten. The first-scan bit of a PLC (Mitsubishi SM402) turns ON again at every STOP -> RUN; this one turns ON again only when the variables are initialized (a new start of the program). *)
+(* Source: https://dl.mitsubishielectric.com/dl/fa/document/manual/plc/sh081266eng/sh081266engae.pdf, p.1020 -- SM402 "triggers one scan when the switch is changed from STOP to RUN" (used to run an instruction once at the start) *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t105_first_scan_init))
+TEST_M(t105_first_scan_init)
+var
+    InitDone, FirstScan, Auto, ManualPb, OpWrite, Fault: bool;
+    AlmMem: bool := true;
+    Setpoint, OpValue: int;
+    InManual: array[1..8] of bool := [false, false, false, true, false, false, false, false];
+    InOpWrite: array[1..8] of bool := [false, false, true, false, false, false, false, false];
+    InFault: array[1..8] of bool := [false, false, false, false, false, true, false, false];
+    ExpFirst: array[1..8] of bool := [true, false, false, false, false, false, false, false];
+    ExpSetpoint: array[1..8] of int := [50, 50, 70, 70, 70, 70, 70, 70];
+    ExpAuto: array[1..8] of bool := [true, true, true, false, false, false, false, false];
+    ExpAlm: array[1..8] of bool := [false, false, false, false, false, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+ManualPb := InManual[Cyc]; OpWrite := InOpWrite[Cyc]; Fault := InFault[Cyc]; OpValue := 70;
+(*  |--|/InitDone |--( FirstScan )--|   TRUE on the first scan only  *)
+RUNG(NOT_CONTACT(InitDone), COIL(FirstScan))
+(*  |--| FirstScan |--[[ ST: Setpoint := 50; ]]--(S Auto )--(R AlmMem )--|   initial values  *)
+RUNG(CONTACT(FirstScan), ST_EXEC(Setpoint := 50;), SET_COIL(Auto), RESET_COIL(AlmMem))
+(*  |--| FirstScan |--(S InitDone )--|   the last rung of the initialization  *)
+RUNG(CONTACT(FirstScan), SET_COIL(InitDone))
+(*  |--| OpWrite |--[[ ST: Setpoint := OpValue; ]]--|   the operator writes a new setpoint  *)
+RUNG(CONTACT(OpWrite), ST_EXEC(Setpoint := OpValue;))
+(*  |--| ManualPb |--(R Auto )--|  *)
+RUNG(CONTACT(ManualPb), RESET_COIL(Auto))
+(*  |--| Fault |--(S AlmMem )--|  *)
+RUNG(CONTACT(Fault), SET_COIL(AlmMem))
+EXPECT_TRUE(FirstScan = ExpFirst[Cyc], 'first_scan_matches_expected');
+EXPECT_TRUE(Setpoint = ExpSetpoint[Cyc], 'setpoint_matches_expected');
+EXPECT_TRUE(Auto = ExpAuto[Cyc], 'auto_matches_expected');
+EXPECT_TRUE(AlmMem = ExpAlm[Cyc], 'alarm_memory_matches_expected');
+EXPECT_TRUE((Cyc <> 1) or (FirstScan and InitDone and (Setpoint = 50) and Auto and (not AlmMem)), 'initial_values_on_first_scan');
+EXPECT_TRUE((Cyc = 1) or (not FirstScan), 'first_scan_only_once');
+EXPECT_TRUE((Cyc < 3) or (Setpoint = 70), 'operator_setpoint_not_overwritten');
+EXPECT_TRUE((Cyc < 4) or (not Auto), 'manual_mode_not_overwritten');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

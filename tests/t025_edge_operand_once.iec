@@ -1,0 +1,42 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: An edge contact evaluates its operand exactly once per scan, powered or not (observed by a call counter). *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t025_edge_operand_once))
+function Probe : bool
+var_input v: bool; end_var
+var_in_out cnt: dint; end_var
+var_temp t: bool; end_var
+t := v;
+cnt := cnt + 1;
+Probe := t;
+end_function
+TEST_M(t025_edge_operand_once)
+var
+    Fls: bool;
+    Tru: bool := true;
+    X, Y1, Y2: bool;
+    N1, N2, N3, N4, N5: dint;
+    InX: array[1..4] of bool := [false, true, true, false];
+    ExpP: array[1..4] of bool := [false, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+X := InX[Cyc];
+(*  |--| Fls |--|P Probe(v := X, cnt := N1) |--|N Probe(v := X, cnt := N2) |--|/P Probe(v := X, cnt := N3) |--|/N Probe(v := X, cnt := N4) |--( Y1 )--|  *)
+RUNG(CONTACT(Fls), RISE_CONTACT(Probe(v := X, cnt := N1)), FALL_CONTACT(Probe(v := X, cnt := N2)), NOT_RISE_CONTACT(Probe(v := X, cnt := N3)), NOT_FALL_CONTACT(Probe(v := X, cnt := N4)), COIL(Y1))
+(*  |--| Tru |--|P Probe(v := X, cnt := N5) |--( Y2 )--|  *)
+RUNG(CONTACT(Tru), RISE_CONTACT(Probe(v := X, cnt := N5)), COIL(Y2))
+EXPECT_TRUE(N1 = Cyc, 'p_operand_once_per_scan');
+EXPECT_TRUE(N2 = Cyc, 'n_operand_once_per_scan');
+EXPECT_TRUE(N3 = Cyc, 'np_operand_once_per_scan');
+EXPECT_TRUE(N4 = Cyc, 'pn_operand_once_per_scan');
+EXPECT_TRUE(N5 = Cyc, 'powered_p_operand_once_per_scan');
+EXPECT_TRUE(Y2 = ExpP[Cyc], 'powered_p_result');
+EXPECT_TRUE(not Y1, 'y1_off');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

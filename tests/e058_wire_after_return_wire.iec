@@ -1,0 +1,20 @@
+(* @expect pp-error PP91: .RUNGIEC WIRE after a WIRE that jumps or returns, write that WIRE last before END_NET *)
+(* @cycles 1 *)
+(* Purpose: A WIRE after the WIRE with RETURN() in the same network would not run on a scan that returns, so the later WIRE is PP91. *)
+(* @lint-allow LN13 *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, R, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--(1)--| R |--<RETURN>  *)
+(*  |         (1)--( Y )--|   after the WIRE with the return  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(1, 2, CONTACT(R), RETURN())
+WIRE(1, 3, COIL(Y))
+END_NET()
+END_RUNGIEC()
+end_program

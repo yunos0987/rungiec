@@ -1,0 +1,25 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: RETURN() in a PROGRAM ends the scan; the stack it leaves is reset by BEGIN_RUNGIEC() on the next scan. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t050_return_program))
+TEST_M(t050_return_program)
+var
+    Quit, Pass2: bool;
+    After: dint;
+    InQuit: array[1..4] of bool := [false, true, true, false];
+    ExpAfter: array[1..4] of dint := [0, 1, 1, 1];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Quit := InQuit[Cyc];
+EXPECT_TRUE(After = ExpAfter[Cyc], 'after_count_of_previous_scans');
+T_EXPECT_IDLE(idle_at_scan_start);
+(*  |--| Quit |--<RETURN>  *)
+RUNG(CONTACT(Quit), RETURN())
+After := After + 1;
+END_RUNGIEC()
+END_TEST_M

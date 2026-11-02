@@ -1,0 +1,31 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: NOT_CONTACT is the negated contact, in series and in parallel. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t003_not_contact))
+TEST_M(t003_not_contact)
+var
+    A, B, Y1, Y2, Y3: bool;
+    InA: array[1..4] of bool := [false, true, false, true];
+    InB: array[1..4] of bool := [false, false, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc];
+(*  |--|/A |--( Y1 )--|  *)
+RUNG(NOT_CONTACT(A), COIL(Y1))
+(*  |--| A |--|/B |--( Y2 )--|  *)
+RUNG(CONTACT(A), NOT_CONTACT(B), COIL(Y2))
+(*  |--+--|/A |--+--( Y3 )--|  *)
+(*  |  |         |          |  *)
+(*  |  +--|/B |--+          |  *)
+RUNG(PARALLEL(NOT_CONTACT(A), NOT_CONTACT(B)), COIL(Y3))
+EXPECT_TRUE(Y1 = (not A), 'y1_eq_not_a');
+EXPECT_TRUE(Y2 = (A and not B), 'y2_eq_a_and_not_b');
+EXPECT_TRUE(Y3 = ((not A) or (not B)), 'y3_eq_nand');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,32 @@
+(* @expect pass *)
+(* @cycles 2 *)
+(* Purpose: First element with no predecessor is powered (left rail is ON), even after a previous network ended OFF. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t005_left_rail_power))
+TEST_M(t005_left_rail_power)
+var
+    A, Y0, Y1, Y2, Y3: bool;
+    InA: array[1..2] of bool := [false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc];
+Y1 := false; Y2 := false; Y3 := false;
+(*  |--| A |--( Y0 )--|  *)
+RUNG(CONTACT(A), COIL(Y0))
+(*  |--( Y1 )--|  *)
+RUNG(COIL(Y1))
+(*  |--( Y2 )--|   SERIES inside RUNG  *)
+RUNG(SERIES(COIL(Y2)))
+(*  |--+--( Y3 )--|  *)
+RUNG(PARALLEL(COIL(Y3)))
+EXPECT_TRUE(Y0 = A, 'y0_follows_a');
+EXPECT_TRUE(Y1, 'y1_rung_coil_always_on');
+EXPECT_TRUE(Y2, 'y2_rung_series_coil_always_on');
+EXPECT_TRUE(Y3, 'y3_parallel_coil_always_on');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

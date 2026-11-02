@@ -1,0 +1,16 @@
+(* @expect pp-error PP91: .RUNGIEC LD: a child is not an element, SERIES or PARALLEL *)
+(* @cycles 1 *)
+(* Purpose: In the LD mode an expression after an element (CONTACT(A) or B) is PP91 by the tag check; the check does not depend on -Werror=undef. *)
+(* @lint-allow LN14 *)
+{#define RUNGIEC_LD 1}
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, B, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|   or B is written after CONTACT(A)  *)
+RUNG(CONTACT(A) or B, COIL(Y))
+END_RUNGIEC()
+end_program

@@ -1,0 +1,87 @@
+(* t_stdfb.iec - deterministic stand-ins for the IEC 61131-3 standard timers (TON, TOF, TP) and a retentive
+   on-delay timer (TONR), shared by the tests.
+   Counters and edges (CTU, CTD, CTUD, R_TRIG, F_TRIG) are not here: the tests use the built-in function blocks
+   of jiecc 9.2.0 (tools/jiecc). The timers are stand-ins because jiecc --run has no virtual clock: the
+   built-in timers run on wall-clock time, so the result of a test would depend on the speed of the machine.
+   These blocks are deterministic instead: one call = one scan = 100 ms.
+   Call them with FB_SCAN or FB_IN (called on every scan) so that time advances on every scan.
+   They follow IEC 61131-3 Ed. 4 Table 47 / Figure 17 (TP / TON / TOF) and transcribe the recommended
+   implementation of Figure 18 with a call counter in place of the clock, so the scan where IN changes is
+   ET = 0 (as in Figure 17) and ET stops at PT. Differences from the standard:
+   - Time advances by 100 ms per call, not by real time. ET is looked up in a TIME table, so it is a multiple
+     of 100 ms and counts up to 4 s: a PT above 4 s never expires, and a PT that is not a multiple of 100 ms
+     expires at the next multiple (ET then shows PT, as in Figure 18).
+   - TOF starts with Q FALSE when IN is FALSE from the first call (the built-in TOF of jiecc 9.2.0 gives Q TRUE
+     for the first PT after the start).
+   - The names are the standard names. A user declaration takes priority over a built-in function block of
+     jiecc, so the tests that include this file use these timers instead of the built-in ones.
+   - TONR is not an IEC 61131-3 standard block (jiecc 9.2.0 has no TONR). It has the inputs and outputs of the
+     TONR (time accumulator) of Siemens S7-1200 / S7-1500: IN, R, PT, Q, ET. *)
+{#pragma once}
+(* TON (Figure 18 TON_TIME): the scan where IN rises is ET = 0 and each further scan with IN TRUE adds 100 ms; Q = IN and ET >= PT, then ET stays at PT. PT = T#300ms: Q on the 4th scan with IN TRUE (ET = 0, 100, 200, 300 ms). *)
+function_block TON
+var_input IN: bool; PT: time; end_var
+var_output Q: bool; ET: time; end_var
+var n: dint; last: bool; tbl: array[0..40] of time := [T#0ms, T#100ms, T#200ms, T#300ms, T#400ms, T#500ms, T#600ms, T#700ms, T#800ms, T#900ms, T#1000ms, T#1100ms, T#1200ms, T#1300ms, T#1400ms, T#1500ms, T#1600ms, T#1700ms, T#1800ms, T#1900ms, T#2000ms, T#2100ms, T#2200ms, T#2300ms, T#2400ms, T#2500ms, T#2600ms, T#2700ms, T#2800ms, T#2900ms, T#3000ms, T#3100ms, T#3200ms, T#3300ms, T#3400ms, T#3500ms, T#3600ms, T#3700ms, T#3800ms, T#3900ms, T#4000ms]; end_var
+if (not IN) or (not last) then
+    n := 0;
+elsif n < 40 then
+    n := n + 1;
+end_if;
+ET := tbl[n];
+Q := IN and (ET >= PT);
+if Q then ET := PT; end_if;
+last := IN;
+end_function_block
+(* TOF (Figure 18 TOF_TIME): Q is TRUE while IN is TRUE; the scan where IN falls is ET = 0 and each further scan with IN FALSE adds 100 ms; Q = IN or ET < PT, and once Q is FALSE ET stays at PT. PT = T#200ms: Q is still TRUE on the scan of the fall and the next one (ET = 0, 100 ms), FALSE on the 3rd (ET = 200 ms). n starts at 40 so that Q is FALSE when IN is FALSE from the first call (the standard START is 0, so ET is already large). *)
+function_block TOF
+var_input IN: bool; PT: time; end_var
+var_output Q: bool; ET: time; end_var
+var n: dint := 40; last: bool; tbl: array[0..40] of time := [T#0ms, T#100ms, T#200ms, T#300ms, T#400ms, T#500ms, T#600ms, T#700ms, T#800ms, T#900ms, T#1000ms, T#1100ms, T#1200ms, T#1300ms, T#1400ms, T#1500ms, T#1600ms, T#1700ms, T#1800ms, T#1900ms, T#2000ms, T#2100ms, T#2200ms, T#2300ms, T#2400ms, T#2500ms, T#2600ms, T#2700ms, T#2800ms, T#2900ms, T#3000ms, T#3100ms, T#3200ms, T#3300ms, T#3400ms, T#3500ms, T#3600ms, T#3700ms, T#3800ms, T#3900ms, T#4000ms]; end_var
+if IN or last then
+    n := 0;
+elsif n < 40 then
+    n := n + 1;
+end_if;
+ET := tbl[n];
+Q := IN or (ET < PT);
+if not Q then ET := PT; end_if;
+last := IN;
+end_function_block
+(* TP (Figure 18 TP_TIME): a rising edge of IN starts a pulse of PT (the edge scan is ET = 0, so Q is TRUE for PT/100ms scans, the edge scan included); IN is ignored while the pulse runs; after the pulse ET stays at PT while IN is TRUE and is 0 while IN is FALSE. *)
+function_block TP
+var_input IN: bool; PT: time; end_var
+var_output Q: bool; ET: time; end_var
+var n: dint; last: bool; tbl: array[0..40] of time := [T#0ms, T#100ms, T#200ms, T#300ms, T#400ms, T#500ms, T#600ms, T#700ms, T#800ms, T#900ms, T#1000ms, T#1100ms, T#1200ms, T#1300ms, T#1400ms, T#1500ms, T#1600ms, T#1700ms, T#1800ms, T#1900ms, T#2000ms, T#2100ms, T#2200ms, T#2300ms, T#2400ms, T#2500ms, T#2600ms, T#2700ms, T#2800ms, T#2900ms, T#3000ms, T#3100ms, T#3200ms, T#3300ms, T#3400ms, T#3500ms, T#3600ms, T#3700ms, T#3800ms, T#3900ms, T#4000ms]; end_var
+if Q then
+    if n < 40 then n := n + 1; end_if;
+else
+    if IN and (not last) then Q := true; end_if;
+    if Q or (not IN) then
+        n := 0;
+    elsif n < 40 then
+        n := n + 1;
+    end_if;
+end_if;
+ET := tbl[n];
+if ET >= PT then
+    ET := PT;
+    Q := false;
+end_if;
+last := IN;
+end_function_block
+(* TONR (retentive on-delay, like TON but ET is kept while IN is FALSE): the scan where IN rises adds nothing and each further scan with IN TRUE adds 100 ms, so the time of several runs of IN adds up; IN FALSE keeps ET; Q = ET >= PT, so Q stays TRUE after IN falls; ET stops at PT. R TRUE has priority: ET = 0 and Q = FALSE, and the first scan after R counts as a rise of IN. PT = T#300ms: Q on the 4th scan of one run of IN, or after 3 + 2 scans of two runs. *)
+function_block TONR
+var_input IN: bool; R: bool; PT: time; end_var
+var_output Q: bool; ET: time; end_var
+var n: dint; last: bool; tbl: array[0..40] of time := [T#0ms, T#100ms, T#200ms, T#300ms, T#400ms, T#500ms, T#600ms, T#700ms, T#800ms, T#900ms, T#1000ms, T#1100ms, T#1200ms, T#1300ms, T#1400ms, T#1500ms, T#1600ms, T#1700ms, T#1800ms, T#1900ms, T#2000ms, T#2100ms, T#2200ms, T#2300ms, T#2400ms, T#2500ms, T#2600ms, T#2700ms, T#2800ms, T#2900ms, T#3000ms, T#3100ms, T#3200ms, T#3300ms, T#3400ms, T#3500ms, T#3600ms, T#3700ms, T#3800ms, T#3900ms, T#4000ms]; end_var
+if R then
+    n := 0;
+elsif IN and last and (n < 40) then
+    n := n + 1;
+end_if;
+ET := tbl[n];
+Q := (not R) and (ET >= PT);
+if Q then ET := PT; end_if;
+last := IN and (not R);
+end_function_block

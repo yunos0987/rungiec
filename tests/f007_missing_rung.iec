@@ -1,0 +1,19 @@
+(* @expect run-error INVALID_SYNTAX *)
+(* @cycles 1 *)
+(* Purpose: A top-level network written without RUNG (a bare SERIES) and directly followed by a RUNG is a jiecc syntax error. *)
+(* @lint-allow LN10 *)
+{#include 'rungiec.iec'}
+function_block Fb0
+end_function_block
+program __main__
+var
+    A, B, Y, Y2: bool;
+    Fb0: Fb0;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|  and  |--| B |--( Y2 )--|   RUNG forgotten on the first network  *)
+SERIES(CONTACT(A), COIL(Y))
+RUNG(CONTACT(B), COIL(Y2))
+END_RUNGIEC()
+end_program

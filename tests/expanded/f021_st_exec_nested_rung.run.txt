@@ -1,0 +1,1 @@
+tests/expanded/f021_st_exec_nested_rung.st:72.0: error: InterpreterFault: array index 0 out of bounds

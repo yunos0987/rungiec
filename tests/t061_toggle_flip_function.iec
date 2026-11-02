@@ -1,0 +1,35 @@
+(* @expect pass *)
+(* @cycles 10 *)
+(* Purpose: one-button ON/OFF (alternate action) written like the FF instruction: a rising-edge contact drives a function that inverts the output. A held button toggles only once; the output keeps its value while the button is released. *)
+(* Source: https://dl.mitsubishielectric.com/dl/fa/document/manual/plc/sh081266eng/sh081266engae.pdf, FF instruction, p.195 -- FF inverts the specified device on the rising edge of its execution condition *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t061_toggle_flip_function))
+function Flip : bool
+var_in_out v: bool; end_var
+v := not v;
+Flip := v;
+end_function
+TEST_M(t061_toggle_flip_function)
+var
+    Btn, Lamp, LampOut: bool;
+    InBtn: array[1..10] of bool := [false, true, true, false, true, false, false, true, true, true];
+    ExpLamp: array[1..10] of bool := [false, true, true, true, false, false, false, true, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Btn := InBtn[Cyc];
+(*  |--|P Btn |--[ Flip(v := Lamp) ]--|   inverts Lamp on each rising edge of Btn  *)
+RUNG(RISE_CONTACT(Btn), FUN_EXEC(Flip, v := Lamp))
+(*  |--| Lamp |--( LampOut )--|   an output coil that follows the toggled bit  *)
+RUNG(CONTACT(Lamp), COIL(LampOut))
+EXPECT_TRUE(Lamp = ExpLamp[Cyc], 'lamp_follows_expected_sequence');
+EXPECT_TRUE((Cyc <> 3) or Lamp, 'held_button_toggles_only_once');
+EXPECT_TRUE((Cyc <> 5) or (not Lamp), 'second_press_turns_off');
+EXPECT_TRUE((Cyc <> 6) or (not Lamp), 'lamp_holds_while_button_released');
+EXPECT_TRUE(LampOut = Lamp, 'follower_coil');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

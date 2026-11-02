@@ -1,0 +1,1 @@
+rungiec.iec:46.0: error: PP91: 'RUNGIEC edge slot count 0 must be an integer literal of 1 or more'

@@ -1,0 +1,16 @@
+(* @expect run-error array index 0 out of bounds *)
+(* @cycles 1 *)
+(* Purpose: A RUNG written in the statements of ST_EXEC cannot be seen by the preprocessor (the argument is expanded first), so the nesting trap at the start of RUNG faults at run time (RungiecStIn[1 - RungiecSp] with RungiecSp = 1). The trap is in the statements, so it runs only when ST_EXEC is powered: A starts TRUE. *)
+(* @lint-allow LN17 *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A: bool := true;
+    Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--[[ ST: RUNG(COIL(Y)) ]]--|   the coil is deliberately wrapped in a RUNG inside ST_EXEC  *)
+RUNG(CONTACT(A), ST_EXEC(RUNG(COIL(Y))))
+END_RUNGIEC()
+end_program

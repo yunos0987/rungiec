@@ -1,0 +1,44 @@
+(* @expect pass *)
+(* @cycles 22 *)
+(* Purpose: alarm annunciator sequence "flashing until acknowledged, then steady, then off when the condition clears": a new alarm flashes the lamp and sounds the horn; Ack silences the horn and makes the lamp steady; the alarm resets automatically when the condition is back to normal after acknowledgement. A momentary alarm that cleared before Ack keeps flashing until Ack, then goes off. Ack with no alarm does nothing. Ack acts on its rising edge, so an Ack button that is held (or stuck) does not acknowledge a new alarm: the horn sounds until Ack is pressed again. The blink clock is an input (like a PLC clock pulse relay). *)
+(* Source: https://www.predig.com/files/LDS158.pdf, ISA Alarm Sequence A table -- normal: off and silent; alarm: flashing with horn; acknowledged: steady and silent; return to normal: off. A momentary alarm flashes until acknowledged *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t074_alarm_flash_ack_steady))
+TEST_M(t074_alarm_flash_ack_steady)
+var
+    Alm, Ack, Blink, AlmMem, AckMem, Lamp, Horn: bool;
+    InAlm: array[1..22] of bool := [false, true, true, true, true, true, false, false, true, false, false, false, false, true, true, false, false, false, true, true, true, true];
+    InAck: array[1..22] of bool := [false, false, false, false, true, false, false, false, false, false, true, false, true, false, false, false, true, true, true, true, false, true];
+    ExpLamp: array[1..22] of bool := [false, false, true, false, true, true, false, false, true, false, false, false, false, false, true, false, false, false, true, false, true, true];
+    ExpHorn: array[1..22] of bool := [false, true, true, true, false, false, false, false, true, true, false, false, false, true, true, true, false, false, true, true, true, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+Alm := InAlm[Cyc]; Ack := InAck[Cyc]; Blink := (Cyc mod 2) = 1;
+(*  |--|P Alm |--(S AlmMem )--(R AckMem )--|   a new alarm: remember it, clear the old acknowledgement  *)
+RUNG(RISE_CONTACT(Alm), SET_COIL(AlmMem), RESET_COIL(AckMem))
+(*  |--| AlmMem |--|P Ack |--(S AckMem )--|   a press of Ack counts only while an alarm is remembered  *)
+RUNG(CONTACT(AlmMem), RISE_CONTACT(Ack), SET_COIL(AckMem))
+(*  |--| AckMem |--|/Alm |--(R AlmMem )--(R AckMem )--|   acknowledged and back to normal: reset  *)
+RUNG(CONTACT(AckMem), NOT_CONTACT(Alm), RESET_COIL(AlmMem), RESET_COIL(AckMem))
+(*  |--+--| AlmMem |--|/AckMem |--| Blink |--+--( Lamp )--|   flashing until acknowledged  *)
+(*  |  |                                     |            |  *)
+(*  |  +--| AlmMem |--| AckMem |-------------+            |   steady after Ack  *)
+RUNG(PARALLEL(SERIES(CONTACT(AlmMem), NOT_CONTACT(AckMem), CONTACT(Blink)), SERIES(CONTACT(AlmMem), CONTACT(AckMem))), COIL(Lamp))
+(*  |--| AlmMem |--|/AckMem |--( Horn )--|  *)
+RUNG(CONTACT(AlmMem), NOT_CONTACT(AckMem), COIL(Horn))
+EXPECT_TRUE(Lamp = ExpLamp[Cyc], 'lamp_matches_expected');
+EXPECT_TRUE(Horn = ExpHorn[Cyc], 'horn_matches_expected');
+EXPECT_TRUE(((Cyc <> 5) and (Cyc <> 6)) or (Lamp and (not Horn)), 'ack_silences_horn_and_makes_lamp_steady');
+EXPECT_TRUE((Cyc <> 10) or (AlmMem and Horn), 'momentary_alarm_keeps_flashing_until_ack');
+EXPECT_TRUE((Cyc <> 11) or ((not Lamp) and (not Horn)), 'ack_after_momentary_alarm_clears_it');
+EXPECT_TRUE((Cyc <> 13) or ((not AckMem) and (not Lamp)), 'ack_without_alarm_ignored');
+EXPECT_TRUE((Cyc <> 14) or Horn, 'new_alarm_after_ignored_ack_horns');
+EXPECT_TRUE(((Cyc <> 19) and (Cyc <> 20)) or (Horn and (not AckMem)), 'held_ack_does_not_acknowledge_new_alarm');
+EXPECT_TRUE((Cyc <> 22) or ((not Horn) and Lamp and AckMem), 'new_ack_press_silences_horn');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

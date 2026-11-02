@@ -1,0 +1,1 @@
+tests/e025_wire_outside_net.iec:12.0: error: PP91: 'RUNGIEC WIRE outside BEGIN_NET and END_NET'

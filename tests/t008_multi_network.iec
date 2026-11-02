@@ -1,0 +1,32 @@
+(* @expect pass *)
+(* @cycles 2 *)
+(* Purpose: A network that ends OFF does not affect the next network (idle state between networks). *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t008_multi_network))
+TEST_M(t008_multi_network)
+var
+    A, Y1, Y2, Y3: bool;
+    InA: array[1..2] of bool := [false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc];
+(*  |--| A |--( Y1 )--|  *)
+RUNG(CONTACT(A), COIL(Y1))
+T_EXPECT_IDLE(idle_after_net1);
+(*  |--( Y2 )--|  *)
+RUNG(COIL(Y2))
+EXPECT_TRUE(Y2, 'y2_network_is_independent_and_on');
+T_EXPECT_IDLE(idle_after_net2);
+(*  |--+--|/A |--+--( Y3 )--|  *)
+(*  |  |         |          |  *)
+(*  |  +--|/A |--+          |  *)
+RUNG(PARALLEL(NOT_CONTACT(A), NOT_CONTACT(A)), COIL(Y3))
+EXPECT_TRUE(Y3 = (not A), 'y3_follows_not_a');
+T_EXPECT_IDLE(idle_after_net3);
+EXPECT_TRUE(Y1 = A, 'y1_follows_a');
+END_RUNGIEC()
+END_TEST_M

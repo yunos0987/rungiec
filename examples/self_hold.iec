@@ -1,0 +1,13 @@
+{#include 'rungiec.iec'}
+(* Example: motor start/stop circuit with a self-holding contact. Stop has priority over Start, and an overload (NC contact) stops the motor. *)
+function_block self_hold
+var_input Start, Stop, Overload: bool; end_var
+var_output Run: bool; end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--+--| Start |--+--|/Stop |--|/Overload |--( Run )--|  *)
+(*  |  |             |                                   |  *)
+(*  |  +--| Run |----+                                   |  *)
+RUNG(PARALLEL(CONTACT(Start), CONTACT(Run)), NOT_CONTACT(Stop), NOT_CONTACT(Overload), COIL(Run))
+END_RUNGIEC()
+end_function_block

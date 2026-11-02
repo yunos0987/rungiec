@@ -1,0 +1,14 @@
+(* @expect pp-error PP91: .RUNGIEC WIRE outside BEGIN_NET *)
+(* @cycles 1 *)
+(* Purpose: WIRE without BEGIN_NET() is a preprocessing error. *)
+{#include 'rungiec.iec'}
+program __main__
+var
+    A, Y: bool;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+(*  |--| A |--( Y )--|   BEGIN_NET() is deliberately omitted  *)
+WIRE(0, 1, CONTACT(A), COIL(Y))
+END_RUNGIEC()
+end_program

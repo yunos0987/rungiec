@@ -1,0 +1,49 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: A contact operand is evaluated every scan even when the preceding power is FALSE (observed by a call counter). *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t006_operand_always_evaluated))
+function Probe : bool
+var_input v: bool; end_var
+var_in_out cnt: dint; end_var
+var_temp t: bool; end_var
+t := v;
+cnt := cnt + 1;
+Probe := t;
+end_function
+TEST_M(t006_operand_always_evaluated)
+var
+    Fls: bool;
+    Tru: bool := true;
+    A, Y1, Y2, Y3, Y4: bool;
+    N1, N2, N3a, N3b, N4: dint;
+    InA: array[1..4] of bool := [false, true, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc];
+(*  |--| Fls |--| Probe(v := A, cnt := N1) |--( Y1 )--|  *)
+RUNG(CONTACT(Fls), CONTACT(Probe(v := A, cnt := N1)), COIL(Y1))
+(*  |--| Fls |--|/Probe(v := A, cnt := N2) |--( Y2 )--|  *)
+RUNG(CONTACT(Fls), NOT_CONTACT(Probe(v := A, cnt := N2)), COIL(Y2))
+(*  |--| Fls |--+--| Probe(v := A, cnt := N3a) |--+--( Y3 )--|  *)
+(*  |           |                                 |          |  *)
+(*  |           +--|/Probe(v := A, cnt := N3b) |--+          |  *)
+RUNG(CONTACT(Fls), PARALLEL(CONTACT(Probe(v := A, cnt := N3a)), NOT_CONTACT(Probe(v := A, cnt := N3b))), COIL(Y3))
+(*  |--| Tru |--| Probe(v := A, cnt := N4) |--( Y4 )--|  *)
+RUNG(CONTACT(Tru), CONTACT(Probe(v := A, cnt := N4)), COIL(Y4))
+EXPECT_TRUE(N1 = Cyc, 'n1_evaluated_every_scan_contact');
+EXPECT_TRUE(N2 = Cyc, 'n2_evaluated_every_scan_nc_contact');
+EXPECT_TRUE(N3a = Cyc, 'n3a_evaluated_in_parallel_branch');
+EXPECT_TRUE(N3b = Cyc, 'n3b_evaluated_in_parallel_branch');
+EXPECT_TRUE(N4 = Cyc, 'n4_evaluated_when_powered');
+EXPECT_TRUE(not Y1, 'y1_off');
+EXPECT_TRUE(not Y2, 'y2_off');
+EXPECT_TRUE(not Y3, 'y3_off');
+EXPECT_TRUE(Y4 = A, 'y4_follows_a');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

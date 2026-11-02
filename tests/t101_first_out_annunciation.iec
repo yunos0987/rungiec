@@ -1,0 +1,88 @@
+(* @expect pass *)
+(* @cycles 15 *)
+(* Purpose: first-out annunciation for three fault inputs (ISA sequence F2A: first-out with acknowledgement and automatic reset). A new fault latches its alarm (AlmK) and sounds the horn. The first new fault while no first-out is stored also latches its first-out bit (FoK): its lamp flashes, the lamps of later faults are steady, so the operator sees which fault came first. Ack (rising edge) acknowledges all alarms, silences the horn and clears the first-out bit, so every lamp is steady. An acknowledged alarm resets itself when its fault is back to normal. A momentary first fault keeps flashing until Ack. When two faults come in the same scan, the first-out rung written first wins. After Ack the next new fault is a first-out again. *)
+(* Source: https://www.predig.com/files/LDS158.pdf, ISA Alarm Sequence F2A table -- alert: first point flashing, next points steady, horn on; acknowledged: steady, horn off; normal after acknowledgement: off *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t101_first_out_annunciation))
+TEST_M(t101_first_out_annunciation)
+var
+    F1, F2, F3, AckPb, AckP, Blink, Horn: bool;
+    Alm1, Alm2, Alm3, Ack1, Ack2, Ack3, Fo1, Fo2, Fo3, Lamp1, Lamp2, Lamp3: bool;
+    InF1: array[1..15] of bool := [false, false, true, true, true, true, false, false, true, true, false, true, true, false, false];
+    InF2: array[1..15] of bool := [false, true, true, true, false, false, false, true, true, true, false, false, false, false, false];
+    InF3: array[1..15] of bool := [false, false, false, true, true, true, true, true, true, true, false, true, true, false, false];
+    InAck: array[1..15] of bool := [false, false, false, false, false, true, true, false, false, true, false, false, false, true, false];
+    ExpFo1: array[1..15] of bool := [false, false, false, false, false, false, false, false, false, false, false, true, true, false, false];
+    ExpFo2: array[1..15] of bool := [false, true, true, true, true, false, false, true, true, false, false, false, false, false, false];
+    ExpLamp1: array[1..15] of bool := [false, false, true, true, true, true, false, false, true, true, false, false, true, false, false];
+    ExpLamp2: array[1..15] of bool := [false, false, true, false, true, false, false, false, true, true, false, false, false, false, false];
+    ExpLamp3: array[1..15] of bool := [false, false, false, true, true, true, true, true, true, true, false, true, true, false, false];
+    ExpHorn: array[1..15] of bool := [false, true, true, true, true, false, false, true, true, false, false, true, true, false, false];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+F1 := InF1[Cyc]; F2 := InF2[Cyc]; F3 := InF3[Cyc]; AckPb := InAck[Cyc]; Blink := (Cyc mod 2) = 1;
+(*  |--|P AckPb |--( AckP )--|   one scan per press of Ack  *)
+RUNG(RISE_CONTACT(AckPb), COIL(AckP))
+(*  |--|P F1 |--(S Alm1 )--(R Ack1 )--|   a new fault: latch the alarm, clear the old acknowledgement  *)
+RUNG(RISE_CONTACT(F1), SET_COIL(Alm1), RESET_COIL(Ack1))
+(*  |--|P F2 |--(S Alm2 )--(R Ack2 )--|  *)
+RUNG(RISE_CONTACT(F2), SET_COIL(Alm2), RESET_COIL(Ack2))
+(*  |--|P F3 |--(S Alm3 )--(R Ack3 )--|  *)
+RUNG(RISE_CONTACT(F3), SET_COIL(Alm3), RESET_COIL(Ack3))
+(*  |--|P F1 |--|/Fo2 |--|/Fo3 |--(S Fo1 )--|   first-out: only while no first-out is stored  *)
+RUNG(RISE_CONTACT(F1), NOT_CONTACT(Fo2), NOT_CONTACT(Fo3), SET_COIL(Fo1))
+(*  |--|P F2 |--|/Fo1 |--|/Fo3 |--(S Fo2 )--|  *)
+RUNG(RISE_CONTACT(F2), NOT_CONTACT(Fo1), NOT_CONTACT(Fo3), SET_COIL(Fo2))
+(*  |--|P F3 |--|/Fo1 |--|/Fo2 |--(S Fo3 )--|  *)
+RUNG(RISE_CONTACT(F3), NOT_CONTACT(Fo1), NOT_CONTACT(Fo2), SET_COIL(Fo3))
+(*  |--| AckP |--| Alm1 |--(S Ack1 )--|   acknowledge  *)
+RUNG(CONTACT(AckP), CONTACT(Alm1), SET_COIL(Ack1))
+(*  |--| AckP |--| Alm2 |--(S Ack2 )--|  *)
+RUNG(CONTACT(AckP), CONTACT(Alm2), SET_COIL(Ack2))
+(*  |--| AckP |--| Alm3 |--(S Ack3 )--|  *)
+RUNG(CONTACT(AckP), CONTACT(Alm3), SET_COIL(Ack3))
+(*  |--| AckP |--(R Fo1 )--(R Fo2 )--(R Fo3 )--|   Ack clears the first-out indication  *)
+RUNG(CONTACT(AckP), RESET_COIL(Fo1), RESET_COIL(Fo2), RESET_COIL(Fo3))
+(*  |--| Ack1 |--|/F1 |--(R Alm1 )--(R Ack1 )--|   acknowledged and back to normal: reset  *)
+RUNG(CONTACT(Ack1), NOT_CONTACT(F1), RESET_COIL(Alm1), RESET_COIL(Ack1))
+(*  |--| Ack2 |--|/F2 |--(R Alm2 )--(R Ack2 )--|  *)
+RUNG(CONTACT(Ack2), NOT_CONTACT(F2), RESET_COIL(Alm2), RESET_COIL(Ack2))
+(*  |--| Ack3 |--|/F3 |--(R Alm3 )--(R Ack3 )--|  *)
+RUNG(CONTACT(Ack3), NOT_CONTACT(F3), RESET_COIL(Alm3), RESET_COIL(Ack3))
+(*  |--| Alm1 |--+--|/Fo1 |----+--( Lamp1 )--|   the first-out flashes, the others are steady  *)
+(*  |            |             |             |  *)
+(*  |            +--| Blink |--+             |  *)
+RUNG(CONTACT(Alm1), PARALLEL(NOT_CONTACT(Fo1), CONTACT(Blink)), COIL(Lamp1))
+(*  |--| Alm2 |--+--|/Fo2 |----+--( Lamp2 )--|  *)
+(*  |            |             |             |  *)
+(*  |            +--| Blink |--+             |  *)
+RUNG(CONTACT(Alm2), PARALLEL(NOT_CONTACT(Fo2), CONTACT(Blink)), COIL(Lamp2))
+(*  |--| Alm3 |--+--|/Fo3 |----+--( Lamp3 )--|  *)
+(*  |            |             |             |  *)
+(*  |            +--| Blink |--+             |  *)
+RUNG(CONTACT(Alm3), PARALLEL(NOT_CONTACT(Fo3), CONTACT(Blink)), COIL(Lamp3))
+(*  |--+--| Alm1 |--|/Ack1 |--+--( Horn )--|   any alarm not yet acknowledged  *)
+(*  |  |                      |            |  *)
+(*  |  +--| Alm2 |--|/Ack2 |--+            |  *)
+(*  |  |                      |            |  *)
+(*  |  +--| Alm3 |--|/Ack3 |--+            |  *)
+RUNG(PARALLEL(SERIES(CONTACT(Alm1), NOT_CONTACT(Ack1)), SERIES(CONTACT(Alm2), NOT_CONTACT(Ack2)), SERIES(CONTACT(Alm3), NOT_CONTACT(Ack3))), COIL(Horn))
+EXPECT_TRUE(Fo1 = ExpFo1[Cyc], 'first_out_1_matches_expected');
+EXPECT_TRUE(Fo2 = ExpFo2[Cyc], 'first_out_2_matches_expected');
+EXPECT_TRUE(not Fo3, 'fault_3_never_first');
+EXPECT_TRUE(Lamp1 = ExpLamp1[Cyc], 'lamp_1_matches_expected');
+EXPECT_TRUE(Lamp2 = ExpLamp2[Cyc], 'lamp_2_matches_expected');
+EXPECT_TRUE(Lamp3 = ExpLamp3[Cyc], 'lamp_3_matches_expected');
+EXPECT_TRUE(Horn = ExpHorn[Cyc], 'horn_matches_expected');
+EXPECT_TRUE(not ((Fo1 and Fo2) or (Fo1 and Fo3) or (Fo2 and Fo3)), 'at_most_one_first_out');
+EXPECT_TRUE((Cyc <> 3) or (Alm1 and (not Fo1) and Lamp1), 'later_fault_is_steady_not_first_out');
+EXPECT_TRUE((Cyc <> 5) or (Alm2 and Fo2 and (not F2)), 'momentary_first_out_kept_until_ack');
+EXPECT_TRUE((Cyc <> 10) or (Lamp1 and Lamp2 and Lamp3 and (not Horn) and (not Fo2)), 'ack_makes_all_steady_and_clears_first_out');
+EXPECT_TRUE((Cyc <> 12) or (Fo1 and (not Fo3) and Alm3), 'same_scan_faults_first_rung_wins');
+T_EXPECT_IDLE(idle_after_nets);
+END_RUNGIEC()
+END_TEST_M

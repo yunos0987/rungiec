@@ -1,0 +1,28 @@
+(* @expect pass *)
+(* @cycles 4 *)
+(* Purpose: RUNGIEC_NODE_MAX 64 is the largest accepted value: node 64, the last entry of the node table, is a valid to node, and BEGIN_NET() clears nodes 1 to 64. Numbers are skipped up to it. The state after the network is idle. *)
+{#define RUNGIEC_NODE_MAX 64}
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t095_node_max_64))
+TEST_M(t095_node_max_64)
+var
+    A, B, Y: bool;
+    InA: array[1..4] of bool := [false, true, false, true];
+    InB: array[1..4] of bool := [false, false, true, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+A := InA[Cyc]; B := InB[Cyc];
+(*  |--| A |--(1)--| B |--(63)--( Y )--(64)--|  *)
+BEGIN_NET()
+WIRE(0, 1, CONTACT(A))
+WIRE(1, 63, CONTACT(B))
+WIRE(63, 64, COIL(Y))
+END_NET()
+EXPECT_TRUE(Y = (A and B), 'node_64');
+T_EXPECT_IDLE(idle_after_net);
+END_RUNGIEC()
+END_TEST_M

@@ -1,0 +1,26 @@
+(* @expect pass *)
+(* @cycles 8 *)
+(* Purpose: With RUNGIEC_VAR() the work variables are static. The program corrupts them at the end of every scan; the init statements of BEGIN_RUNGIEC() restore them, and the edge previous value survives them. *)
+{#include 'rungiec.iec'}
+{#include 't_jiecunit.iec'}
+DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t044_begin_rungiec_resets_static_work_vars))
+TEST_M(t044_begin_rungiec_resets_static_work_vars)
+var
+    A, B, Y, PrevB: bool;
+    InA: array[1..8] of bool := [true, true, true, true, false, true, true, true];
+    InB: array[1..8] of bool := [false, true, true, false, true, true, false, true];
+    Cyc: dint;
+end_var
+RUNGIEC_VAR()
+BEGIN_RUNGIEC()
+T_BEGIN()
+T_EXPECT_IDLE(idle_right_after_begin_rungiec);
+A := InA[Cyc]; B := InB[Cyc];
+(*  |--| A |--|P B |--( Y )--|  *)
+RUNG(CONTACT(A), RISE_CONTACT(B), COIL(Y))
+EXPECT_TRUE(Y = (A and B and (not PrevB)), 'y_edge_previous_value_kept_across_begin_rungiec');
+T_EXPECT_IDLE(idle_after_net);
+PrevB := B;
+RungiecEn := false; RungiecIn := false; RungiecAcc := false; RungiecVal := false; RungiecRail := false; RungiecTmp := true; RungiecSp := 5;
+END_RUNGIEC()
+END_TEST_M
