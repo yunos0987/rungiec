@@ -149,7 +149,7 @@ def generate_ld():
             "_RUNGIEC_LD_GET(_RUNGIEC_LD_S(s, %d)))}" % (k, k - 1, k - 1))
     add("{#define _RUNGIEC_LD_HAS_0(p, v) FALSE}")
     for k in range(1, LD_FANIN_TABLE + 1):
-        add("{#define _RUNGIEC_LD_HAS_%d(p, v) _RUNGIEC_LD_HAS_%d(p, v) \\or\\ %s = v}" % (k, k - 1, ld_slot(k - 1)))
+        add("{#define _RUNGIEC_LD_HAS_%d(p, v) _RUNGIEC_LD_HAS_%d(p, v) || %s = v}" % (k, k - 1, ld_slot(k - 1)))
     add("{#define _RUNGIEC_LD_CN_0(p)}")
     for k in range(1, LD_FANIN_TABLE + 1):
         add("{#define _RUNGIEC_LD_CN_%d(p) _RUNGIEC_LD_CN_%d(p)<Connection refConnectionPointOutId=__xmlattr(%s)/>}"

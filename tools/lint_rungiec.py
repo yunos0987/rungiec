@@ -163,6 +163,8 @@ COUNTER_USE_RE = re.compile(r"\b__counter(?:_peek|_set)?\s*\(\s*(\w+)")
 PASTE_CALL_RE = re.compile(r"\b_RUNGIEC_CAT3?_X\s*\(")
 PASTED_COUNTER_RE = re.compile(r"\b_RUNGIEC_CAT_X\s*\(\s*(rungiec_\w*)\s*,")
 BARE_LOGIC_RE = re.compile(r"(?<![\\\w])(and|or|not)(?![\\\w])", re.IGNORECASE)
+ESCAPED_LOGIC_RE = re.compile(r"\\(and|or|not)\\", re.IGNORECASE)
+C_LOGIC = {"and": "&&", "or": "||", "not": "!"}
 
 
 class Finding(object):
@@ -520,8 +522,19 @@ def lint_public_set(texts, add):
         add("LN5", ST_FILE, 1, "%s is declared but is not one of the 13 work variables" % name)
 
 
+def logic_issue(cond):
+    """The LN8 note for a bare and / or / not or a backslash form \\and\\ / \\or\\ / \\not\\ in cond, or None."""
+    bare = BARE_LOGIC_RE.search(cond)
+    if bare:
+        return "uses a bare '%s' (write %s)" % (bare.group(1), C_LOGIC[bare.group(1).lower()])
+    escaped = ESCAPED_LOGIC_RE.search(cond)
+    if escaped:
+        return "uses '%s' (write %s)" % (escaped.group(0), C_LOGIC[escaped.group(1).lower()])
+    return None
+
+
 def lint_conditions(src, defines, add):
-    """LN8: preprocessor conditions use \\and\\ / \\or\\ / \\not\\, messages start with 'RUNGIEC ', no {#ignore}."""
+    """LN8: preprocessor conditions use && / || / !, messages start with 'RUNGIEC ', no {#ignore}."""
     for line, name, _, body, _ in defines:
         for match in re.finditer(r"\b__assert\s*\(", body):
             close = match_paren(body, match.end() - 1)
@@ -530,10 +543,9 @@ def lint_conditions(src, defines, add):
             args = split_args(body, match.end() - 1, close)
             cond = body[args[0][0]:args[0][1]]
             message = body[args[1][0]:close].strip() if len(args) > 1 else ""
-            bare = BARE_LOGIC_RE.search(cond)
-            if bare:
-                add("LN8", line, "__assert condition in %s uses a bare '%s' (write \\%s\\)"
-                    % (name, bare.group(1), bare.group(1).lower()))
+            issue = logic_issue(cond)
+            if issue:
+                add("LN8", line, "__assert condition in %s %s" % (name, issue))
             if not message.startswith("RUNGIEC "):
                 add("LN8", line, "__assert message in %s does not start with 'RUNGIEC '" % name)
     for start, end in src.directives:
@@ -543,10 +555,9 @@ def lint_conditions(src, defines, add):
             continue
         kind, rest = head.group(1), head.group(2)
         if kind in ("if", "elif"):
-            bare = BARE_LOGIC_RE.search(rest)
-            if bare:
-                add("LN8", src.line(start), "{#%s} uses a bare '%s' (write \\%s\\)"
-                    % (kind, bare.group(1), bare.group(1).lower()))
+            issue = logic_issue(rest)
+            if issue:
+                add("LN8", src.line(start), "{#%s} %s" % (kind, issue))
         elif kind == "error" and not rest.startswith("RUNGIEC "):
             add("LN8", src.line(start), "{#error} message does not start with 'RUNGIEC '")
         elif kind == "ignore":
@@ -1427,9 +1438,13 @@ SELFTEST_CASES = [
     ("LN8 message without RUNGIEC", "lib", "rungiec.iec", "{#define _RUNGIEC_X(n) __assert(n >= 1, bad n)}\n", "LN8",
      True, "does not start"),
     ("LN8 {#ignore}", "lib", "rungiec.iec", "{#ignore PP91}\n", "LN8", True, "{#ignore}"),
-    ("LN8 quiet: backslash operators and RUNGIEC messages", "lib", "rungiec.iec",
-     "{#if \\not\\ __has_builtin(__assert) \\or\\ RUNGIEC_NEST_MAX < 1}\n{#error RUNGIEC needs a jiepp}\n{#endif}\n"
-     "{#define _RUNGIEC_X(n) __assert(n >= 1 \\and\\ n <= 2, RUNGIEC bad n, see the manual)}\n", "LN8", False, ""),
+    ("LN8 backslash and in __assert", "lib", "rungiec.iec",
+     "{#define _RUNGIEC_X(n) __assert(n >= 1 \\and\\ n <= 2, RUNGIEC bad n)}\n", "LN8", True, "'\\and\\' (write &&)"),
+    ("LN8 backslash not in {#if}", "lib", "rungiec.iec", "{#if \\not\\ __has_builtin(__assert)}\n{#endif}\n", "LN8",
+     True, "'\\not\\' (write !)"),
+    ("LN8 quiet: C logical operators and RUNGIEC messages", "lib", "rungiec.iec",
+     "{#if !__has_builtin(__assert) || RUNGIEC_NEST_MAX < 1}\n{#error RUNGIEC needs a jiepp}\n{#endif}\n"
+     "{#define _RUNGIEC_X(n) __assert(n >= 1 && n <= 2, RUNGIEC bad n, see the manual)}\n", "LN8", False, ""),
     ("LN9 upper-case keyword in a test", "test", "tests/t001_a.iec",
      user_pou("RUNG(CONTACT(A), COIL(Y))\nIF A THEN B := TRUE; END_IF;"), "LN9", True, "IF"),
     ("LN9 upper-case keyword in a define body", "lib", "rungiec.iec", "{#define _RUNGIEC_X() a := NOT b}\n", "LN9", True,
