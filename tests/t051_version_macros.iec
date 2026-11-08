@@ -30,7 +30,7 @@ EXPECT_TRUE(T_VERSION_SEEN = 1, 'version_seen_in_if');
 EXPECT_TRUE(T_VERSION_COMBINED = 1, 'version_combined_in_if');
 EXPECT_TRUE(V = Maj * 10000 + Min * 100 + Rev, 'version_combined_in_st');
 EXPECT_TRUE((Min < 100) and (Rev < 100) and (Maj >= 0), 'version_parts_in_range');
-EXPECT_TRUE((Maj = 0) and (Min = 3) and (Rev = 0) and (V = 300), 'version_is_0_3_0');
+EXPECT_TRUE((Maj = 0) and (Min = 4) and (Rev = 0) and (V = 400), 'version_is_0_4_0');
 T_EXPECT_IDLE(idle_after_nets);
 END_RUNGIEC()
 END_TEST_M
