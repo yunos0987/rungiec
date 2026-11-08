@@ -594,7 +594,7 @@ LD モードでは、公開マクロが ST の代わりに IEC 61131-10 の LD X
 
 ### モードの指定と POU の構成
 
-- `RUNGIEC_LD` を 0 でない値で定義すると LD モード（`jiecc` / `jiepp` の `-D RUNGIEC_LD`、または `{#include 'rungiec.iec'}` の前の `{#define RUNGIEC_LD 1}`）。未定義か 0 なら ST モード。`rungiec.iec` は `{#if defined(RUNGIEC_LD) \and\ RUNGIEC_LD}` で読むので、`-Werror=undef` でも未定義は PP54 にならない。
+- `RUNGIEC_LD` を 0 でない値で定義すると LD モード（`jiecc` / `jiepp` の `-D RUNGIEC_LD`、または `{#include 'rungiec.iec'}` の前の `{#define RUNGIEC_LD 1}`）。未定義か 0 なら ST モード。`rungiec.iec` は `{#if defined(RUNGIEC_LD) && RUNGIEC_LD}` で読むので、`-Werror=undef` でも未定義は PP54 にならない。
 - 入口 `rungiec.iec` は共通部（版、設定と範囲の検査、前処理の検査とトークン連結、節点表）を定義し、末尾でモードの本体を include する: LD モードなら `rungiec_ld.iec`、ST モードなら `rungiec_st.iec`。公開マクロは本体だけが定義する。利用者は `rungiec.iec` だけを include する（本体を直接 include すると `{#error}` の PP91。`e069`、`e070`）。
 - LD モードは jiepp のビルトイン `__xmlattr` / `__xmltext` / `__arg_lhs` / `__arg_rhs` / `__arg_dir` を `__has_builtin` で確認し、無ければ PP91 `RUNGIEC LD mode needs a jiepp with the XML and argument built-ins; use the jiepp version named in README.md`。
 - 設定 `RUNGIEC_LD_FANIN_MAX`（「設定パラメータ」）は LD モードだけで使う。`RUNGIEC_NEST_MAX` は LD モードでは 16 以下。

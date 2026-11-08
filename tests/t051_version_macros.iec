@@ -4,7 +4,7 @@
 {#include 'rungiec.iec'}
 {#include 't_jiecunit.iec'}
 DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t051_version_macros))
-{#if defined(RUNGIEC_VERSION_MAJOR) \and\ defined(RUNGIEC_VERSION_MINOR) \and\ defined(RUNGIEC_VERSION_REVISION) \and\ RUNGIEC_VERSION >= 200}
+{#if defined(RUNGIEC_VERSION_MAJOR) && defined(RUNGIEC_VERSION_MINOR) && defined(RUNGIEC_VERSION_REVISION) && RUNGIEC_VERSION >= 200}
 {#define T_VERSION_SEEN 1}
 {#else}
 {#define T_VERSION_SEEN 0}

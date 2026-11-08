@@ -2,14 +2,14 @@
 (* Usage: see README.md, docs/GUIDE.md and docs/REFERENCE.md. A POU that uses the DSL has, after its var blocks, RUNGIEC_VAR() (or RUNGIEC_VAR_TEMP() / RUNGIEC_VAR_NOEDGE()), BEGIN_RUNGIEC(), the networks (RUNG, or BEGIN_NET with WIRE lines and END_NET) and END_RUNGIEC(). In the ST mode the statements go directly in the POU body, with no directive around them; in the LD mode BEGIN_RUNGIEC() opens the ld body and END_RUNGIEC() closes it. *)
 {#pragma once}
 (* RUNGIEC needs a jiepp whose diagnostic built-ins, named counters and comma-protecting built-in (used by ST_EXEC) are neither redefined nor undefined (the required jiepp version is in the tools section of README.md). There is no fallback. *)
-(* A jiepp without the has_builtin operator stops at the first error. A bare not is a bitwise not in a condition, so the logical form with backslashes is used. The messages name no built-in, because a redefined built-in would be expanded in them. *)
+(* A jiepp without the has_builtin operator stops at the first error. A bare not is a bitwise not in a condition, so the C logical operators (&&, || and !) are used. The messages name no built-in, because a redefined built-in would be expanded in them. *)
 {#ifndef __has_builtin}
 {#error RUNGIEC needs a jiepp with the built-in assert, named counters and comma protection, neither redefined nor undefined; use the jiepp version named in README.md}
-{#elif \not\ __has_builtin(__assert) \or\ \not\ __has_builtin(__counter) \or\ \not\ __has_builtin(__counter_peek) \or\ \not\ __has_builtin(__counter_set) \or\ \not\ __has_builtin(__nosplit)}
+{#elif !__has_builtin(__assert) || !__has_builtin(__counter) || !__has_builtin(__counter_peek) || !__has_builtin(__counter_set) || !__has_builtin(__nosplit)}
 {#error RUNGIEC needs a jiepp with the built-in assert, named counters and comma protection, neither redefined nor undefined; use the jiepp version named in README.md}
 {#endif}
 (* jiecc defines _JIECC_FULL_VER (plain jiepp does not). Both modes need Jiecc 9.4.0: the ST mode writes the statements directly in the POU body. *)
-{#if defined(_JIECC_FULL_VER) \and\ _JIECC_FULL_VER < 90400}
+{#if defined(_JIECC_FULL_VER) && _JIECC_FULL_VER < 90400}
 {#error RUNGIEC needs Jiecc 9.4.0 or later}
 {#endif}
 (* Version: RUNGIEC_VERSION = major * 10000 + minor * 100 + revision (same scheme as _JIEPP_FULL_VER). *)
@@ -35,7 +35,7 @@
 {#ifndef RUNGIEC_MC_MAX}
 {#define RUNGIEC_MC_MAX 15}
 {#endif}
-{#if RUNGIEC_ARITY_MAX < 1 \or\ RUNGIEC_ARITY_MAX > 32}
+{#if RUNGIEC_ARITY_MAX < 1 || RUNGIEC_ARITY_MAX > 32}
 {#error RUNGIEC arity limit RUNGIEC_ARITY_MAX is out of range 1 to 32}
 {#endif}
 (* RUNGIEC_NEST_MAX, RUNGIEC_EDGE_MAX, RUNGIEC_NODE_MAX and RUNGIEC_MC_MAX are integer literals (array bounds; jiecc 9.4.0 also reads an expression of integer literals correctly); only the range is checked here. RUNGIEC_NODE_MAX is 64 or less because the node table below ends at node 64. *)
@@ -54,7 +54,7 @@
 {#if RUNGIEC_MC_MAX < 1}
 {#error RUNGIEC MC nesting limit RUNGIEC_MC_MAX must be an integer literal of 1 or more}
 {#endif}
-{#if defined(RUNGIEC_LD) \and\ RUNGIEC_LD}
+{#if defined(RUNGIEC_LD) && RUNGIEC_LD}
 (* LD mode: RUNGIEC_LD defined and nonzero (jiecc or jiepp -D RUNGIEC_LD, or a define of RUNGIEC_LD to 1 before the include of rungiec.iec). The public macros write the IEC 61131-10 LD XML of Rung objects into the ld body instead of ST (rungiec_ld.iec, included at the end of this file). *)
 {#define _RUNGIEC_LD 1}
 {#else}
@@ -75,17 +75,17 @@
 {#define _RUNGIEC_CAT3_X(a, b, c) _RUNGIEC_CAT3(a, b, c)}
 (* Checks. Each expands to nothing; a failed check is the preprocessing error PP91 with the message. *)
 {#define _RUNGIEC_COUNT(...) __VA_ARGC__}
-{#define _RUNGIEC_ARITY_CHECK(name, count) __assert(count >= 1 \and\ count <= RUNGIEC_ARITY_MAX, RUNGIEC name has count elements, allowed 1 to RUNGIEC_ARITY_MAX)}
+{#define _RUNGIEC_ARITY_CHECK(name, count) __assert(count >= 1 && count <= RUNGIEC_ARITY_MAX, RUNGIEC name has count elements, allowed 1 to RUNGIEC_ARITY_MAX)}
 (* The edge slot check of the edge contacts and transition coils. *)
 {#define _RUNGIEC_EDGE_CHECK(n) __assert(n <= RUNGIEC_EDGE_MAX, RUNGIEC edge slot n exceeds RUNGIEC_EDGE_MAX, the edge contacts and transition coils of this POU need more slots)}
 
 (* The checks and counter updates of the statement macros RETURN, JMP, BEGIN_MC, END_MC and LABEL. The checks of JMP and LABEL read _RUNGIEC_JUMP_OK, which the body of each mode defines; it is read when JMP or LABEL is expanded, after the body has been included. *)
 {#define _RUNGIEC_RETURN_CHECKS() __counter_set(rungiec_exit, __counter_peek(rungiec_exit) + 2 * __counter_peek(rungiec_net))}
-{#define _RUNGIEC_JMP_CHECKS(label, lc, jc) __assert(_RUNGIEC_JUMP_OK = 1, RUNGIEC JMP to label is not supported for the jiecc targets omron, keyence and mitsubishi) __assert(__counter_peek(lc) < __counter_peek(rungiec_pou) \or\ __counter_peek(lc) = __counter_peek(rungiec_seg), RUNGIEC JMP to label goes back across BEGIN_MC or END_MC) __assert(__counter_peek(lc) >= __counter_peek(rungiec_pou) \or\ __counter_peek(jc) < __counter_peek(rungiec_pou) \or\ __counter_peek(jc) = __counter_peek(rungiec_seg), RUNGIEC JMP to label and an earlier JMP to label are on different sides of BEGIN_MC or END_MC) __counter_set(jc, __counter_peek(rungiec_seg)) __counter_set(rungiec_exit, __counter_peek(rungiec_exit) + 2 * __counter_peek(rungiec_net))}
+{#define _RUNGIEC_JMP_CHECKS(label, lc, jc) __assert(_RUNGIEC_JUMP_OK = 1, RUNGIEC JMP to label is not supported for the jiecc targets omron, keyence and mitsubishi) __assert(__counter_peek(lc) < __counter_peek(rungiec_pou) || __counter_peek(lc) = __counter_peek(rungiec_seg), RUNGIEC JMP to label goes back across BEGIN_MC or END_MC) __assert(__counter_peek(lc) >= __counter_peek(rungiec_pou) || __counter_peek(jc) < __counter_peek(rungiec_pou) || __counter_peek(jc) = __counter_peek(rungiec_seg), RUNGIEC JMP to label and an earlier JMP to label are on different sides of BEGIN_MC or END_MC) __counter_set(jc, __counter_peek(rungiec_seg)) __counter_set(rungiec_exit, __counter_peek(rungiec_exit) + 2 * __counter_peek(rungiec_net))}
 {#define _RUNGIEC_BEGIN_MC_CHECKS(count) __assert(__counter_peek(rungiec_net) = 0, RUNGIEC BEGIN_MC inside BEGIN_NET and END_NET) __assert(__counter_peek(rungiec_mc) < RUNGIEC_MC_MAX, RUNGIEC BEGIN_MC nesting exceeds RUNGIEC_MC_MAX) _RUNGIEC_ARITY_CHECK(BEGIN_MC, count) __counter_set(rungiec_mc, __counter_peek(rungiec_mc) + 1) __counter_set(rungiec_seg, __counter_peek(rungiec_seg) + 1)}
 {#define _RUNGIEC_END_MC_CHECKS() __assert(__counter_peek(rungiec_net) = 0, RUNGIEC END_MC inside BEGIN_NET and END_NET) __assert(__counter_peek(rungiec_mc) > 0, RUNGIEC END_MC without BEGIN_MC)}
 {#define _RUNGIEC_END_MC_DONE() __counter_set(rungiec_mc, __counter_peek(rungiec_mc) - 1) __counter_set(rungiec_seg, __counter_peek(rungiec_seg) + 1)}
-{#define _RUNGIEC_LABEL_CHECKS(label, lc, jc) __assert(_RUNGIEC_JUMP_OK = 1, RUNGIEC LABEL label is not supported for the jiecc targets omron, keyence and mitsubishi) __assert(__counter_peek(rungiec_net) = 0, RUNGIEC LABEL inside BEGIN_NET and END_NET) __assert(__counter_peek(lc) < __counter_peek(rungiec_pou), RUNGIEC LABEL label is defined twice in this POU) __assert(__counter_peek(jc) < __counter_peek(rungiec_pou) \or\ __counter_peek(jc) = __counter_peek(rungiec_seg), RUNGIEC JMP to label goes forward across BEGIN_MC or END_MC) __counter_set(lc, __counter_peek(rungiec_seg))}
+{#define _RUNGIEC_LABEL_CHECKS(label, lc, jc) __assert(_RUNGIEC_JUMP_OK = 1, RUNGIEC LABEL label is not supported for the jiecc targets omron, keyence and mitsubishi) __assert(__counter_peek(rungiec_net) = 0, RUNGIEC LABEL inside BEGIN_NET and END_NET) __assert(__counter_peek(lc) < __counter_peek(rungiec_pou), RUNGIEC LABEL label is defined twice in this POU) __assert(__counter_peek(jc) < __counter_peek(rungiec_pou) || __counter_peek(jc) = __counter_peek(rungiec_seg), RUNGIEC JMP to label goes forward across BEGIN_MC or END_MC) __counter_set(lc, __counter_peek(rungiec_seg))}
 
 (* Node table: K = 0..64, generated by tools/gen_arity_table.py --nodes. Do not edit by hand. *)
 (* WIRE looks a node number up as _RUNGIEC_IS_NODE_ @@ number @@ 0, so only the integer literals 0 to 64 hit the table. *)
@@ -157,12 +157,12 @@
 
 (* The checks and counter updates of BEGIN_NET, WIRE and END_NET. WIRE checks its node numbers with the node table above. *)
 {#define _RUNGIEC_BEGIN_NET_CHECKS() __assert(__counter_peek(rungiec_net) = 0, RUNGIEC BEGIN_NET inside BEGIN_NET and END_NET, END_NET is missing) __counter_set(rungiec_net, 1) __counter_set(rungiec_node, 0) __counter_set(rungiec_exit, 0)}
-{#define _RUNGIEC_WIRE_CHECKS(from_node, to_node, count) __assert(__counter_peek(rungiec_net) = 1, RUNGIEC WIRE outside BEGIN_NET and END_NET) __assert(__counter_peek(rungiec_exit) mod 2 = 0, RUNGIEC WIRE after a WIRE that jumps or returns, write that WIRE last before END_NET) __assert(_RUNGIEC_CAT3_X(_RUNGIEC_IS_NODE_, from_node, 0) = 1, RUNGIEC WIRE from node from_node is not an integer literal from 0 to 64) __assert(_RUNGIEC_CAT3_X(_RUNGIEC_IS_NODE_, to_node, 0) = 1, RUNGIEC WIRE to node to_node is not an integer literal from 0 to 64) __assert(from_node >= 0 \and\ from_node < to_node, RUNGIEC WIRE from node from_node must be 0 or more and less than to node to_node) __assert(to_node <= RUNGIEC_NODE_MAX, RUNGIEC WIRE to node to_node exceeds RUNGIEC_NODE_MAX) __assert(to_node >= __counter_peek(rungiec_node), RUNGIEC WIRE to node to_node must not be less than __counter_peek(rungiec_node), the to node of the previous WIRE) _RUNGIEC_ARITY_CHECK(WIRE, count)}
+{#define _RUNGIEC_WIRE_CHECKS(from_node, to_node, count) __assert(__counter_peek(rungiec_net) = 1, RUNGIEC WIRE outside BEGIN_NET and END_NET) __assert(__counter_peek(rungiec_exit) mod 2 = 0, RUNGIEC WIRE after a WIRE that jumps or returns, write that WIRE last before END_NET) __assert(_RUNGIEC_CAT3_X(_RUNGIEC_IS_NODE_, from_node, 0) = 1, RUNGIEC WIRE from node from_node is not an integer literal from 0 to 64) __assert(_RUNGIEC_CAT3_X(_RUNGIEC_IS_NODE_, to_node, 0) = 1, RUNGIEC WIRE to node to_node is not an integer literal from 0 to 64) __assert(from_node >= 0 && from_node < to_node, RUNGIEC WIRE from node from_node must be 0 or more and less than to node to_node) __assert(to_node <= RUNGIEC_NODE_MAX, RUNGIEC WIRE to node to_node exceeds RUNGIEC_NODE_MAX) __assert(to_node >= __counter_peek(rungiec_node), RUNGIEC WIRE to node to_node must not be less than __counter_peek(rungiec_node), the to node of the previous WIRE) _RUNGIEC_ARITY_CHECK(WIRE, count)}
 {#define _RUNGIEC_WIRE_DONE(to_node) __counter_set(rungiec_node, to_node) __counter_set(rungiec_exit, __counter_peek(rungiec_exit) > 0)}
 {#define _RUNGIEC_END_NET_CHECKS() __assert(__counter_peek(rungiec_net) = 1, RUNGIEC END_NET without BEGIN_NET) __counter_set(rungiec_net, 0)}
 
 (* The body of the mode defines the public macros: rungiec_ld.iec writes the LD XML (LD mode), rungiec_st.iec writes ST. Both bodies use the checks and counter updates above: _RUNGIEC_START, _RUNGIEC_END, _RUNGIEC_ARITY_CHECK, _RUNGIEC_EDGE_CHECK and those of the statement macros. The LD mode needs the XML and argument built-ins of jiepp, so without them neither body is read. *)
-{#if _RUNGIEC_LD = 1 \and\ (\not\ __has_builtin(__xmlattr) \or\ \not\ __has_builtin(__xmltext) \or\ \not\ __has_builtin(__arg_lhs) \or\ \not\ __has_builtin(__arg_rhs) \or\ \not\ __has_builtin(__arg_dir))}
+{#if _RUNGIEC_LD = 1 && (!__has_builtin(__xmlattr) || !__has_builtin(__xmltext) || !__has_builtin(__arg_lhs) || !__has_builtin(__arg_rhs) || !__has_builtin(__arg_dir))}
 {#error RUNGIEC LD mode needs a jiepp with the XML and argument built-ins; use the jiepp version named in README.md}
 {#elif _RUNGIEC_LD = 1}
 {#include 'rungiec_ld.iec'}

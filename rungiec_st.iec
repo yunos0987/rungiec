@@ -1,7 +1,7 @@
 (* rungiec_st.iec - the ST mode of RUNGIEC: the public macros expand to IEC 61131-3 ST. *)
 (* rungiec.iec includes this file at its end in the ST mode (RUNGIEC_LD not defined or zero); include rungiec.iec, not this file. The checks and counter updates that both modes share, the settings and the node table are in rungiec.iec. *)
 {#pragma once}
-{#if \not\ (defined(_RUNGIEC_LD) \and\ _RUNGIEC_LD = 0)}
+{#if !(defined(_RUNGIEC_LD) && _RUNGIEC_LD = 0)}
 {#error RUNGIEC rungiec_st.iec is the ST mode part of rungiec.iec; include rungiec.iec instead}
 {#else}
 (* Working variable declarations. RungiecPrev is always static (var), never var_temp. *)
@@ -163,10 +163,10 @@
 {#define RETURN() _RUNGIEC_RETURN_CHECKS() RungiecTmp := RungiecEn; if RungiecTmp then return; end_if; RungiecVal := RungiecTmp}
 
 (* Jumps for the target, chosen by the target macros that jiecc predefines. _RUNGIEC_JUMP_KW is the jump keyword of the expanded ST: jmp when _CODESYS is TRUE (jiecc -t codesys), goto otherwise and when jiepp runs alone (the target macros are not defined). _RUNGIEC_JUMP_OK is 0 when _OMRON, _KEYENCE or _MITSUBISHI is TRUE (jiecc -t omron, -t keyence, -t mitsubishi): JMP and LABEL are then a preprocessing error, because the jumps of the expanded ST are not known to load into the ST of those tools. Add a target here to give it another keyword. *)
-{#if defined(_CODESYS) \and\ _CODESYS}
+{#if defined(_CODESYS) && _CODESYS}
 {#define _RUNGIEC_JUMP_KW jmp}
 {#define _RUNGIEC_JUMP_OK 1}
-{#elif (defined(_OMRON) \and\ _OMRON) \or\ (defined(_KEYENCE) \and\ _KEYENCE) \or\ (defined(_MITSUBISHI) \and\ _MITSUBISHI)}
+{#elif (defined(_OMRON) && _OMRON) || (defined(_KEYENCE) && _KEYENCE) || (defined(_MITSUBISHI) && _MITSUBISHI)}
 {#define _RUNGIEC_JUMP_KW goto}
 {#define _RUNGIEC_JUMP_OK 0}
 {#else}

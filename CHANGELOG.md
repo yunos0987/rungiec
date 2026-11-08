@@ -10,6 +10,7 @@
 
 - 必要なツールを jiepp 1.4.0 と Jiecc 9.4.0 に上げました。`rungiec.iec` の版の検査は、`_JIECC_FULL_VER` が 90400 未満なら PP91 `RUNGIEC needs Jiecc 9.4.0 or later` にします（jiepp だけで展開するときは確認しません）。マクロの展開結果と公開マクロは変わりません。ST モード自体は Jiecc 9.2.0 でも動きますが、確認しているのは 9.4.0 だけです。
 - テストの枠組み jiecunit（git submodule の `vendor/jiecunit`）を v7.0.0 にしました。jiecunit v7.0.0 には Jiecc 9.4.0 が必要です。`jiecc --run` では、集計の後に `halt` でスキャンを止めて終わります。
+- `rungiec.iec` / `rungiec_st.iec` / `rungiec_ld.iec` の前処理の条件式（`{#if}` / `{#elif}` と `__assert` の条件）を、jiepp 1.4.0 の論理演算子 `&&` / `||` / `!` で書き直しました。jiepp 1.2.0 ではこの表記が PP51 になります。展開結果は変わりません。lint の LN8 は `\and\` / `\or\` / `\not\` も指摘するようになりました（`&&` / `||` / `!` を書く）。
 
 ### テスト / Tests
 

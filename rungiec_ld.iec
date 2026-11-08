@@ -1,14 +1,14 @@
 (* rungiec_ld.iec - the LD mode of RUNGIEC: the public macros write the IEC 61131-10 LD XML of Rung objects into the ld body instead of ST. *)
 (* rungiec.iec includes this file at its end in the LD mode (RUNGIEC_LD defined and nonzero); include rungiec.iec, not this file. Convert with jiepp -P -nC (or jiecc -D RUNGIEC_LD -P -nC): a line marker or a comment left in the ld body breaks the XML. *)
 {#pragma once}
-{#if \not\ (defined(_RUNGIEC_LD) \and\ _RUNGIEC_LD = 1)}
+{#if !(defined(_RUNGIEC_LD) && _RUNGIEC_LD = 1)}
 {#error RUNGIEC rungiec_ld.iec is the LD mode part of rungiec.iec; include rungiec.iec instead}
 {#else}
 (* Settings of the LD mode. RUNGIEC_LD_FANIN_MAX is the largest number of IDs that merge into one input (the ends of the branches of a PARALLEL); the generated set operations end at 32. The depth and arity tables end at 16 and 32. *)
 {#ifndef RUNGIEC_LD_FANIN_MAX}
 {#define RUNGIEC_LD_FANIN_MAX 16}
 {#endif}
-{#if RUNGIEC_LD_FANIN_MAX < 1 \or\ RUNGIEC_LD_FANIN_MAX > 32}
+{#if RUNGIEC_LD_FANIN_MAX < 1 || RUNGIEC_LD_FANIN_MAX > 32}
 {#error RUNGIEC LD: merge limit RUNGIEC_LD_FANIN_MAX is out of range 1 to 32}
 {#endif}
 {#if RUNGIEC_NEST_MAX > 16}
@@ -270,38 +270,38 @@
 {#define _RUNGIEC_LD_AP_31(s, d) _RUNGIEC_LD_AP_30(s, d)_RUNGIEC_LD_PUSH(d, _RUNGIEC_LD_GET(_RUNGIEC_LD_S(s, 30)))}
 {#define _RUNGIEC_LD_AP_32(s, d) _RUNGIEC_LD_AP_31(s, d)_RUNGIEC_LD_PUSH(d, _RUNGIEC_LD_GET(_RUNGIEC_LD_S(s, 31)))}
 {#define _RUNGIEC_LD_HAS_0(p, v) FALSE}
-{#define _RUNGIEC_LD_HAS_1(p, v) _RUNGIEC_LD_HAS_0(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 0)) = v}
-{#define _RUNGIEC_LD_HAS_2(p, v) _RUNGIEC_LD_HAS_1(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 1)) = v}
-{#define _RUNGIEC_LD_HAS_3(p, v) _RUNGIEC_LD_HAS_2(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 2)) = v}
-{#define _RUNGIEC_LD_HAS_4(p, v) _RUNGIEC_LD_HAS_3(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 3)) = v}
-{#define _RUNGIEC_LD_HAS_5(p, v) _RUNGIEC_LD_HAS_4(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 4)) = v}
-{#define _RUNGIEC_LD_HAS_6(p, v) _RUNGIEC_LD_HAS_5(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 5)) = v}
-{#define _RUNGIEC_LD_HAS_7(p, v) _RUNGIEC_LD_HAS_6(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 6)) = v}
-{#define _RUNGIEC_LD_HAS_8(p, v) _RUNGIEC_LD_HAS_7(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 7)) = v}
-{#define _RUNGIEC_LD_HAS_9(p, v) _RUNGIEC_LD_HAS_8(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 8)) = v}
-{#define _RUNGIEC_LD_HAS_10(p, v) _RUNGIEC_LD_HAS_9(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 9)) = v}
-{#define _RUNGIEC_LD_HAS_11(p, v) _RUNGIEC_LD_HAS_10(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 10)) = v}
-{#define _RUNGIEC_LD_HAS_12(p, v) _RUNGIEC_LD_HAS_11(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 11)) = v}
-{#define _RUNGIEC_LD_HAS_13(p, v) _RUNGIEC_LD_HAS_12(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 12)) = v}
-{#define _RUNGIEC_LD_HAS_14(p, v) _RUNGIEC_LD_HAS_13(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 13)) = v}
-{#define _RUNGIEC_LD_HAS_15(p, v) _RUNGIEC_LD_HAS_14(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 14)) = v}
-{#define _RUNGIEC_LD_HAS_16(p, v) _RUNGIEC_LD_HAS_15(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 15)) = v}
-{#define _RUNGIEC_LD_HAS_17(p, v) _RUNGIEC_LD_HAS_16(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 16)) = v}
-{#define _RUNGIEC_LD_HAS_18(p, v) _RUNGIEC_LD_HAS_17(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 17)) = v}
-{#define _RUNGIEC_LD_HAS_19(p, v) _RUNGIEC_LD_HAS_18(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 18)) = v}
-{#define _RUNGIEC_LD_HAS_20(p, v) _RUNGIEC_LD_HAS_19(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 19)) = v}
-{#define _RUNGIEC_LD_HAS_21(p, v) _RUNGIEC_LD_HAS_20(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 20)) = v}
-{#define _RUNGIEC_LD_HAS_22(p, v) _RUNGIEC_LD_HAS_21(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 21)) = v}
-{#define _RUNGIEC_LD_HAS_23(p, v) _RUNGIEC_LD_HAS_22(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 22)) = v}
-{#define _RUNGIEC_LD_HAS_24(p, v) _RUNGIEC_LD_HAS_23(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 23)) = v}
-{#define _RUNGIEC_LD_HAS_25(p, v) _RUNGIEC_LD_HAS_24(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 24)) = v}
-{#define _RUNGIEC_LD_HAS_26(p, v) _RUNGIEC_LD_HAS_25(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 25)) = v}
-{#define _RUNGIEC_LD_HAS_27(p, v) _RUNGIEC_LD_HAS_26(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 26)) = v}
-{#define _RUNGIEC_LD_HAS_28(p, v) _RUNGIEC_LD_HAS_27(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 27)) = v}
-{#define _RUNGIEC_LD_HAS_29(p, v) _RUNGIEC_LD_HAS_28(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 28)) = v}
-{#define _RUNGIEC_LD_HAS_30(p, v) _RUNGIEC_LD_HAS_29(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 29)) = v}
-{#define _RUNGIEC_LD_HAS_31(p, v) _RUNGIEC_LD_HAS_30(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 30)) = v}
-{#define _RUNGIEC_LD_HAS_32(p, v) _RUNGIEC_LD_HAS_31(p, v) \or\ _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 31)) = v}
+{#define _RUNGIEC_LD_HAS_1(p, v) _RUNGIEC_LD_HAS_0(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 0)) = v}
+{#define _RUNGIEC_LD_HAS_2(p, v) _RUNGIEC_LD_HAS_1(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 1)) = v}
+{#define _RUNGIEC_LD_HAS_3(p, v) _RUNGIEC_LD_HAS_2(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 2)) = v}
+{#define _RUNGIEC_LD_HAS_4(p, v) _RUNGIEC_LD_HAS_3(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 3)) = v}
+{#define _RUNGIEC_LD_HAS_5(p, v) _RUNGIEC_LD_HAS_4(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 4)) = v}
+{#define _RUNGIEC_LD_HAS_6(p, v) _RUNGIEC_LD_HAS_5(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 5)) = v}
+{#define _RUNGIEC_LD_HAS_7(p, v) _RUNGIEC_LD_HAS_6(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 6)) = v}
+{#define _RUNGIEC_LD_HAS_8(p, v) _RUNGIEC_LD_HAS_7(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 7)) = v}
+{#define _RUNGIEC_LD_HAS_9(p, v) _RUNGIEC_LD_HAS_8(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 8)) = v}
+{#define _RUNGIEC_LD_HAS_10(p, v) _RUNGIEC_LD_HAS_9(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 9)) = v}
+{#define _RUNGIEC_LD_HAS_11(p, v) _RUNGIEC_LD_HAS_10(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 10)) = v}
+{#define _RUNGIEC_LD_HAS_12(p, v) _RUNGIEC_LD_HAS_11(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 11)) = v}
+{#define _RUNGIEC_LD_HAS_13(p, v) _RUNGIEC_LD_HAS_12(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 12)) = v}
+{#define _RUNGIEC_LD_HAS_14(p, v) _RUNGIEC_LD_HAS_13(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 13)) = v}
+{#define _RUNGIEC_LD_HAS_15(p, v) _RUNGIEC_LD_HAS_14(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 14)) = v}
+{#define _RUNGIEC_LD_HAS_16(p, v) _RUNGIEC_LD_HAS_15(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 15)) = v}
+{#define _RUNGIEC_LD_HAS_17(p, v) _RUNGIEC_LD_HAS_16(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 16)) = v}
+{#define _RUNGIEC_LD_HAS_18(p, v) _RUNGIEC_LD_HAS_17(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 17)) = v}
+{#define _RUNGIEC_LD_HAS_19(p, v) _RUNGIEC_LD_HAS_18(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 18)) = v}
+{#define _RUNGIEC_LD_HAS_20(p, v) _RUNGIEC_LD_HAS_19(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 19)) = v}
+{#define _RUNGIEC_LD_HAS_21(p, v) _RUNGIEC_LD_HAS_20(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 20)) = v}
+{#define _RUNGIEC_LD_HAS_22(p, v) _RUNGIEC_LD_HAS_21(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 21)) = v}
+{#define _RUNGIEC_LD_HAS_23(p, v) _RUNGIEC_LD_HAS_22(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 22)) = v}
+{#define _RUNGIEC_LD_HAS_24(p, v) _RUNGIEC_LD_HAS_23(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 23)) = v}
+{#define _RUNGIEC_LD_HAS_25(p, v) _RUNGIEC_LD_HAS_24(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 24)) = v}
+{#define _RUNGIEC_LD_HAS_26(p, v) _RUNGIEC_LD_HAS_25(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 25)) = v}
+{#define _RUNGIEC_LD_HAS_27(p, v) _RUNGIEC_LD_HAS_26(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 26)) = v}
+{#define _RUNGIEC_LD_HAS_28(p, v) _RUNGIEC_LD_HAS_27(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 27)) = v}
+{#define _RUNGIEC_LD_HAS_29(p, v) _RUNGIEC_LD_HAS_28(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 28)) = v}
+{#define _RUNGIEC_LD_HAS_30(p, v) _RUNGIEC_LD_HAS_29(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 29)) = v}
+{#define _RUNGIEC_LD_HAS_31(p, v) _RUNGIEC_LD_HAS_30(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 30)) = v}
+{#define _RUNGIEC_LD_HAS_32(p, v) _RUNGIEC_LD_HAS_31(p, v) || _RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 31)) = v}
 {#define _RUNGIEC_LD_CN_0(p)}
 {#define _RUNGIEC_LD_CN_1(p) _RUNGIEC_LD_CN_0(p)<Connection refConnectionPointOutId=__xmlattr(_RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 0)))/>}
 {#define _RUNGIEC_LD_CN_2(p) _RUNGIEC_LD_CN_1(p)<Connection refConnectionPointOutId=__xmlattr(_RUNGIEC_LD_GET(_RUNGIEC_LD_S(p, 1)))/>}
