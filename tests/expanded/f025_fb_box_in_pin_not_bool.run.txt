@@ -1,1 +1,1 @@
-tests/expanded/f025_fb_box_in_pin_not_bool.st:157.0: error: InterpreterFault: assignment type mismatch: cannot store value of type BOOL in declared type TIME
+tests/expanded/f025_fb_box_in_pin_not_bool.st:156.0: error: 0x40080001: 'type mismatch in __main__: expected TIME but got BOOL'; TYPE_ERROR

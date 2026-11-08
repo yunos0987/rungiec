@@ -1,13 +1,13 @@
-(* @expect run-error InterpreterFault: assignment type mismatch: cannot store value of type BOOL in declared type TIME *)
+(* @expect run-error type mismatch in __main__: expected TIME but got BOOL.; TYPE_ERROR *)
 (* @cycles 1 *)
-(* Purpose: The input pin of FB_BOX gets the power, so it is a BOOL input. PT of a TON (TIME) as the input pin is a type mismatch that jiecc reports when the call runs. *)
+(* Purpose: The input pin of FB_BOX gets the power, so it is a BOOL input. PT of a TON (TIME) as the input pin is a type mismatch that the type check of jiecc --run reports before the run (TYPE_ERROR). *)
 (* rungiec.iec - ladder diagram DSL that jiepp expands to IEC 61131-3 ST (or, in the LD mode, to IEC 61131-10 LD XML). This is the entry file: it defines the common part (version, settings, checks, token pasting, node table) and includes the body of the mode at its end (rungiec_st.iec or rungiec_ld.iec); only the bodies define the public macros. Include this file, not a body. *)
 (* Usage: see README.md, docs/GUIDE.md and docs/REFERENCE.md. A POU that uses the DSL has, after its var blocks, RUNGIEC_VAR() (or RUNGIEC_VAR_TEMP() / RUNGIEC_VAR_NOEDGE()), BEGIN_RUNGIEC(), the networks (RUNG, or BEGIN_NET with WIRE lines and END_NET) and END_RUNGIEC(). In the ST mode the statements go directly in the POU body, with no directive around them; in the LD mode BEGIN_RUNGIEC() opens the ld body and END_RUNGIEC() closes it. *)
 (* RUNGIEC needs a jiepp whose diagnostic built-ins, named counters and comma-protecting built-in (used by ST_EXEC) are neither redefined nor undefined (the required jiepp version is in the tools section of README.md). There is no fallback. *)
 (* A jiepp without the has_builtin operator stops at the first error. A bare not is a bitwise not in a condition, so the logical form with backslashes is used. The messages name no built-in, because a redefined built-in would be expanded in them. *)
-(* jiecc defines _JIECC_FULL_VER (plain jiepp does not). Both modes need Jiecc 9.2.0: the ST mode writes the statements directly in the POU body. *)
+(* jiecc defines _JIECC_FULL_VER (plain jiepp does not). Both modes need Jiecc 9.4.0: the ST mode writes the statements directly in the POU body. *)
 (* Version: RUNGIEC_VERSION = major * 10000 + minor * 100 + revision (same scheme as _JIEPP_FULL_VER). *)
-(* RUNGIEC_NEST_MAX, RUNGIEC_EDGE_MAX, RUNGIEC_NODE_MAX and RUNGIEC_MC_MAX are integer literals (array bounds; jiecc 9.2.0 also reads an expression of integer literals correctly); only the range is checked here. RUNGIEC_NODE_MAX is 64 or less because the node table below ends at node 64. *)
+(* RUNGIEC_NEST_MAX, RUNGIEC_EDGE_MAX, RUNGIEC_NODE_MAX and RUNGIEC_MC_MAX are integer literals (array bounds; jiecc 9.4.0 also reads an expression of integer literals correctly); only the range is checked here. RUNGIEC_NODE_MAX is 64 or less because the node table below ends at node 64. *)
 (* Preprocessor counters (jiepp named counters, not ST variables): rungiec_edge = next edge slot of this POU, rungiec_net = 1 between BEGIN_NET() and END_NET(), rungiec_node = to node of the previous WIRE, rungiec_mc = depth of the open MC zones, rungiec_open = 1 between BEGIN_RUNGIEC() and END_RUNGIEC(), rungiec_exit = 1 after a WIRE of the open network that has JMP() or RETURN() (BEGIN_NET() sets it to 0, see WIRE). BEGIN_RUNGIEC() sets the others for every POU (through _RUNGIEC_START); END_RUNGIEC() sets rungiec_open, rungiec_net and rungiec_mc back to 0, so an error is not reported again by the next POU. *)
 (* Segment counters for JMP and LABEL: rungiec_seg = number of the current MC segment, counted over the whole file and never reset (BEGIN_RUNGIEC(), BEGIN_MC and END_MC each start a new segment); rungiec_pou = the first segment of this POU. For each label L, rungiec_label_L = the segment of LABEL(L) and rungiec_jump_L = the segment of the last JMP(L); a value below rungiec_pou belongs to an earlier POU (an unused counter is 0). *)
 (* The checks and counter updates of BEGIN_RUNGIEC() (_RUNGIEC_START) and END_RUNGIEC() (_RUNGIEC_END). *)
@@ -25,7 +25,7 @@
 (* Working variable declarations. RungiecPrev is always static (var), never var_temp. *)
 (* RungiecSp starts at -1 so that a POU whose BEGIN_RUNGIEC() init statements did not run faults on the first push (RungiecStIn[0] is out of bounds); the init statements set it to 0. *)
 (* RungiecRail is the left power rail: TRUE, or the condition of the innermost open MC zone. RungiecNode holds the node values of a BEGIN_NET network (node 0 = rail); BEGIN_NET() clears nodes 1 and up with the loop index RungiecI. RungiecMcSt[d] keeps the rail outside the MC zone of depth d. *)
-(* POU layout. After the user's own var blocks, write RUNGIEC_VAR() (or RUNGIEC_VAR_TEMP() / RUNGIEC_VAR_NOEDGE()), BEGIN_RUNGIEC(), the networks and END_RUNGIEC(). The statements go directly in the POU body (Jiecc 9.2.0 reads them as ST); neither the user nor these macros write a directive around them. *)
+(* POU layout. After the user's own var blocks, write RUNGIEC_VAR() (or RUNGIEC_VAR_TEMP() / RUNGIEC_VAR_NOEDGE()), BEGIN_RUNGIEC(), the networks and END_RUNGIEC(). The statements go directly in the POU body (Jiecc 9.4.0 reads them as ST); neither the user nor these macros write a directive around them. *)
 (* RUNGIEC_VAR(): the work variables and RungiecPrev, all in a var block. RUNGIEC_VAR_TEMP(): the work variables are var_temp (RungiecPrev stays static var). RUNGIEC_VAR_NOEDGE(): for a FUNCTION or METHOD; no RungiecPrev, so no edge contacts or transition coils. *)
 (* BEGIN_RUNGIEC() and END_RUNGIEC() are common to the three. BEGIN_RUNGIEC() checks that the previous POU closed its networks, its MC zones and its BEGIN_RUNGIEC(), resets the counters (_RUNGIEC_START), then writes the init statements. END_RUNGIEC() checks that BEGIN_RUNGIEC() came before it and that every BEGIN_NET and BEGIN_MC of the POU is closed (_RUNGIEC_END); it expands to no ST. *)
 (* Combinator stack handling. Elements and combinators end without ';' and their last statement is an assignment, *)
@@ -63,7 +63,7 @@
 (* t_stdfb.iec - deterministic stand-ins for the IEC 61131-3 standard timers (TON, TOF, TP) and a retentive
    on-delay timer (TONR), shared by the tests.
    Counters and edges (CTU, CTD, CTUD, R_TRIG, F_TRIG) are not here: the tests use the built-in function blocks
-   of jiecc 9.2.0 (tools/jiecc). The timers are stand-ins because jiecc --run has no virtual clock: the
+   of jiecc 9.4.0 (tools/jiecc). The timers are stand-ins because jiecc --run has no virtual clock: the
    built-in timers run on wall-clock time, so the result of a test would depend on the speed of the machine.
    These blocks are deterministic instead: one call = one scan = 100 ms.
    Call them with FB_SCAN or FB_IN (called on every scan) so that time advances on every scan.
@@ -73,11 +73,10 @@
    - Time advances by 100 ms per call, not by real time. ET is looked up in a TIME table, so it is a multiple
      of 100 ms and counts up to 4 s: a PT above 4 s never expires, and a PT that is not a multiple of 100 ms
      expires at the next multiple (ET then shows PT, as in Figure 18).
-   - TOF starts with Q FALSE when IN is FALSE from the first call (the built-in TOF of jiecc 9.2.0 gives Q TRUE
-     for the first PT after the start).
+   - TOF starts with Q FALSE when IN is FALSE from the first call (the built-in TOF of jiecc 9.4.0 also does).
    - The names are the standard names. A user declaration takes priority over a built-in function block of
      jiecc, so the tests that include this file use these timers instead of the built-in ones.
-   - TONR is not an IEC 61131-3 standard block (jiecc 9.2.0 has no TONR). It has the inputs and outputs of the
+   - TONR is not an IEC 61131-3 standard block (jiecc 9.4.0 has no TONR). It has the inputs and outputs of the
      TONR (time accumulator) of Siemens S7-1200 / S7-1500: IN, R, PT, Q, ET. *)
 (* TON (Figure 18 TON_TIME): the scan where IN rises is ET = 0 and each further scan with IN TRUE adds 100 ms; Q = IN and ET >= PT, then ET stays at PT. PT = T#300ms: Q on the 4th scan with IN TRUE (ET = 0, 100, 200, 300 ms). *)
 function_block TON

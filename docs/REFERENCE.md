@@ -327,7 +327,7 @@ M               0  1  1  0  0  0
 
 ボックスはこの 14 種類だけである。OFF の MC 領域（左レールが OFF）では、`FB_SCAN` / `FBT_SCAN` は呼び、`FB_IN` / `FBT_IN` / `FB_BOX` / `FBT_BOX` は入力のピンを FALSE にして呼び、残りの 8 種類（`FB_EXEC` / `FB_ENO` / `FBT_EXEC` / `FBT_ENO` / `FUN_EXEC` / `FUN_EXEC_RET` / `FUN_ENO` / `FUN_ENO_RET`）は呼ばない（パワーが OFF なので）。関数は状態を持たないので、パワー ON のときだけ呼ぶ `FUN_EXEC` 系だけを置く。
 
-LD XML を取り込むツールによっては、FB のボックスに型名と、後段へつながる出力が必須のことがある。そのときは `FBT_BOX` で置く。`FB_BOX` / `FBT_BOX` の `in_pin` は BOOL の入力、`out_pin` は BOOL の出力にする。ST モードでは、違えば jiecc がエラーにする（`in_pin` は実行時の型の不一致 `InterpreterFault`、`out_pin` はコンパイルの `TYPE_ERROR`。`tests/f025_fb_box_in_pin_not_bool.iec`、`tests/f026_fbt_box_out_pin_not_bool.iec`）。LD モードでは jiecc が `{ld}` の本文を検査しないので XML が出て、取り込むツールの検査に任せることになる。
+LD XML を取り込むツールによっては、FB のボックスに型名と、後段へつながる出力が必須のことがある。そのときは `FBT_BOX` で置く。`FB_BOX` / `FBT_BOX` の `in_pin` は BOOL の入力、`out_pin` は BOOL の出力にする。ST モードでは、違えば `jiecc --run` が実行前の型検査で `TYPE_ERROR` にする（XML への変換では検査しない。`tests/f025_fb_box_in_pin_not_bool.iec`、`tests/f026_fbt_box_out_pin_not_bool.iec`）。LD モードでは jiecc が `{ld}` の本文を検査しないので XML が出て、取り込むツールの検査に任せることになる。
 
 それぞれのラダーの記号と書き方（ボックスは 1 行の `[ ]` で描く）:
 
@@ -880,7 +880,7 @@ include の前に `{#define}` するか、`-D` で指定する。両方を同時
 | `RUNGIEC_LD` | 未定義 | 整数 | 0 でない値で定義すると LD モード（「LD モード」）。未定義か 0 なら ST モード |
 | `RUNGIEC_LD_FANIN_MAX` | 16 | 1〜32 | LD モードで 1 か所に合流する出力の数の上限（並列の出口、一般形のネットワークの節点と右レール）。範囲外は PP91 で前処理エラー（32 は生成した集合の操作の上限）。ST モードでは使わない |
 
-`RUNGIEC_NEST_MAX` / `RUNGIEC_EDGE_MAX` / `RUNGIEC_NODE_MAX` / `RUNGIEC_MC_MAX` は配列の境界になるので整数リテラルで指定する。整数リテラルだけの式（`1 + 1`）も Jiecc 9.2.0 では配列の境界として正しく読まれるが、仕様は整数リテラル。名前（変数・定数）を含む値は使えない: テストランナーの `-Werror=undef` では前処理エラー PP54、付けない jiepp では名前だけなら 0 と評価されて PP91、名前を含む式（`K + 16`）は jiecc のエラーになる。
+`RUNGIEC_NEST_MAX` / `RUNGIEC_EDGE_MAX` / `RUNGIEC_NODE_MAX` / `RUNGIEC_MC_MAX` は配列の境界になるので整数リテラルで指定する。整数リテラルだけの式（`1 + 1`）も Jiecc 9.4.0 では配列の境界として正しく読まれるが、仕様は整数リテラル。名前（変数・定数）を含む値は使えない: テストランナーの `-Werror=undef` では前処理エラー PP54、付けない jiepp では名前だけなら 0 と評価されて PP91、名前を含む式（`K + 16`）は jiecc のエラーになる。
 
 ## 上限とエラー
 
@@ -890,14 +890,14 @@ include の前に `{#define}` するか、`-D` で指定する。両方を同時
 | 空の子・末尾のカンマ（`RUNG(CONTACT(A), )`） | 前処理 | PP91 `RUNGIEC empty element, look for a doubled or trailing comma` |
 | `{#ignore PP91}` で項数エラーを抑制 | 前処理の後 | `_RUNGIEC_SERIES_0(` / `_RUNGIEC_SERIES_33(` が残り、テストランナーが残留として検出する |
 | 引数の数の誤り（`CONTACT(A, Y)`、`FB_IN(Tm)`、`FBT_BOX(Tm, TON, IN)`） | 前処理 | PP34 `'<名前>: expected N, got K'`（jiepp が出す） |
-| `FB_BOX` / `FBT_BOX` の `in_pin` / `out_pin` が BOOL のピンでない | ST モードは実行（`in_pin`）かコンパイル（`out_pin`）。LD モードはなし | ST モードは jiecc の `InterpreterFault: assignment type mismatch`（`in_pin`。`f025`）/ `TYPE_ERROR`（`out_pin`。`f026`）。LD モードは jiecc が `{ld}` の本文を検査しないので XML が出る |
+| `FB_BOX` / `FBT_BOX` の `in_pin` / `out_pin` が BOOL のピンでない | ST モードは `jiecc --run` の実行前の型検査。LD モードはなし | ST モードは jiecc の `'type mismatch in __main__: expected TIME but got BOOL'; TYPE_ERROR`（`in_pin`。`f025` の形）/ `'operator AND in __main__: no applicable signature for (BOOL, TIME)'; TYPE_ERROR`（`out_pin`。`f026` の形）。XML への変換では検査しない。LD モードは jiecc が `{ld}` の本文を検査しないので XML が出る |
 | エッジ接点と遷移コイルが 1 つの POU で `RUNGIEC_EDGE_MAX` を超える | 前処理 | PP91 `RUNGIEC edge slot N exceeds M, ...` |
 | `RUNGIEC_ARITY_MAX` が 1〜32 の外 | 前処理 | PP91 `RUNGIEC arity limit N is out of range 1 to 32` |
 | `RUNGIEC_NEST_MAX` / `RUNGIEC_EDGE_MAX` / `RUNGIEC_NODE_MAX` / `RUNGIEC_MC_MAX` が 1 未満 | 前処理 | PP91 `RUNGIEC nest limit N ...` / `RUNGIEC edge slot count N ...` / `RUNGIEC node limit N ...` / `RUNGIEC MC nesting limit N ...`（どれも `must be an integer literal of 1 or more`） |
 | `RUNGIEC_NODE_MAX` が 64 を超える | 前処理 | PP91 `RUNGIEC node limit N exceeds 64, the largest node number of the node table`（`e043`） |
-| 設定に名前（変数・定数）を書く | 前処理（`-Werror=undef`）/ コンパイル | `-Werror=undef` では PP54。付けない jiepp では、名前だけなら PP91（0 と評価）、`K + 16` のような式は jiecc のエラー。整数リテラルだけの式は Jiecc 9.2.0 で正しく動く |
+| 設定に名前（変数・定数）を書く | 前処理（`-Werror=undef`）/ コンパイル | `-Werror=undef` では PP54。付けない jiepp では、名前だけなら PP91（0 と評価）、`K + 16` のような式は jiecc のエラー。整数リテラルだけの式は Jiecc 9.4.0 で正しく動く |
 | `__has_builtin` や `__nosplit` の無い jiepp、`__assert` / `__counter` / `__counter_peek` / `__counter_set` / `__nosplit` を無効にした jiepp | 前処理 | PP91 `RUNGIEC needs a jiepp with the built-in assert, named counters and comma protection, ...`（[README の「必要なツール」](../README.md#必要なツール)） |
-| Jiecc 9.2.0 より古い jiecc（jiecc が定義する `_JIECC_FULL_VER` が 90200 未満。jiepp だけの展開では確認しない） | 前処理 | PP91 `RUNGIEC needs Jiecc 9.2.0 or later`（`e071`） |
+| Jiecc 9.4.0 より古い jiecc（jiecc が定義する `_JIECC_FULL_VER` が 90400 未満。jiepp だけの展開では確認しない） | 前処理 | PP91 `RUNGIEC needs Jiecc 9.4.0 or later`（`e071`） |
 | `rungiec_st.iec` を直接 include する | 前処理 | PP91 `RUNGIEC rungiec_st.iec is the ST mode part of rungiec.iec; include rungiec.iec instead`（`e069`） |
 | MC の入れ子が `RUNGIEC_MC_MAX` を超える | 前処理 | PP91 `RUNGIEC BEGIN_MC nesting exceeds M` |
 | 対の無い `END_MC()` | 前処理 | PP91 `RUNGIEC END_MC without BEGIN_MC` |
@@ -968,21 +968,21 @@ LD モードだけのもの（[GUIDE の「LD モードの制約」](GUIDE.md#ld
 
 ## バージョン
 
-`rungiec.iec` は 4 個のマクロでバージョンを公開する（現在 0.2.0）。
+`rungiec.iec` は 4 個のマクロでバージョンを公開する（現在 0.3.0）。
 
 | マクロ | 値 | 内容 |
 |---|---|---|
 | `RUNGIEC_VERSION_MAJOR` | 0 | メジャー |
-| `RUNGIEC_VERSION_MINOR` | 2 | マイナー |
+| `RUNGIEC_VERSION_MINOR` | 3 | マイナー |
 | `RUNGIEC_VERSION_REVISION` | 0 | リビジョン |
-| `RUNGIEC_VERSION` | 200 | `MAJOR * 10000 + MINOR * 100 + REVISION`（jiepp の `_JIEPP_FULL_VER` と同じ形式） |
+| `RUNGIEC_VERSION` | 300 | `MAJOR * 10000 + MINOR * 100 + REVISION`（jiepp の `_JIEPP_FULL_VER` と同じ形式） |
 
 利用側のファイルで `{#if}` を使い、必要なバージョンを確認できる（`tests/t051_version_macros.iec`）。
 
 ```
 {#include 'rungiec.iec'}
-{#if RUNGIEC_VERSION < 200}
-{#error this file needs RUNGIEC 0.2.0 or later}
+{#if RUNGIEC_VERSION < 300}
+{#error this file needs RUNGIEC 0.3.0 or later}
 {#endif}
 ```
 

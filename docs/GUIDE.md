@@ -207,7 +207,7 @@ RUNG(CONTACT(A) CONTACT(B), COIL(Y))    (* 誤り: カンマが無い。jiecc �
 
 ### `{#ignore}` と POU の本体
 
-- ST モードの展開後の ST は、`BEGIN_RUNGIEC()` の初期化文から POU の終わりまで、POU の本体に直接並ぶ（`{st}` / `{end}` で囲まない）。Jiecc 9.2.0 は POU の本体の文を原文の順に実行する。POU の本体のコメントに `{st}` / `{end}` と書かない（`(* {st} *)` も jiecc がディレクティブとして読み、構文エラーになる）。
+- ST モードの展開後の ST は、`BEGIN_RUNGIEC()` の初期化文から POU の終わりまで、POU の本体に直接並ぶ（`{st}` / `{end}` で囲まない）。Jiecc 9.4.0 は POU の本体の文を原文の順に実行する。POU の本体のコメントに `{st}` / `{end}` と書かない（`(* {st} *)` も jiecc がディレクティブとして読み、構文エラーになる）。
 - `{#ignore PP91}` は使わない。RUNGIEC の検査はすべて PP91 なので、抑制するとどの検査も効かなくなる。`{#ignore}` はそれより後の処理全体に及び、include したファイルの中に書いても利用者の POU の検査まで抑制する。項数エラー（`RUNG()` / `SERIES()`、上限超え）を抑制すると、振り分け先の無い `_RUNGIEC_SERIES_0(` などが ST に残る。テストランナーは展開後に `_RUNGIEC_` で始まる名前が残っていれば失敗にする（`r001`、`r002`）。
 
 ### `*_ENO` マクロの引数
@@ -243,7 +243,7 @@ LABEL(Skip)
 
 ## LD モード
 
-同じソースから、ST の代わりに IEC 61131-10 の LD XML（ラダー図を XML で表したもの。`<Rung>` の並び）を出すモード。各社のツールにラダー図として取り込むためのもので、マクロはそのまま使い、変換のときに `-D RUNGIEC_LD` を付けて切り替える（例題 `automatic_door` の LD モードの XML を 1 つのツールで読み込めることを確認した。ほかの例題とツールは確認していない）。jiepp 1.2.0 と Jiecc 9.2.0 が必要である（[README の「必要なツール」](../README.md#必要なツール)）。マクロごとの XML の形は[仕様の「LD モード」](REFERENCE.md#ld-モード)にある。
+同じソースから、ST の代わりに IEC 61131-10 の LD XML（ラダー図を XML で表したもの。`<Rung>` の並び）を出すモード。各社のツールにラダー図として取り込むためのもので、マクロはそのまま使い、変換のときに `-D RUNGIEC_LD` を付けて切り替える（例題 `automatic_door` の LD モードの XML を 1 つのツールで読み込めることを確認した。ほかの例題とツールは確認していない）。jiepp 1.4.0 と Jiecc 9.4.0 が必要である（[README の「必要なツール」](../README.md#必要なツール)）。マクロごとの XML の形は[仕様の「LD モード」](REFERENCE.md#ld-モード)にある。
 
 ### 変換のしかた
 
@@ -287,9 +287,9 @@ tools\jiecc.exe examples/self_hold.iec -I . -D RUNGIEC_LD -P -nC -t omron -o sel
 
 LD モードには実行時のトラップが無い（作業変数が無い）。ST モードで実行時フォールトになる「要素の中の文マクロ」と「深さの超過」は、LD モードでは上の表のとおり前処理の PP91 になる。
 
-`FB_*` の FB のボックスの `Block` は `typeName=""`（型の名前が空）で出る。前処理ではインスタンスの型（`Tm` の `TON`）が分からないため。Jiecc 9.2.0 は空のまま XML に出す。`FBT_*` では引数の型名が `typeName` に入る（`FBT_BOX(Tm, TON, IN, Q)` は `typeName="TON"`）。LD XML を取り込むツールによっては、FB のボックスに型名が必須のことがあるので、そのときは `FBT_*` を使う。前処理は型名がインスタンスの宣言と合うかを検査しない。各社のツールが空の `typeName` を受け付けるかは確認していない。関数のボックスと MC / MCR の `Block` は `typeName` に名前が入る。
+`FB_*` の FB のボックスの `Block` は `typeName=""`（型の名前が空）で出る。前処理ではインスタンスの型（`Tm` の `TON`）が分からないため。Jiecc 9.4.0 は空のまま XML に出す。`FBT_*` では引数の型名が `typeName` に入る（`FBT_BOX(Tm, TON, IN, Q)` は `typeName="TON"`）。LD XML を取り込むツールによっては、FB のボックスに型名が必須のことがあるので、そのときは `FBT_*` を使う。前処理は型名がインスタンスの宣言と合うかを検査しない。各社のツールが空の `typeName` を受け付けるかは確認していない。関数のボックスと MC / MCR の `Block` は `typeName` に名前が入る。
 
-`FB_BOX` / `FBT_BOX` の `Block` は、出力 `out_pin` の `OutputVariable` が後段の要素（または右レール）につながる。`in_pin` と `out_pin` が BOOL のピンであることは、LD モードでは jiecc が検査しない（ST モードでは jiecc がエラーにする。`in_pin` は実行時の型の不一致 `f025`、`out_pin` はコンパイルの `TYPE_ERROR` `f026`）。取り込むツールの検査に任せることになるので、同じソースを ST モードでも変換して確認する。
+`FB_BOX` / `FBT_BOX` の `Block` は、出力 `out_pin` の `OutputVariable` が後段の要素（または右レール）につながる。`in_pin` と `out_pin` が BOOL のピンであることは、LD モードでは jiecc が検査しない（ST モードでは `jiecc --run` が実行前の型検査で `TYPE_ERROR` にする。`in_pin` は `f025`、`out_pin` は `f026`。XML への変換では検査しない）。取り込むツールの検査に任せることになるので、同じソースを ST モードで `jiecc --run` にかけて確認する。
 
 ### ST モードと意味が違う点
 

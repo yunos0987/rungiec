@@ -8,15 +8,15 @@
 {#elif \not\ __has_builtin(__assert) \or\ \not\ __has_builtin(__counter) \or\ \not\ __has_builtin(__counter_peek) \or\ \not\ __has_builtin(__counter_set) \or\ \not\ __has_builtin(__nosplit)}
 {#error RUNGIEC needs a jiepp with the built-in assert, named counters and comma protection, neither redefined nor undefined; use the jiepp version named in README.md}
 {#endif}
-(* jiecc defines _JIECC_FULL_VER (plain jiepp does not). Both modes need Jiecc 9.2.0: the ST mode writes the statements directly in the POU body. *)
-{#if defined(_JIECC_FULL_VER) \and\ _JIECC_FULL_VER < 90200}
-{#error RUNGIEC needs Jiecc 9.2.0 or later}
+(* jiecc defines _JIECC_FULL_VER (plain jiepp does not). Both modes need Jiecc 9.4.0: the ST mode writes the statements directly in the POU body. *)
+{#if defined(_JIECC_FULL_VER) \and\ _JIECC_FULL_VER < 90400}
+{#error RUNGIEC needs Jiecc 9.4.0 or later}
 {#endif}
 (* Version: RUNGIEC_VERSION = major * 10000 + minor * 100 + revision (same scheme as _JIEPP_FULL_VER). *)
 {#define RUNGIEC_VERSION_MAJOR 0}
-{#define RUNGIEC_VERSION_MINOR 2}
+{#define RUNGIEC_VERSION_MINOR 3}
 {#define RUNGIEC_VERSION_REVISION 0}
-{#define RUNGIEC_VERSION 200}
+{#define RUNGIEC_VERSION 300}
 {#if RUNGIEC_VERSION <> RUNGIEC_VERSION_MAJOR * 10000 + RUNGIEC_VERSION_MINOR * 100 + RUNGIEC_VERSION_REVISION}
 {#error RUNGIEC internal error: RUNGIEC_VERSION does not match its parts}
 {#endif}
@@ -38,7 +38,7 @@
 {#if RUNGIEC_ARITY_MAX < 1 \or\ RUNGIEC_ARITY_MAX > 32}
 {#error RUNGIEC arity limit RUNGIEC_ARITY_MAX is out of range 1 to 32}
 {#endif}
-(* RUNGIEC_NEST_MAX, RUNGIEC_EDGE_MAX, RUNGIEC_NODE_MAX and RUNGIEC_MC_MAX are integer literals (array bounds; jiecc 9.2.0 also reads an expression of integer literals correctly); only the range is checked here. RUNGIEC_NODE_MAX is 64 or less because the node table below ends at node 64. *)
+(* RUNGIEC_NEST_MAX, RUNGIEC_EDGE_MAX, RUNGIEC_NODE_MAX and RUNGIEC_MC_MAX are integer literals (array bounds; jiecc 9.4.0 also reads an expression of integer literals correctly); only the range is checked here. RUNGIEC_NODE_MAX is 64 or less because the node table below ends at node 64. *)
 {#if RUNGIEC_NEST_MAX < 1}
 {#error RUNGIEC nest limit RUNGIEC_NEST_MAX must be an integer literal of 1 or more}
 {#endif}

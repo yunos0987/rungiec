@@ -11,7 +11,7 @@
 {#define _RUNGIEC_EDGE_VARS() RungiecPrev: array[1..RUNGIEC_EDGE_MAX] of bool;}
 {#define _RUNGIEC_INIT() RungiecEn := true; RungiecIn := true; RungiecAcc := true; RungiecVal := true; RungiecTmp := false; RungiecRail := true; RungiecSp := 0;}
 
-(* POU layout. After the user's own var blocks, write RUNGIEC_VAR() (or RUNGIEC_VAR_TEMP() / RUNGIEC_VAR_NOEDGE()), BEGIN_RUNGIEC(), the networks and END_RUNGIEC(). The statements go directly in the POU body (Jiecc 9.2.0 reads them as ST); neither the user nor these macros write a directive around them. *)
+(* POU layout. After the user's own var blocks, write RUNGIEC_VAR() (or RUNGIEC_VAR_TEMP() / RUNGIEC_VAR_NOEDGE()), BEGIN_RUNGIEC(), the networks and END_RUNGIEC(). The statements go directly in the POU body (Jiecc 9.4.0 reads them as ST); neither the user nor these macros write a directive around them. *)
 (* RUNGIEC_VAR(): the work variables and RungiecPrev, all in a var block. RUNGIEC_VAR_TEMP(): the work variables are var_temp (RungiecPrev stays static var). RUNGIEC_VAR_NOEDGE(): for a FUNCTION or METHOD; no RungiecPrev, so no edge contacts or transition coils. *)
 (* BEGIN_RUNGIEC() and END_RUNGIEC() are common to the three. BEGIN_RUNGIEC() checks that the previous POU closed its networks, its MC zones and its BEGIN_RUNGIEC(), resets the counters (_RUNGIEC_START), then writes the init statements. END_RUNGIEC() checks that BEGIN_RUNGIEC() came before it and that every BEGIN_NET and BEGIN_MC of the POU is closed (_RUNGIEC_END); it expands to no ST. *)
 {#define RUNGIEC_VAR() var _RUNGIEC_WORK_VARS() _RUNGIEC_EDGE_VARS() end_var}

@@ -9,7 +9,7 @@ git clone --recursive https://github.com/yunos0987/rungiec.git
 cd rungiec
 ```
 
-テストは jiecunit（IEC 61131-3 のテキストで書く単体テストの枠組み。https://github.com/yunos0987/jiecunit ）を git submodule の `vendor/jiecunit`（v6.0.0 に固定）として使います。`--recursive` を付けずに clone した場合は `git submodule update --init` を実行してください。submodule の中は編集しません。
+テストは jiecunit（IEC 61131-3 のテキストで書く単体テストの枠組み。https://github.com/yunos0987/jiecunit ）を git submodule の `vendor/jiecunit`（v7.0.0 に固定）として使います。`--recursive` を付けずに clone した場合は `git submodule update --init` を実行してください。submodule の中は編集しません。
 
 jiepp（IEC 61131-3 向けのプリプロセッサ。https://github.com/yunos0987/jiepp ）と jiecc（IEC 61131-3 のテキストと IEC 61131-10 XML を相互に変換する無料のコマンドラインツール。テストは jiecc に含まれるインタプリタ jier（`jiecc --run`）で実行する）を、リポジトリの `tools/` に置きます（Git では追跡しません）。jiecc のホームページ（https://www.graviness.com/iec_61131-3/jiecc.html ）の配布アーカイブには両方が入っているので、テストにはこのアーカイブから取り出すのが簡単です（CI もこのアーカイブから取得します）。jiepp だけなら GitHub の Releases（https://github.com/yunos0987/jiepp/releases ）からも取得できます。版と実行環境は [README の「必要なツール」](README.md#必要なツール)を参照してください。
 
