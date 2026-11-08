@@ -1,7 +1,7 @@
 (* t_stdfb.iec - deterministic stand-ins for the IEC 61131-3 standard timers (TON, TOF, TP) and a retentive
    on-delay timer (TONR), shared by the tests.
    Counters and edges (CTU, CTD, CTUD, R_TRIG, F_TRIG) are not here: the tests use the built-in function blocks
-   of jiecc 9.2.0 (tools/jiecc). The timers are stand-ins because jiecc --run has no virtual clock: the
+   of jiecc 9.4.0 (tools/jiecc). The timers are stand-ins because jiecc --run has no virtual clock: the
    built-in timers run on wall-clock time, so the result of a test would depend on the speed of the machine.
    These blocks are deterministic instead: one call = one scan = 100 ms.
    Call them with FB_SCAN or FB_IN (called on every scan) so that time advances on every scan.
@@ -11,11 +11,10 @@
    - Time advances by 100 ms per call, not by real time. ET is looked up in a TIME table, so it is a multiple
      of 100 ms and counts up to 4 s: a PT above 4 s never expires, and a PT that is not a multiple of 100 ms
      expires at the next multiple (ET then shows PT, as in Figure 18).
-   - TOF starts with Q FALSE when IN is FALSE from the first call (the built-in TOF of jiecc 9.2.0 gives Q TRUE
-     for the first PT after the start).
+   - TOF starts with Q FALSE when IN is FALSE from the first call (the built-in TOF of jiecc 9.4.0 also does).
    - The names are the standard names. A user declaration takes priority over a built-in function block of
      jiecc, so the tests that include this file use these timers instead of the built-in ones.
-   - TONR is not an IEC 61131-3 standard block (jiecc 9.2.0 has no TONR). It has the inputs and outputs of the
+   - TONR is not an IEC 61131-3 standard block (jiecc 9.4.0 has no TONR). It has the inputs and outputs of the
      TONR (time accumulator) of Siemens S7-1200 / S7-1500: IN, R, PT, Q, ET. *)
 {#pragma once}
 (* TON (Figure 18 TON_TIME): the scan where IN rises is ET = 0 and each further scan with IN TRUE adds 100 ms; Q = IN and ET >= PT, then ET stays at PT. PT = T#300ms: Q on the 4th scan with IN TRUE (ET = 0, 100, 200, 300 ms). *)

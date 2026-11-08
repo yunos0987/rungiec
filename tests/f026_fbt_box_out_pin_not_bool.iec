@@ -1,6 +1,6 @@
-(* @expect run-error rungiecrail .PLACE __main__.tm.*TYPE_ERROR *)
+(* @expect run-error operator AND in __main__: no applicable signature for .BOOL, TIME..; TYPE_ERROR *)
 (* @cycles 1 *)
-(* Purpose: The output pin of FBT_BOX gives the power after the box, so it is a BOOL output. ET of a TON (TIME) as the output pin is the jiecc compile error TYPE_ERROR of RungiecRail and Tm.ET. *)
+(* Purpose: The output pin of FBT_BOX gives the power after the box, so it is a BOOL output. ET of a TON (TIME) as the output pin is a type mismatch of RungiecRail and Tm.ET that the type check of jiecc --run reports before the run (TYPE_ERROR). *)
 {#include 'rungiec.iec'}
 {#include 't_stdfb.iec'}
 program __main__

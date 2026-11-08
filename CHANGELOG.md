@@ -2,6 +2,19 @@
 
 0.2.0 以降の変更を記録します。0.2.0 は最初の公開版です。
 
+## 0.3.0 (2026-11-08)
+
+`RUNGIEC_VERSION` は 300 です。
+
+### 互換性に影響する変更 / Breaking changes
+
+- 必要なツールを jiepp 1.4.0 と Jiecc 9.4.0 に上げました。`rungiec.iec` の版の検査は、`_JIECC_FULL_VER` が 90400 未満なら PP91 `RUNGIEC needs Jiecc 9.4.0 or later` にします（jiepp だけで展開するときは確認しません）。マクロの展開結果と公開マクロは変わりません。ST モード自体は Jiecc 9.2.0 でも動きますが、確認しているのは 9.4.0 だけです。
+- テストの枠組み jiecunit（git submodule の `vendor/jiecunit`）を v7.0.0 にしました。jiecunit v7.0.0 には Jiecc 9.4.0 が必要です。`jiecc --run` では、集計の後に `halt` でスキャンを止めて終わります。
+
+### テスト / Tests
+
+- `f025` / `f026`（`FB_BOX` / `FBT_BOX` の入力ピン・出力ピンが BOOL でない）の期待を、Jiecc 9.4.0 の `jiecc --run` が実行の前に行う型検査のエラー（`TYPE_ERROR`）の文言に合わせました。
+
 ## 0.2.0 (2026-11-02)
 
 最初の公開版です。IEC 61131-3 のラダー図 (LD) を jiepp のマクロで書き、ST 言語に展開します。同じソースから IEC 61131-10 の LD XML も作れます（LD モード）。

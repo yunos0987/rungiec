@@ -8,7 +8,7 @@ IEC 61131-3 のラダー図 (LD) を ST 言語に展開する DSL。同じソー
 
 RUNGIEC lets you write IEC 61131-3 ladder diagrams (LD) as text with jiepp macros and expands them to plain IEC 61131-3 Structured Text (ST).
 The same source can also be written out as the IEC 61131-10 LD XML of the ladder (the LD mode).
-RUNGIEC is checked only with jiepp 1.2.0 and Jiecc 9.2.0 (the expanded ST is run with `jiecc --run`); the LD mode needs these versions, and older versions support only the ST mode.
+RUNGIEC is checked only with jiepp 1.4.0 and Jiecc 9.4.0 (the expanded ST is run with `jiecc --run`); the LD mode needs these versions, and older versions support only the ST mode.
 The documents are written in Japanese.
 
 ## 目次
@@ -27,7 +27,7 @@ The documents are written in Japanese.
 
 ラダー図 (LD) を、IEC 61131-3 のソースの中にテキスト（jiepp マクロ）で書けるようにする DSL。ラダーがテキストになるので、ST のソースと同じように差分を取り、レビューし、Git で版を管理できる。jiepp で展開すると通常の ST になる。
 
-ST モード（下の「2 つのモード」）の動作を確認しているのは jiepp 1.2.0 と Jiecc 9.2.0 だけ（jiepp で展開した ST を Jiecc 9.2.0 のインタプリタ `jiecc --run` で実行して確認し、例題は jiecc で XML に変換できることも確認する）。展開後の ST の文は POU の本体に直接並ぶ（`{st}` / `{end}` で囲まない。Jiecc 9.2.0 はこの形を読む）。ほかのツールや処理系で展開後の ST を使えるかは確認していない。各社のツールに取り込むときは、jiecc で IEC 61131-10 XML に変換できる（jiecc は必須ではない。例題 `automatic_door` の LD モードの XML を 1 つのツールで読み込めることを確認した。ほかの例題とツールは確認していない）。jiepp と jiecc は下の「この README に出てくるツール」で説明する。
+ST モード（下の「2 つのモード」）の動作を確認しているのは jiepp 1.4.0 と Jiecc 9.4.0 だけ（jiepp で展開した ST を Jiecc 9.4.0 のインタプリタ `jiecc --run` で実行して確認し、例題は jiecc で XML に変換できることも確認する）。展開後の ST の文は POU の本体に直接並ぶ（`{st}` / `{end}` で囲まない。Jiecc 9.4.0 はこの形を読む）。ほかのツールや処理系で展開後の ST を使えるかは確認していない。各社のツールに取り込むときは、jiecc で IEC 61131-10 XML に変換できる（jiecc は必須ではない。例題 `automatic_door` の LD モードの XML を 1 つのツールで読み込めることを確認した。ほかの例題とツールは確認していない）。jiepp と jiecc は下の「この README に出てくるツール」で説明する。
 
 - ネットワーク (`RUNG`)・直列 (`SERIES`)・並列 (`PARALLEL`)・各種接点・コイル・関数/FB 呼び出し・インライン ST (`ST_EXEC`)・実行制御 (`BEGIN_MC(条件...)` / `END_MC()` / `RETURN()` / `JMP()` / `LABEL()`) をマクロで書く
 - 直並列で書けない回路（ブリッジ回路など）は、節点と配線で書く一般形のネットワーク（`BEGIN_NET` / `WIRE` / `END_NET`）で書く
@@ -95,26 +95,26 @@ RUNGIEC を使うのに必要なのは jiepp だけ（入手は下の「ツー�
 
 | ツール | 用途 | 版とパス |
 |---|---|---|
-| jiepp | 展開（必須） | jiepp 1.2.0。Windows は `tools/jiepp.exe`、Linux は `tools/jiepp`（`__has_builtin` と `-Werror=undef` と `__nosplit` のある版。LD モードにはこの版が必要） |
-| jiecc | テストの実行、XML への変換 | Jiecc 9.2.0。Windows は `tools/jiecc.exe`、Linux は `tools/jiecc` |
+| jiepp | 展開（必須） | jiepp 1.4.0。Windows は `tools/jiepp.exe`、Linux は `tools/jiepp`（`__has_builtin` と `-Werror=undef` と `__nosplit` のある版。LD モードにはこの版が必要） |
+| jiecc | テストの実行、XML への変換 | Jiecc 9.4.0。Windows は `tools/jiecc.exe`、Linux は `tools/jiecc` |
 | Python | テストランナー、lint、表の生成（`tools/*.py`） | 3.7 以上（標準ライブラリのみ。`tools/ld_xml` の XSD 検査にだけ lxml が使え、無ければその検査を飛ばす） |
 
 テストを実行するときは、2 つの実行ファイルをリポジトリの `tools/` に置く（Git では追跡しない）。テストランナーがツールを探す場所と、jiepp に付ける `-Werror=undef` は [`docs/TESTING.md` の「ツールの置き場所」](docs/TESTING.md#ツールの置き場所)にある。
 
 `rungiec.iec` は jiepp のビルトイン（`__assert`、名前付きカウンタ、`__nosplit`）を使い、無い jiepp では前処理エラー PP91（jiepp の診断の番号。RUNGIEC の検査に外れると出る）になる。`tools/` には上の表の版を置く。
 
-LD モードは、さらに jiepp のビルトイン `__xmlattr` / `__xmltext`（XML の属性値と本文のエスケープ）と `__arg_lhs` / `__arg_rhs` / `__arg_dir`（`IN := Start` のような引数の分解）を使う。この 5 つは jiepp 1.2.0（と Jiecc 9.2.0 の配布アーカイブの jiepp）にある。古い jiepp で使えるのは ST モードだけで、LD モードの変換は `rungiec.iec` のエラー PP91 `RUNGIEC LD mode needs a jiepp with the XML and argument built-ins; use the jiepp version named in README.md` になる。
+LD モードは、さらに jiepp のビルトイン `__xmlattr` / `__xmltext`（XML の属性値と本文のエスケープ）と `__arg_lhs` / `__arg_rhs` / `__arg_dir`（`IN := Start` のような引数の分解）を使う。この 5 つは jiepp 1.4.0（と Jiecc 9.4.0 の配布アーカイブの jiepp）にある。古い jiepp で使えるのは ST モードだけで、LD モードの変換は `rungiec.iec` のエラー PP91 `RUNGIEC LD mode needs a jiepp with the XML and argument built-ins; use the jiepp version named in README.md` になる。
 
-どちらのモードも Jiecc 9.2.0 が必要である。ST モードの文は POU の本体に囲まずに並ぶので、それより古い jiecc では変換と実行が `rungiec.iec` のエラー PP91 `RUNGIEC needs Jiecc 9.2.0 or later` になる（jiecc が定義する版の macro で確認する。jiepp だけで展開するときは確認しない）。
+どちらのモードも Jiecc 9.4.0 が必要である。ST モードの文は POU の本体に囲まずに並ぶので、それより古い jiecc では変換と実行が `rungiec.iec` のエラー PP91 `RUNGIEC needs Jiecc 9.4.0 or later` になる（jiecc が定義する版の macro で確認する。jiepp だけで展開するときは確認しない）。
 
 ### ツールの入手
 
-jiepp は GitHub の Releases（https://github.com/yunos0987/jiepp/releases ）の v1.2.0 から、OS に合うアーカイブを取得する。アーカイブの中のフォルダにある実行ファイルを `tools/` に置く。実行環境は jiepp のリリースノートの記載。アーカイブは同じ場所の `SHA256SUMS.txt` で確認できる（`sha256sum -c SHA256SUMS.txt`）。
+jiepp は GitHub の Releases（https://github.com/yunos0987/jiepp/releases ）の v1.4.0 から、OS に合うアーカイブを取得する。アーカイブの中のフォルダにある実行ファイルを `tools/` に置く。実行環境は jiepp のリリースノートの記載。アーカイブは同じ場所の `SHA256SUMS.txt` で確認できる（`sha256sum -c SHA256SUMS.txt`）。
 
 | OS | jiepp のアーカイブ | `tools/` に置くファイル | 実行環境 |
 |---|---|---|---|
-| Windows | `jiepp-v1.2.0-windows-x64.zip` | `jiepp.exe` | Windows 10 version 1903 以降または Windows Server 2022 以降（x64）。Microsoft Visual C++ Redistributable 2015-2022 (x64) |
-| Linux | `jiepp-v1.2.0-linux-x64.tar.gz` | `jiepp` | Linux x64。glibc 2.34 以降と GCC 11 以降の libstdc++（Ubuntu 22.04 以降、Debian 12 以降、RHEL 9 以降など） |
+| Windows | `jiepp-v1.4.0-windows-x64.zip` | `jiepp.exe` | Windows 10 version 1903 以降または Windows Server 2022 以降（x64）。Microsoft Visual C++ Redistributable 2015-2022 (x64) |
+| Linux | `jiepp-v1.4.0-linux-x64.tar.gz` | `jiepp` | Linux x64。glibc 2.34 以降と GCC 11 以降の libstdc++（Ubuntu 22.04 以降、Debian 12 以降、RHEL 9 以降など） |
 
 jiecc（テストの実行と XML への変換に使う）は、jiecc のホームページ（https://www.graviness.com/iec_61131-3/jiecc.html ）の配布アーカイブから取り出す。このアーカイブには jiepp も入っているので、テストを実行するときは両方をこのアーカイブから取り出してもよい（CI はこのアーカイブから両方を取得する）。ホームページの記載では、jiecc の動作環境は Windows 10（1903 以降）と Linux（WSL）Ubuntu 22.04.5 LTS 以降の 64 bit OS。
 
@@ -125,7 +125,7 @@ jiecc（テストの実行と XML への変換に使う）は、jiecc のホー�
 
 ## クイックスタート
 
-例題の自己保持回路（`examples/self_hold.iec`）を、jiepp で ST に展開してみる。リポジトリを取得し、jiepp v1.2.0 を `tools/` に置いて、リポジトリルートで jiepp を実行する。ダウンロードしたアーカイブと展開した ST は `out/` に置く（`out/` は Git で追跡しない。`-o` の出力先はどこでもよい）。
+例題の自己保持回路（`examples/self_hold.iec`）を、jiepp で ST に展開してみる。リポジトリを取得し、jiepp v1.4.0 を `tools/` に置いて、リポジトリルートで jiepp を実行する。ダウンロードしたアーカイブと展開した ST は `out/` に置く（`out/` は Git で追跡しない。`-o` の出力先はどこでもよい）。
 
 Windows（コマンドプロンプト。`curl` と `tar` は Windows 10 version 1803 以降に標準で入っている）:
 
@@ -133,9 +133,9 @@ Windows（コマンドプロンプト。`curl` と `tar` は Windows 10 version 
 git clone https://github.com/yunos0987/rungiec.git
 cd rungiec
 mkdir out
-curl -fL -o out\jiepp.zip https://github.com/yunos0987/jiepp/releases/download/v1.2.0/jiepp-v1.2.0-windows-x64.zip
+curl -fL -o out\jiepp.zip https://github.com/yunos0987/jiepp/releases/download/v1.4.0/jiepp-v1.4.0-windows-x64.zip
 tar -xf out\jiepp.zip -C out
-copy out\jiepp-v1.2.0-windows-x64\jiepp.exe tools\
+copy out\jiepp-v1.4.0-windows-x64\jiepp.exe tools\
 tools\jiepp.exe -P -I . examples/self_hold.iec -o out/self_hold.st
 ```
 
@@ -145,9 +145,9 @@ Linux（bash）:
 git clone https://github.com/yunos0987/rungiec.git
 cd rungiec
 mkdir -p out
-curl -fL -o out/jiepp.tar.gz https://github.com/yunos0987/jiepp/releases/download/v1.2.0/jiepp-v1.2.0-linux-x64.tar.gz
+curl -fL -o out/jiepp.tar.gz https://github.com/yunos0987/jiepp/releases/download/v1.4.0/jiepp-v1.4.0-linux-x64.tar.gz
 tar -xzf out/jiepp.tar.gz -C out
-cp out/jiepp-v1.2.0-linux-x64/jiepp tools/
+cp out/jiepp-v1.4.0-linux-x64/jiepp tools/
 tools/jiepp -P -I . examples/self_hold.iec -o out/self_hold.st
 ```
 
@@ -283,7 +283,7 @@ flowchart TD
 | `tools/ld_xml/` | 変換器の本体（Python のパッケージ）と単体テスト（`test_ld_xml.py`） |
 | `tests/` | テスト、`tests/support/t_jiecunit.iec` は jiecunit を使うテスト（t / x）の補助（`T_BEGIN()` / `T_EXPECT_IDLE()`）、`tests/support/t_stdfb.iec` は標準タイマ（`TON` / `TOF` / `TP`）と積算タイマ（`TONR`）の決定論的な代用品（1 回の呼び出しが 100 ms。カウンタとエッジは jiecc の組み込みを使う） |
 | `examples/` | 例題（利用者が書くコードだけ。1 本が同名の FUNCTION_BLOCK 1 つ。確認は `tests/x_*.iec`） |
-| `vendor/jiecunit` | jiecunit（git submodule、v6.0.0）。t / x のテストが使う |
+| `vendor/jiecunit` | jiecunit（git submodule、v7.0.0）。t / x のテストが使う |
 | `AGENTS.md` | マクロの記述規則とテストの書き方（AI と人の開発者が従う） |
 | `CHANGELOG.md` / `CONTRIBUTING.md` / `SECURITY.md` | 変更履歴、開発への参加の手引き、脆弱性の報告方法 |
 | `.github/` | CI（`workflows/ci.yml`）と Dependabot の設定 |

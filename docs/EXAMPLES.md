@@ -142,7 +142,7 @@ tools\jiecc.exe examples/on_delay_timer.iec -I . -D RUNGIEC_LD -P -nC -t omron -
 ```
 
 - 接点 `Start` の出力（2）が `Tm` の `Block` の入力 `IN` に、引数 `PT := T#1s` の `DataSource`（3）が入力 `PT` につながる。
-- `FBT_BOX` の型名 `TON` が `Block` の `typeName` に入る（`FB_BOX` なら `typeName` は空で、Jiecc 9.2.0 は宣言の `TON` で補わない）。LD XML を取り込むツールによっては、FB のボックスに型名と、後段へつながる出力が必須のことがある。
+- `FBT_BOX` の型名 `TON` が `Block` の `typeName` に入る（`FB_BOX` なら `typeName` は空で、Jiecc 9.4.0 は宣言の `TON` で補わない）。LD XML を取り込むツールによっては、FB のボックスに型名と、後段へつながる出力が必須のことがある。
 - `FBT_BOX` は出力 `Q`（4）を後段のパワーにするので、コイル `Lamp` は 4 を受ける。
 
 入力を与えて結果を確認するドライバ（jiecunit の `TEST_M` と `EXPECT_*`、`T_*` の補助、`@expect`）は `tests/x_<名前>.iec` にあり、例題を `{#include}` して `python tools/run_tests.py` で実行される（期待は `pass` だけ）。`TEST_M` は例題の FB のインスタンス（`Ctl: on_delay_timer;`）を持ち、各スキャンで入力表の値を渡してインスタンスを呼び、同じスキャンの出力（`Ctl.Lamp`）を確認する。

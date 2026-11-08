@@ -1,6 +1,6 @@
-(* @expect run-error InterpreterFault: assignment type mismatch: cannot store value of type BOOL in declared type TIME *)
+(* @expect run-error type mismatch in __main__: expected TIME but got BOOL.; TYPE_ERROR *)
 (* @cycles 1 *)
-(* Purpose: The input pin of FB_BOX gets the power, so it is a BOOL input. PT of a TON (TIME) as the input pin is a type mismatch that jiecc reports when the call runs. *)
+(* Purpose: The input pin of FB_BOX gets the power, so it is a BOOL input. PT of a TON (TIME) as the input pin is a type mismatch that the type check of jiecc --run reports before the run (TYPE_ERROR). *)
 {#include 'rungiec.iec'}
 {#include 't_stdfb.iec'}
 program __main__

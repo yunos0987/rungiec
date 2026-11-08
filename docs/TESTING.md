@@ -156,7 +156,7 @@ LD ROUNDTRIP: 9 of 9 examples passed, 3 in LD_ROUNDTRIP_SKIP
 | `parts_counter` | xml2rungiec が `ST_EXEC` の `InlineST` を、両側が同じネットワークの要素と読んで飛ばす |
 
 - LD モードの `e` テスト（`e060`〜`e068`、`e073`）は、`{#include 'rungiec.iec'}` の前に `{#define RUNGIEC_LD 1}` を書く（`e059` の `{#define _OMRON true}` と同じ形）。本体を直接 include する誤りを試す `e069`（`rungiec_st.iec`）と `e070`（`{#define RUNGIEC_LD 1}` の後の `rungiec_ld.iec`）は、`rungiec.iec` の代わりに本体を include する。PP91 のメッセージの中の設定の名前は値に置き換わる（`RUNGIEC LD: nesting exceeds 16`）ので、`(* @expect pp-error ... *)` のパターンも値で書く。t / x のテストは ST モードだけで実行する。
-- LD モードには、`__xmlattr` などのビルトインのある jiepp（jiepp 1.2.0。Jiecc 9.2.0 の配布アーカイブの jiepp も同じ）が必要である。それより古い版では、LD モードの変換が全部失敗する（ランナーは飛ばさない）。
+- LD モードには、`__xmlattr` などのビルトインのある jiepp（jiepp 1.4.0。Jiecc 9.4.0 の配布アーカイブの jiepp も同じ）が必要である。それより古い版では、LD モードの変換が全部失敗する（ランナーは飛ばさない）。
 
 ## ツールの置き場所
 

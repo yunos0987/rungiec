@@ -1,1 +1,1 @@
-rungiec.iec:13.0: error: PP91: 'RUNGIEC needs Jiecc 9.2.0 or later'
+rungiec.iec:13.0: error: PP91: 'RUNGIEC needs Jiecc 9.4.0 or later'
