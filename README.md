@@ -8,7 +8,7 @@ IEC 61131-3 のラダー図 (LD) を ST 言語に展開する DSL。同じソー
 
 RUNGIEC lets you write IEC 61131-3 ladder diagrams (LD) as text with jiepp macros and expands them to plain IEC 61131-3 Structured Text (ST).
 The same source can also be written out as the IEC 61131-10 LD XML of the ladder (the LD mode).
-RUNGIEC is checked only with jiepp 1.4.0 and Jiecc 9.4.0 (the expanded ST is run with `jiecc --run`); the LD mode needs these versions, and older versions support only the ST mode.
+RUNGIEC is checked only with jiepp 1.4.0 and Jiecc 9.4.0 (the expanded ST is run with `jiecc --run`); both modes need these versions (an older jiepp stops at the conditions of `rungiec.iec` with preprocessing errors).
 The documents are written in Japanese.
 
 ## 目次
@@ -95,7 +95,7 @@ RUNGIEC を使うのに必要なのは jiepp だけ（入手は下の「ツー�
 
 | ツール | 用途 | 版とパス |
 |---|---|---|
-| jiepp | 展開（必須） | jiepp 1.4.0。Windows は `tools/jiepp.exe`、Linux は `tools/jiepp`（`__has_builtin` と `-Werror=undef` と `__nosplit` のある版。LD モードにはこの版が必要） |
+| jiepp | 展開（必須） | jiepp 1.4.0。Windows は `tools/jiepp.exe`、Linux は `tools/jiepp`（`__has_builtin` と `-Werror=undef` と `__nosplit` のある版。どちらのモードにもこの版が必要） |
 | jiecc | テストの実行、XML への変換 | Jiecc 9.4.0。Windows は `tools/jiecc.exe`、Linux は `tools/jiecc` |
 | Python | テストランナー、lint、表の生成（`tools/*.py`） | 3.7 以上（標準ライブラリのみ。`tools/ld_xml` の XSD 検査にだけ lxml が使え、無ければその検査を飛ばす） |
 
@@ -103,7 +103,7 @@ RUNGIEC を使うのに必要なのは jiepp だけ（入手は下の「ツー�
 
 `rungiec.iec` は jiepp のビルトイン（`__assert`、名前付きカウンタ、`__nosplit`）を使い、無い jiepp では前処理エラー PP91（jiepp の診断の番号。RUNGIEC の検査に外れると出る）になる。`tools/` には上の表の版を置く。
 
-LD モードは、さらに jiepp のビルトイン `__xmlattr` / `__xmltext`（XML の属性値と本文のエスケープ）と `__arg_lhs` / `__arg_rhs` / `__arg_dir`（`IN := Start` のような引数の分解）を使う。この 5 つは jiepp 1.4.0（と Jiecc 9.4.0 の配布アーカイブの jiepp）にある。古い jiepp で使えるのは ST モードだけで、LD モードの変換は `rungiec.iec` のエラー PP91 `RUNGIEC LD mode needs a jiepp with the XML and argument built-ins; use the jiepp version named in README.md` になる。
+LD モードは、さらに jiepp のビルトイン `__xmlattr` / `__xmltext`（XML の属性値と本文のエスケープ）と `__arg_lhs` / `__arg_rhs` / `__arg_dir`（`IN := Start` のような引数の分解）を使う。この 5 つは jiepp 1.4.0（と Jiecc 9.4.0 の配布アーカイブの jiepp）にある。この 5 つが無い（または無効にした）jiepp では、LD モードの変換は `rungiec.iec` のエラー PP91 `RUNGIEC LD mode needs a jiepp with the XML and argument built-ins; use the jiepp version named in README.md` になる。jiepp 1.4.0 より古い jiepp では、どちらのモードも展開できない（`rungiec.iec` の条件式の `&&` / `||` / `!` が前処理エラー PP51 になる）。
 
 どちらのモードも Jiecc 9.4.0 が必要である。ST モードの文は POU の本体に囲まずに並ぶので、それより古い jiecc では変換と実行が `rungiec.iec` のエラー PP91 `RUNGIEC needs Jiecc 9.4.0 or later` になる（jiecc が定義する版の macro で確認する。jiepp だけで展開するときは確認しない）。
 

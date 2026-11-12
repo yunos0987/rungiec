@@ -78,7 +78,7 @@
 {#define _RUNGIEC_LD_HEAD(id) <Rung evaluationOrder=__xmlattr(__counter(_rungiec_ld_rung))>$n<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId=__xmlattr(id)/></LdObject>}
 
 (* The public macros of the LD mode. They use the checks and counter updates of rungiec.iec, as the ST mode does. *)
-(* The LD mode declares no work variables. BEGIN_RUNGIEC() starts the IDs and the evaluation order of the POU at 1 and writes the ld directive. END_RUNGIEC() writes the end directive, as in the ST mode. *)
+(* The LD mode declares no work variables. BEGIN_RUNGIEC() starts the IDs and the evaluation order of the POU at 1 and writes the ld directive. END_RUNGIEC() runs the checks of the ST mode (_RUNGIEC_END) and writes the end directive (in the ST mode it writes nothing). *)
 {#define RUNGIEC_VAR()}
 {#define RUNGIEC_VAR_TEMP()}
 {#define RUNGIEC_VAR_NOEDGE()}
