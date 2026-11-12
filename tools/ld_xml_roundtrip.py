@@ -32,7 +32,6 @@ sys.dont_write_bytecode = True
 import argparse  # noqa: E402
 import collections  # noqa: E402
 import concurrent.futures  # noqa: E402
-import json  # noqa: E402
 import os  # noqa: E402
 import re  # noqa: E402
 import subprocess  # noqa: E402
@@ -52,7 +51,7 @@ from ld_xml.to_rungiec import BODY_SKIPS  # noqa: E402  (reasons of a body skipp
 DIAG_RE = re.compile(r"\b(?:error|warning): PP\d+")
 EDGE_RE = re.compile(r"\b(?:RISE_CONTACT|FALL_CONTACT|NOT_RISE_CONTACT|NOT_FALL_CONTACT|RISE_COIL|FALL_COIL)\s*\(")
 RESIDUAL_RE = re.compile(r"\b_RUNGIEC_\w+|\b(?:%s)\s*\(" % "|".join(sorted(lint_rungiec.PUBLIC_NAMES)))
-WRAP_HEAD = 6  # lines before the fragment in the wrapped file
+WRAP_HEAD = 5  # lines that wrap() puts before the fragment (jiepp counts the lines of a diagnostic from 1)
 FLOW_BLOCKS = ("FOR", "NEXT", "BREAK", "RETURN", "JMP")  # a rung with one of these is never in a fragment body
 
 

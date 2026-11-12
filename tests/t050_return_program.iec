@@ -6,7 +6,7 @@
 DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t050_return_program))
 TEST_M(t050_return_program)
 var
-    Quit, Pass2: bool;
+    Quit: bool;
     After: dint;
     InQuit: array[1..4] of bool := [false, true, true, false];
     ExpAfter: array[1..4] of dint := [0, 1, 1, 1];

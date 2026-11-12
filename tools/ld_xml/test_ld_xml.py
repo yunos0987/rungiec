@@ -1260,13 +1260,14 @@ class WholeBody(Base):
 
     def test_31g_flow_block_names_in_any_letter_case(self):
         # Lower and mixed case names are handled like upper case: no rung of a changed meaning is written.
-        for type_name, first in (("for", "loop"), ("Next", "loop"), ("Break", "loop"),
-                                 ("jmp", "unknown-object"), ("return", "unknown-object")):
+        for type_name, first, body in (("for", "loop", "loop-body"), ("Next", "loop", "loop-body"),
+                                       ("Break", "loop", "loop-body"), ("jmp", "unknown-object", "jump-body"),
+                                       ("return", "unknown-object", "jump-body")):
             _, report, text, _ = self.run_forward([simple("A", "Y"), flow_block_rung(type_name), simple("B", "Z")])
             got = reasons(report)
             self.assertEqual(len(got), 3, (type_name, got))
             self.assertEqual(got[1].split(":")[0], first, (type_name, got))
-            self.assertEqual((got[0], got[2]), (got[0], got[2]))
+            self.assertEqual((got[0], got[2]), (body, body), (type_name, got))
             self.assertEqual(self.statements(text), [], type_name)
             self.assert_body_skipped(report, text)
 

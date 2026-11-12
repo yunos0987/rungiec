@@ -70,9 +70,10 @@ jiepp runs with -Werror=undef: an identifier that is not a macro in a {#if} cond
 (PP54) is a preprocessing error.
 
 The runner removes the repository root from the paths in the jiepp and jiecc output (diagnostics show
-'tests/e041_wire_variable_node.iec:16.0: ...') before it writes .pp.txt / .run.txt and matches '@expect' patterns.
+'tests/e041_wire_variable_node.iec:15.0: ...') before it writes .pp.txt / .run.txt and matches '@expect' patterns.
 
-Exit codes: 0 all passed, 1 failure, 2 environment error (missing binary, missing jiecunit, predefine failure).
+Exit codes: 0 all passed, 1 failure, 2 environment error (missing binary, missing jiecunit, predefine failure)
+or an --only pattern that matches no test.
 """
 import argparse
 import concurrent.futures
@@ -173,7 +174,7 @@ def write_text(path, text):
         f.write(text)
 
 
-# The repository root as jiepp and jiecc print it in a diagnostic ('C:/.../rungiec/tests/e041_....iec:16.0: error: ...'):
+# The repository root as jiepp and jiecc print it in a diagnostic ('C:/.../rungiec/tests/e041_....iec:15.0: error: ...'):
 # either separator, and on Windows any letter case. relative_paths() removes it so that the stored outputs and the
 # @expect matching do not depend on where the repository is cloned.
 ROOT_PREFIX_RE = re.compile(
@@ -761,6 +762,10 @@ def main():
     names = sorted(n[:-4] for n in os.listdir(tests_dir) if n.endswith(".iec"))
     if args.only:
         names = [n for n in names if fnmatch.fnmatch(n, args.only)]
+        if not names:
+            # Without this a mistyped pattern would end with '0 passed, 0 failed' and exit code 0.
+            print("ERROR: --only %s matches no test in %s" % (args.only, tests_dir))
+            return 2
     if names:
         os.makedirs(out_dir, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="rungiec-tests-") as tmp:
@@ -780,12 +785,14 @@ def main():
             jiecunit = (jiecunit_dir, predef)
         passed, failed = run_all(names, tests_dir, jiepp, jiecc, out_dir, jiecunit, examples_dir)
         if not args.only and os.path.isdir(examples_dir):
-            checks = "".join(
-                open(os.path.join(tests_dir, n), encoding="utf-8").read()
-                for n in os.listdir(tests_dir) if n.startswith("x_") and n.endswith(".iec")
-            )
+            # The same reading of the includes as the check of each x_ test (comments removed, either quote).
+            included = set()
+            for n in os.listdir(tests_dir):
+                if n.startswith("x_") and n.endswith(".iec"):
+                    with open(os.path.join(tests_dir, n), encoding="utf-8") as f:
+                        included.update(example_includes(f.read(), examples_dir))
             for n in sorted(os.listdir(examples_dir)):
-                if n.endswith(".iec") and ("'%s'" % n) not in checks:
+                if n.endswith(".iec") and n not in included:
                     failed += 1
                     print("FAIL examples/%s: no tests/x_*.iec includes this example" % n)
             os.makedirs(out_dir, exist_ok=True)

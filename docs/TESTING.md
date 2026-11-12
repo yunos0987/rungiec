@@ -39,7 +39,7 @@ python tools/run_tests.py
 ```
 python tools/run_tests.py                        lint と、全テストと全例題（展開 → 実行 → 判定、例題の XML 変換）
 python tools/run_tests.py --no-lint              lint を実行せずにテストだけ
-python tools/run_tests.py --only "t0*"           名前で絞り込み（テストと例題の両方に効く）
+python tools/run_tests.py --only "t0*"           名前で絞り込み（例題の確認 x_* も名前で選ぶ。lint と例題の XML 変換は実行しない）
 python tools/run_tests.py --lint-only            lint だけ
 python tools/run_tests.py --lint-selftest        lint の自己検査（各規則が誤りを指摘し、正しい書き方を指摘しないこと）
 ```
@@ -98,9 +98,9 @@ flowchart TD
 - `tNNN` と例題の確認 `x_*` は jiecunit のテスト（`tests/support/t_jiecunit.iec` を include し、`TEST_M(<ファイル名の語幹>)` の中で `EXPECT_*` を使う。形は [AGENTS.md の「テストを追加するとき」](../AGENTS.md#テストを追加するとき)）。`@cycles N` はテストの本体を実行するスキャン数（必須で 1 以上）で、ランナーは `--max-cycles N+2` で実行し、jiecunit の `[     OK ] <名前>`・`[========] 1 tests ran.`・`[ PASSED ] 1 tests.` があり `[ FAILED ]` が無ければ成功とする。失敗した確認は `Expected` / `Actual` と `<名前>:<行>@<サイクル> <確認の名前>` の行で示される。実行の前に、確認が 1 個以上あること、`program __main__` が残っていないことなども検査する。`eNNN` / `fNNN` / `rNNN` は jiecunit を使わない。
 - jiecc の出力に `ir-audit: [ERROR]` があれば、成功を期待するテストは失敗になる。意図して期待するテストは `(* @expect run-error ir-audit: .ERROR. *)` と書く（今は該当するテストは無い）。
 - 展開後 ST に `_RUNGIEC_` で始まる名前が（コメント以外に）残っていれば、括弧の有無にかかわらず残留としてランナーが失敗にする（`rNNN` 以外）。
-- 展開後 ST と実行ログは `tests/expanded/`（例題の確認は `x_<名前>`）に出力される。Git で追跡するのは `eNNN` / `fNNN` / `rNNN` の出力と、例題の LD モードの期待値ファイル（`<名前>.ld.xml`）で、`tNNN` と `x_*` の出力は jiecunit の展開を含んで大きいので追跡しない（`.gitignore`）。jiepp と jiecc の診断のパスは、リポジトリルートからの相対で保存する（`tests/e041_wire_variable_node.iec:16.0: error: ...`。`@expect` の照合もこの形に対して行う）。
+- 展開後 ST と実行ログは `tests/expanded/`（例題の確認は `x_<名前>`）に出力される。Git で追跡するのは `eNNN` / `fNNN` / `rNNN` の出力と、例題の LD モードの期待値ファイル（`<名前>.ld.xml`）で、`tNNN` と `x_*` の出力は jiecunit の展開を含んで大きいので追跡しない（`.gitignore`）。jiepp と jiecc の診断のパスは、リポジトリルートからの相対で保存する（`tests/e041_wire_variable_node.iec:15.0: error: ...`。`@expect` の照合もこの形に対して行う）。
 - lint（`tools/lint_rungiec.py`）は、前処理と jiecc でエラーにならない書き間違いを検査する。たとえば最上位で `RUNG` を忘れた形（LN10）、`RUNG(...)` の後の `;`（LN11）、`PARALLEL` でコイルと接点を混ぜる形（LN12）、`RETURN()` と `JMP()` の位置（LN13）、カンマの代わりの演算子（LN14）、POU の中の `RUNGIEC_VAR()` / `BEGIN_RUNGIEC()` / `END_RUNGIEC()` の位置と、DSL を使う POU に書いた `{st}` / `{end}`（LN16）、`ST_EXEC` の文の中の DSL マクロや `return`（LN17）、ラベルの大文字小文字の違い（LN22）、後ろ向きのジャンプの間のエッジ接点（LN23）、DSL を使う POU の `RUNGIEC_VAR*()` の前と `END_RUNGIEC()` の後の利用者の文（LN24）、ボックスの位置指定の引数（LN25）、`rungiec.iec` と `rungiec_st.iec` の define の書き方（LN1〜LN8）。規則の一覧は[`docs/DESIGN.md` の「lint の規則」](DESIGN.md#lint-の規則)にある。
-- `python tools/run_tests.py` はテストの前に lint を実行する。指摘は `LINT LNxx パス:行: メッセージ` の行に出て、指摘があってもテストは続き、終了コードは 1 になる。`--only` と `--no-lint` のときは lint を実行しない。
+- `python tools/run_tests.py` はテストの前に lint を実行する。指摘は `LINT LNxx パス:行: メッセージ` の行に出て、指摘があってもテストは続き、終了コードは 1 になる。`--only` と `--no-lint` のときは lint を実行しない。`--only` のパターンに一致するテストが無いと、エラーを出して終了コード 2 で終わる。
 - 意図して誤りを含むテストは `(* @lint-allow LNxx *)` を書き、その規則の指摘を受けない（`f007` など 14 本）。
 - 全テストの一覧と、各テストが確認する内容は [`docs/DESIGN.md` の「テスト対応表」](DESIGN.md#テスト対応表)にある。
 
@@ -156,7 +156,7 @@ LD ROUNDTRIP: 9 of 9 examples passed, 3 in LD_ROUNDTRIP_SKIP
 | `parts_counter` | xml2rungiec が `ST_EXEC` の `InlineST` を、両側が同じネットワークの要素と読んで飛ばす |
 
 - LD モードの `e` テスト（`e060`〜`e068`、`e073`）は、`{#include 'rungiec.iec'}` の前に `{#define RUNGIEC_LD 1}` を書く（`e059` の `{#define _OMRON true}` と同じ形）。本体を直接 include する誤りを試す `e069`（`rungiec_st.iec`）と `e070`（`{#define RUNGIEC_LD 1}` の後の `rungiec_ld.iec`）は、`rungiec.iec` の代わりに本体を include する。PP91 のメッセージの中の設定の名前は値に置き換わる（`RUNGIEC LD: nesting exceeds 16`）ので、`(* @expect pp-error ... *)` のパターンも値で書く。t / x のテストは ST モードだけで実行する。
-- LD モードには、`__xmlattr` などのビルトインのある jiepp（jiepp 1.4.0。Jiecc 9.4.0 の配布アーカイブの jiepp も同じ）が必要である。それより古い版では、LD モードの変換が全部失敗する（ランナーは飛ばさない）。
+- LD モードには、`__xmlattr` などのビルトインのある jiepp（jiepp 1.4.0。Jiecc 9.4.0 の配布アーカイブの jiepp も同じ）が必要である。それより古い版では、ST モードのテストも LD モードの変換も全部失敗する（`rungiec.iec` の条件式の `&&` / `||` / `!` が PP51 になる。ランナーは版を確かめず、飛ばさない）。
 
 ## ツールの置き場所
 
@@ -170,7 +170,7 @@ jiepp と jiecc の入手と版は [README の「必要なツール」](../READM
 
 ## LD XML 変換器のテスト
 
-`tools/xml2rungiec.py` と `tools/rungiec2xml.py`（`tools/ld_xml/` が本体）は、IEC 61131-10 の LD XML（Omron の Sysmac Studio（https://www.ia.omron.com/sysmac/ ）の書き出しを含む）と RUNGIEC の断片を相互に変換する。jiepp も jiecc も使わず、`run_tests.py` の対象でもない。
+`tools/xml2rungiec.py` と `tools/rungiec2xml.py`（`tools/ld_xml/` が本体）は、IEC 61131-10 の LD XML（Omron の Sysmac Studio（https://www.ia.omron.com/sysmac/ ）の書き出しを含む）と RUNGIEC の断片を相互に変換する。変換器は jiepp も jiecc も使わない。下の単体テストは `run_tests.py` では実行しない（`run_tests.py` は、例題の LD XML の往復の検査に `xml2rungiec.py` を使う。上の「LD モードの変換の検査」）。
 
 単体テストはリポジトリルートで実行する。小さな手組みのラングで、読み書き、アスキーアート、往復の一致を確認する。
 

@@ -6,7 +6,7 @@
 DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t056_jump_label_positions))
 TEST_M(t056_jump_label_positions)
 var
-    J, M, N1, Y: bool;
+    J, M, N1: bool;
     Count, Loops: dint;
     Cyc: dint;
     InJ: array[1..4] of bool := [false, true, false, true];

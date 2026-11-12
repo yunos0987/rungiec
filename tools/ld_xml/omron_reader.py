@@ -4,7 +4,6 @@ iterparse only: each Rung element is converted and cleared. The reader yields on
 body; the result is either an SP tree (with the unpowered elements and the comment) or a skip reason.
 """
 
-import re
 import xml.etree.ElementTree as ET
 
 from . import model, st_text
