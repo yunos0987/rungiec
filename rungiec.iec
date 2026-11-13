@@ -2,21 +2,21 @@
 (* Usage: see README.md, docs/GUIDE.md and docs/REFERENCE.md. A POU that uses the DSL has, after its var blocks, RUNGIEC_VAR() (or RUNGIEC_VAR_TEMP() / RUNGIEC_VAR_NOEDGE()), BEGIN_RUNGIEC(), the networks (RUNG, or BEGIN_NET with WIRE lines and END_NET) and END_RUNGIEC(). In the ST mode the statements go directly in the POU body, with no directive around them; in the LD mode BEGIN_RUNGIEC() opens the ld body and END_RUNGIEC() closes it. *)
 {#pragma once}
 (* RUNGIEC needs a jiepp whose diagnostic built-ins, named counters and comma-protecting built-in (used by ST_EXEC) are neither redefined nor undefined (the required jiepp version is in the tools section of README.md). There is no fallback. *)
-(* A jiepp without the has_builtin operator stops at the first error. A bare not is a bitwise not in a condition, so the C logical operators (&&, || and !) are used. The messages name no built-in, because a redefined built-in would be expanded in them. *)
+(* A jiepp without the has_builtin operator stops at the first error. A bare not is a bitwise not in a condition, so the C logical operators (&&, || and !) are used; they need jiepp 1.4.0. The messages name no built-in, because a redefined built-in would be expanded in them. jiecc defines _JIECC_FULL_VER (plain jiepp does not) and preprocesses with the jiepp of its own release, so both modes need Jiecc 9.4.0, whose jiepp is 1.4.0. The version check after the built-in check uses no logical operator, so an older jiecc also reports it. *)
 {#ifndef __has_builtin}
 {#error RUNGIEC needs a jiepp with the built-in assert, named counters and comma protection, neither redefined nor undefined; use the jiepp version named in README.md}
 {#elif !__has_builtin(__assert) || !__has_builtin(__counter) || !__has_builtin(__counter_peek) || !__has_builtin(__counter_set) || !__has_builtin(__nosplit)}
 {#error RUNGIEC needs a jiepp with the built-in assert, named counters and comma protection, neither redefined nor undefined; use the jiepp version named in README.md}
 {#endif}
-(* jiecc defines _JIECC_FULL_VER (plain jiepp does not). Both modes need Jiecc 9.4.0: the ST mode writes the statements directly in the POU body. *)
-{#if defined(_JIECC_FULL_VER) && _JIECC_FULL_VER < 90400}
+{#ifndef _JIECC_FULL_VER}
+{#elif _JIECC_FULL_VER < 90400}
 {#error RUNGIEC needs Jiecc 9.4.0 or later}
 {#endif}
 (* Version: RUNGIEC_VERSION = major * 10000 + minor * 100 + revision (same scheme as _JIEPP_FULL_VER). *)
 {#define RUNGIEC_VERSION_MAJOR 0}
 {#define RUNGIEC_VERSION_MINOR 4}
-{#define RUNGIEC_VERSION_REVISION 0}
-{#define RUNGIEC_VERSION 400}
+{#define RUNGIEC_VERSION_REVISION 1}
+{#define RUNGIEC_VERSION 401}
 {#if RUNGIEC_VERSION <> RUNGIEC_VERSION_MAJOR * 10000 + RUNGIEC_VERSION_MINOR * 100 + RUNGIEC_VERSION_REVISION}
 {#error RUNGIEC internal error: RUNGIEC_VERSION does not match its parts}
 {#endif}

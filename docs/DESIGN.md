@@ -23,7 +23,7 @@ IEC 61131-3 のラダー図 (LD) を jiepp のマクロで書き、ST（また�
 - 公開マクロの形と意味は [`docs/REFERENCE.md`](REFERENCE.md) が正本。本書には決定の理由、展開の形、jiepp で書くときの制約、テストとの対応を書く。
 - 展開に必要なのは jiepp だけで、展開結果は IEC 61131-3 の ST。このリポジトリのテストは、展開した ST を jiecc のインタプリタ（jier。`jiecc --run`）で実行して確認する。
 - 同じソースから IEC 61131-10 の LD XML も出せる（LD モード。D41〜D51）。ST モードの定義は `rungiec_st.iec`、LD モードの定義は `rungiec_ld.iec` にあり、入口 `rungiec.iec` がモードに合う方を include する（D41）。LD モードの構造は「LD モードの構造」に書く。
-- 本書は jiepp 1.4.0 と Jiecc 9.4.0 を前提にする。LD モードは、この版の jiepp のビルトイン `__xmlattr` / `__xmltext` / `__arg_lhs` / `__arg_rhs` / `__arg_dir` を使う。jiepp 1.4.0 より古い jiepp では、どちらのモードも展開できない（`rungiec.iec` の条件式の `&&` / `||` / `!` が PP51 になる）。どちらのモードも Jiecc 9.4.0 が必要である（ST モードの文を POU の本体に囲まずに出すため。それより古い jiecc は `rungiec.iec` の `{#error}` の PP91 `RUNGIEC needs Jiecc 9.4.0 or later` になる。`e071`）。
+- 本書は jiepp 1.4.0 と Jiecc 9.4.0 を前提にする。LD モードは、この版の jiepp のビルトイン `__xmlattr` / `__xmltext` / `__arg_lhs` / `__arg_rhs` / `__arg_dir` を使う。jiepp 1.4.0 より古い jiepp では、どちらのモードも展開できない（`rungiec.iec` の条件式の `&&` / `||` / `!` が PP51 になる）。どちらのモードも Jiecc 9.4.0 が必要である（jiecc の前処理は同じ版の jiepp と同じで、Jiecc 9.4.0 の前処理は jiepp 1.4.0。テストの jiecunit v7.0.0 も Jiecc 9.4.0 を要る。それより古い jiecc は `rungiec.iec` の `{#error}` の PP91 `RUNGIEC needs Jiecc 9.4.0 or later` になる。この検査は論理演算子を使わない `{#ifndef}` / `{#elif}` の形なので、Jiecc 9.2.0 でも出る。`e071`）。
 - 参照元: IEC 61131-3 ed4.0 CDV、各 PLC メーカーの資料（出典は「IEC とメーカーの差異」）。
 - ID（D / U- / X / V / R / I）は振り直さないので、番号に欠けがある。
 
@@ -753,7 +753,7 @@ flowchart LR
 | `FB_BOX` / `FBT_BOX` の `in_pin` / `out_pin` が BOOL のピンでない | ST モードは `jiecc --run` の実行前の型検査。LD モードはなし | ST モードは jiecc の `'type mismatch in __main__: expected TIME but got BOOL'; TYPE_ERROR`（`in_pin`。`f025` の形）/ `'operator AND in __main__: no applicable signature for (BOOL, TIME)'; TYPE_ERROR`（`out_pin`。`f026` の形）。XML への変換では検査しない。LD モードは jiecc が `{ld}` の本文を検査しないので XML が出る（取り込むツールの検査に任せる） | `f025`, `f026` |
 | LD モードで `-P` か `-nC` を付けない | なし | 行マーカーやコメントが `<BodyContent>` の中に残る。jiecc は `{ld}` の本文を検査しない（D43） | 文書のみ |
 | LD モードで、DSL を使う POU の `RUNGIEC_VAR*()` の前か `END_RUNGIEC()` の後の利用者の文、`RUNGIEC_VAR_NOEDGE()` の POU のエッジ接点 | なし | 前者は `{ld}` の外の ST の本文になり、LD と ST の本文が 1 つの POU に混ざった XML を jiecc が終了コード 0 で出す（実測。D42）。後者は `edge="rising"` などの XML になる。前者は lint の LN24 が両モードで指摘する | lint（selftest） |
-| Jiecc 9.4.0 より古い jiecc（`_JIECC_FULL_VER` が 90400 未満） | 前処理（`rungiec.iec` の include 時） | PP91 `RUNGIEC needs Jiecc 9.4.0 or later`。単体の jiepp は `_JIECC_FULL_VER` を定義しないので検査しない | `e071` |
+| Jiecc 9.4.0 より古い jiecc（`_JIECC_FULL_VER` が 90400 未満） | 前処理（`rungiec.iec` の include 時） | PP91 `RUNGIEC needs Jiecc 9.4.0 or later`。単体の jiepp は `_JIECC_FULL_VER` を定義しないので検査しない。Jiecc 9.2.0（jiepp 1.2.0）では条件式の PP51 / PP52 も並ぶ | `e071` |
 
 `BEGIN_RUNGIEC()` / `END_RUNGIEC()` の対は `rungiec_open` で前処理が検査する（D38）。`END_RUNGIEC()` の付け忘れは次の POU の `BEGIN_RUNGIEC()` で分かる。検出しないのは、ファイルの最後の POU、次の POU が DSL を使わない場合、次の POU も `BEGIN_RUNGIEC()` を忘れて `END_RUNGIEC()` だけを書いた場合（2 つの誤りで対がそろって見える）など。ファイルの最後の POU で忘れても、ST モードの jiecc はエラーにしない（その POU の一般形のネットワークと MC 領域の閉じ忘れの検査も働かない。LD モードでは閉じない `{ld}` で jiecc の構文エラー）。`RUNGIEC_VAR*()` の直後に `BEGIN_RUNGIEC()` があること、`BEGIN_RUNGIEC()` と `END_RUNGIEC()` の対（最後の POU の付け忘れを含む）、DSL を使う POU に `{st}` / `{end}` を書いていないことは lint の LN16 が検査する（「lint の規則」）。
 

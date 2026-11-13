@@ -897,7 +897,7 @@ include の前に `{#define}` するか、`-D` で指定する。両方を同時
 | `RUNGIEC_NODE_MAX` が 64 を超える | 前処理 | PP91 `RUNGIEC node limit N exceeds 64, the largest node number of the node table`（`e043`） |
 | 設定に名前（変数・定数）を書く | 前処理（`-Werror=undef`）/ コンパイル | `-Werror=undef` では PP54。付けない jiepp では、名前だけなら PP91（0 と評価）、`K + 16` のような式は jiecc のエラー。整数リテラルだけの式は Jiecc 9.4.0 で正しく動く |
 | `__has_builtin` や `__nosplit` の無い jiepp、`__assert` / `__counter` / `__counter_peek` / `__counter_set` / `__nosplit` を無効にした jiepp | 前処理 | PP91 `RUNGIEC needs a jiepp with the built-in assert, named counters and comma protection, ...`（[README の「必要なツール」](../README.md#必要なツール)） |
-| Jiecc 9.4.0 より古い jiecc（jiecc が定義する `_JIECC_FULL_VER` が 90400 未満。jiepp だけの展開では確認しない） | 前処理 | PP91 `RUNGIEC needs Jiecc 9.4.0 or later`（`e071`） |
+| Jiecc 9.4.0 より古い jiecc（jiecc が定義する `_JIECC_FULL_VER` が 90400 未満。jiepp だけの展開では確認しない） | 前処理 | PP91 `RUNGIEC needs Jiecc 9.4.0 or later`（`e071`）。Jiecc 9.2.0（jiepp 1.2.0）では、`rungiec.iec` の条件式の PP51 / PP52 も並ぶ |
 | `rungiec_st.iec` を直接 include する | 前処理 | PP91 `RUNGIEC rungiec_st.iec is the ST mode part of rungiec.iec; include rungiec.iec instead`（`e069`） |
 | MC の入れ子が `RUNGIEC_MC_MAX` を超える | 前処理 | PP91 `RUNGIEC BEGIN_MC nesting exceeds M` |
 | 対の無い `END_MC()` | 前処理 | PP91 `RUNGIEC END_MC without BEGIN_MC` |
@@ -968,14 +968,14 @@ LD モードだけのもの（[GUIDE の「LD モードの制約」](GUIDE.md#ld
 
 ## バージョン
 
-`rungiec.iec` は 4 個のマクロでバージョンを公開する（現在 0.4.0）。
+`rungiec.iec` は 4 個のマクロでバージョンを公開する（現在 0.4.1）。
 
 | マクロ | 値 | 内容 |
 |---|---|---|
 | `RUNGIEC_VERSION_MAJOR` | 0 | メジャー |
 | `RUNGIEC_VERSION_MINOR` | 4 | マイナー |
-| `RUNGIEC_VERSION_REVISION` | 0 | リビジョン |
-| `RUNGIEC_VERSION` | 400 | `MAJOR * 10000 + MINOR * 100 + REVISION`（jiepp の `_JIEPP_FULL_VER` と同じ形式） |
+| `RUNGIEC_VERSION_REVISION` | 1 | リビジョン |
+| `RUNGIEC_VERSION` | 401 | `MAJOR * 10000 + MINOR * 100 + REVISION`（jiepp の `_JIEPP_FULL_VER` と同じ形式） |
 
 利用側のファイルで `{#if}` を使い、必要なバージョンを確認できる（`tests/t051_version_macros.iec`）。
 

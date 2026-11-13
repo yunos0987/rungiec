@@ -1,6 +1,6 @@
 (* @expect pp-error PP91: .RUNGIEC needs Jiecc 9.4.0 or later *)
 (* @cycles 1 *)
-(* Purpose: A jiecc older than 9.4.0 (its _JIECC_FULL_VER below 90400; jiecc defines it, plain jiepp does not) stops preprocessing at the version check of rungiec.iec: the ST mode writes the statements directly in the POU body, which an older jiecc does not read. *)
+(* Purpose: A jiecc older than 9.4.0 (its _JIECC_FULL_VER below 90400; jiecc defines it, plain jiepp does not) stops preprocessing at the version check of rungiec.iec: jiecc preprocesses with the jiepp of its own release, and the conditions of rungiec.iec need jiepp 1.4.0 (Jiecc 9.4.0). The check uses no logical operator, so a real Jiecc 9.2.0 (jiepp 1.2.0) also reports it. *)
 {#define _JIECC_FULL_VER 90200}
 {#include 'rungiec.iec'}
 program __main__

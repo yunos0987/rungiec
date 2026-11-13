@@ -105,7 +105,7 @@ RUNGIEC を使うのに必要なのは jiepp だけ（入手は下の「ツー�
 
 LD モードは、さらに jiepp のビルトイン `__xmlattr` / `__xmltext`（XML の属性値と本文のエスケープ）と `__arg_lhs` / `__arg_rhs` / `__arg_dir`（`IN := Start` のような引数の分解）を使う。この 5 つは jiepp 1.4.0（と Jiecc 9.4.0 の配布アーカイブの jiepp）にある。この 5 つが無い（または無効にした）jiepp では、LD モードの変換は `rungiec.iec` のエラー PP91 `RUNGIEC LD mode needs a jiepp with the XML and argument built-ins; use the jiepp version named in README.md` になる。jiepp 1.4.0 より古い jiepp では、どちらのモードも展開できない（`rungiec.iec` の条件式の `&&` / `||` / `!` が前処理エラー PP51 になる）。
 
-どちらのモードも Jiecc 9.4.0 が必要である。ST モードの文は POU の本体に囲まずに並ぶので、それより古い jiecc では変換と実行が `rungiec.iec` のエラー PP91 `RUNGIEC needs Jiecc 9.4.0 or later` になる（jiecc が定義する版の macro で確認する。jiepp だけで展開するときは確認しない）。
+どちらのモードも Jiecc 9.4.0 が必要である。jiecc の前処理は同じ版の jiepp と同じで、Jiecc 9.4.0 の前処理は jiepp 1.4.0 である（jiecc が定義する `_JIEPP_FULL_VER` が 10400）。上の条件式の `&&` / `||` / `!` にこの版が要る。テストの枠組み jiecunit v7.0.0 も Jiecc 9.4.0 を要る。それより古い jiecc では、変換と実行が `rungiec.iec` のエラー PP91 `RUNGIEC needs Jiecc 9.4.0 or later` になる（jiecc が定義する版の macro で確認する。jiepp だけで展開するときは確認しない。Jiecc 9.2.0 では、その前後に条件式の PP51 / PP52 も並ぶ）。
 
 ### ツールの入手
 

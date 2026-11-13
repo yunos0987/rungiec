@@ -2,13 +2,30 @@
 
 0.2.0 以降の変更を記録します。0.2.0 は最初の公開版です。
 
+## 0.4.1 (2026-11-13)
+
+`RUNGIEC_VERSION` は 401 です。
+
+### 不具合の修正 / Fixes
+
+- `rungiec.iec` の Jiecc の版の検査を、論理演算子を使わない `{#ifndef _JIECC_FULL_VER}` / `{#elif _JIECC_FULL_VER < 90400}` の形にしました。0.4.0 の検査は `&&` を使っていたので、前処理が jiepp 1.2.0 の Jiecc 9.2.0 では PP91 `RUNGIEC needs Jiecc 9.4.0 or later` が出ず、条件式の PP51 / PP52 だけになっていました。今は Jiecc 9.2.0 でも PP91 が出ます（PP51 / PP52 も並びます）。公開マクロは変わりません。
+
+### ツール / Tools
+
+- `tools/run_tests.py --only` が何のテストにも一致しないとき、終了コード 2 にしました（0 件の成功に見えていました）。
+
+### 文書 / Documentation
+
+- Jiecc 9.4.0 が必要な理由を直しました。jiecc の前処理は同じ版の jiepp と同じで、`rungiec.iec` の条件式の `&&` / `||` / `!` には jiepp 1.4.0（Jiecc 9.4.0 の前処理）が要ります。テストの jiecunit v7.0.0 も Jiecc 9.4.0 を要ります。
+- jiepp 1.4.0 より古い jiepp では ST モードも展開できないことを、README・AGENTS.md・`docs/DESIGN.md` に書きました。
+
 ## 0.4.0 (2026-11-09)
 
 `RUNGIEC_VERSION` は 400 です。
 
 ### 互換性に影響する変更 / Breaking changes
 
-- 必要なツールを jiepp 1.4.0 と Jiecc 9.4.0 に上げました。`rungiec.iec` の版の検査は、`_JIECC_FULL_VER` が 90400 未満なら PP91 `RUNGIEC needs Jiecc 9.4.0 or later` にします（jiepp だけで展開するときは確認しません）。マクロの展開結果と公開マクロは変わりません。ST モード自体は Jiecc 9.2.0 でも動きますが、確認しているのは 9.4.0 だけです。
+- 必要なツールを jiepp 1.4.0 と Jiecc 9.4.0 に上げました。`rungiec.iec` の版の検査は、`_JIECC_FULL_VER` が 90400 未満なら PP91 `RUNGIEC needs Jiecc 9.4.0 or later` にします（jiepp だけで展開するときは確認しません）。マクロの展開結果と公開マクロは変わりません。Jiecc 9.2.0 は前処理が jiepp 1.2.0 なので、下の条件式が PP51 になり、どちらのモードも展開できません（この版の検査も `&&` を使うため PP91 は出ません。0.4.1 で直しました）。
 - テストの枠組み jiecunit（git submodule の `vendor/jiecunit`）を v7.0.0 にしました。jiecunit v7.0.0 には Jiecc 9.4.0 が必要です。`jiecc --run` では、集計の後に `halt` でスキャンを止めて終わります。
 - `rungiec.iec` / `rungiec_st.iec` / `rungiec_ld.iec` の前処理の条件式（`{#if}` / `{#elif}` と `__assert` の条件）を、jiepp 1.4.0 の論理演算子 `&&` / `||` / `!` で書き直しました。jiepp 1.2.0 ではこの表記が PP51 になります。展開結果は変わりません。lint の LN8 は `\and\` / `\or\` / `\not\` も指摘するようになりました（`&&` / `||` / `!` を書く）。
 
