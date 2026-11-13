@@ -1,11 +1,18 @@
 """Round-trip checks: canonical forms of the source rungs against the regenerated standard XML, xsd validation and
 namespace checks of the regenerated XML."""
 
+import os
+import threading
 import xml.etree.ElementTree as ET
 
 from . import omron_reader
 
 IEC_NS = "{%s}" % omron_reader.NS
+
+# validate_xsd parses each XSD once per process. An lxml XMLSchema keeps the errors of its last validation in its
+# error_log, so the validation and the reading of the log are done under one lock (the runner validates from a pool).
+_SCHEMAS = {}
+_SCHEMA_LOCK = threading.Lock()
 
 
 def regenerated_canonicals(xml_path):
@@ -69,8 +76,12 @@ def validate_xsd(xml_path, xsd_path, limit=20):
         from lxml import etree
     except ImportError:
         return None
-    schema = etree.XMLSchema(etree.parse(xsd_path))
     doc = etree.parse(xml_path)
-    ok = schema.validate(doc)
-    errors = [] if ok else list(schema.error_log)
+    key = os.path.abspath(xsd_path)
+    with _SCHEMA_LOCK:
+        schema = _SCHEMAS.get(key)
+        if schema is None:
+            schema = _SCHEMAS[key] = etree.XMLSchema(etree.parse(xsd_path))
+        ok = schema.validate(doc)
+        errors = [] if ok else list(schema.error_log)
     return len(errors), ["%d: %s" % (e.line, e.message) for e in errors[:limit]]

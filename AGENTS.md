@@ -12,7 +12,7 @@ IEC 61131-3 のラダー図 (LD) を jiepp マクロで表現し、ST 言語に�
   - PATH 上の `jiepp` は使わない（古い jiecc の配布物のものだと古い版のことがある）。ランナーも PATH フォールバックしない。
 - `tools/*.exe` と `tools/jiepp` / `tools/jiecc` は Git で追跡しない（`.gitignore`）。
 - ランナーは jiepp に `-Werror=undef` を付ける（`{#if}` / `__assert` の条件の中の未定義の識別子が前処理エラー PP54 になる）。残す理由は設定値（`RUNGIEC_NEST_MAX` など）の `{#if}` に名前を書いた誤りをエラーにするため。`WIRE` の節点番号の変数・式は `-Werror=undef` が無くても節点表の検査（PP91）でエラーになる（付けると内部名 `_RUNGIEC_IS_NODE_K0` などの PP54 も出る）。
-- 環境変数 `RUNGIEC_JIEPP` / `RUNGIEC_JIECC` または `--jiepp` / `--jiecc` で上書き可能。
+- 環境変数 `RUNGIEC_JIEPP` / `RUNGIEC_JIECC` または `--jiepp` / `--jiecc` で上書き可能。ランナーは起動時に `--version` の 1 行目で jiepp 1.4.0 以上と Jiecc 9.4.0 以上を確かめ、古いか読めなければ終了コード 2（`tools/run_tests.py` の `MIN_JIEPP` / `MIN_JIECC`。`--lint-only` / `--lint-selftest` は確かめない）。
 - jiecunit（jiecc 用の単体テストの枠組み）は git submodule の `vendor/jiecunit`（https://github.com/yunos0987/jiecunit.git 、v7.0.0 = d50b9c5 に固定）。clone は `git clone --recursive`、済んだ clone では `git submodule update --init`。無ければランナーは「`git submodule update --init` を実行せよ」と出して終了コード 2。`--jiecunit DIR` で別の場所を使える。submodule の中は編集しない。
 - jiecc の `--run` は `_JIER` / `_OMRON` などの対象の macro を定義済みにするが、単体の jiepp は定義しないので、jiecunit の `{#if}` が `-Werror=undef` の PP54 になる。ランナーは起動時に 1 回 `jiecc --run -E -dM`（空のファイル）で定義済みの macro の一覧を作り、t / x のテストの jiepp に `-include` で渡す（jiecc の版に追従する。作れなければ終了コード 2）。
 

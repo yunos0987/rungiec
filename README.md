@@ -262,7 +262,7 @@ flowchart TD
     JU["vendor/jiecunit"]
     XC["tools/xml2rungiec.py と tools/rungiec2xml.py（本体は tools/ld_xml/）"]
     RUN -->|"最初に実行"| LINT
-    RUN -->|"1 本ずつ展開して判定"| TST
+    RUN -->|"各テストを展開して判定（同時に 2 本まで）"| TST
     RUN -->|"往復の検査に使う"| XC
     TST -->|"t と x が include"| JU
   end

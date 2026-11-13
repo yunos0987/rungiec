@@ -3,8 +3,11 @@
 
 Usage (from the repository root):
     python tools/run_tests.py [--only GLOB] [--no-lint] [--lint-only] [--lint-selftest]
-                              [--jiepp PATH] [--jiecc PATH] [--jiecunit DIR]
+                              [--jiepp PATH] [--jiecc PATH] [--jiecunit DIR] [--jobs N]
                               [--tests-dir DIR] [--out-dir DIR] [--examples-dir DIR]
+
+The tests run --jobs at a time (default and maximum MAX_PARALLEL_JIECC = 2; --jobs 1 runs them one by one); the
+PASS / FAIL lines are printed in the order of the names.
 
 Test name prefixes: t = pass, e = preprocessing error, r = residual macro text,
 f = jiecc-stage error (compile or run; the output must match the pattern).
@@ -66,14 +69,17 @@ An 'ir-audit: [ERROR]' line in the jiecc output fails an '@expect pass' test; an
 Tools: tools/jiepp and tools/jiecc under the repository root by default, or the same names with .exe
 (tools/jiepp.exe and tools/jiecc.exe on Windows; not tracked by Git);
 --jiepp / --jiecc or the environment variables RUNGIEC_JIEPP / RUNGIEC_JIECC override them. The PATH is not used.
+At start the runner reads the first line of 'jiepp --version' and 'jiecc --version' and stops with exit code 2
+when it is not 'jiepp X.Y.Z' / 'Jiecc X.Y.Z' or older than MIN_JIEPP / MIN_JIECC (jiepp 1.4.0, Jiecc 9.4.0);
+--lint-only and --lint-selftest do not run the tools and do not check them.
 jiepp runs with -Werror=undef: an identifier that is not a macro in a {#if} condition or an __assert condition
 (PP54) is a preprocessing error.
 
 The runner removes the repository root from the paths in the jiepp and jiecc output (diagnostics show
 'tests/e041_wire_variable_node.iec:15.0: ...') before it writes .pp.txt / .run.txt and matches '@expect' patterns.
 
-Exit codes: 0 all passed, 1 failure, 2 environment error (missing binary, missing jiecunit, predefine failure)
-or an --only pattern that matches no test.
+Exit codes: 0 all passed, 1 failure, 2 environment error (missing binary, a jiepp or jiecc older than the minimum
+or without a readable version, missing jiecunit, predefine failure) or an --only pattern that matches no test.
 """
 import argparse
 import concurrent.futures
@@ -100,8 +106,14 @@ from ld_xml.omron_reader import NS as IEC10_NS, XSI_TYPE  # noqa: E402
 DEFAULT_JIEPP = os.path.join(ROOT, "tools", "jiepp")
 DEFAULT_JIECC = os.path.join(ROOT, "tools", "jiecc")
 DEFAULT_JIECUNIT = os.path.join(ROOT, "vendor", "jiecunit")
+# The oldest tools RUNGIEC works with: rungiec.iec needs the && / || / ! of jiepp 1.4.0, jiecc preprocesses as the
+# jiepp of its release (Jiecc 9.4.0 has jiepp 1.4.0), and jiecunit v7.0.0 needs Jiecc 9.4.0. With older tools every
+# test would fail on its own; the runner stops at the start instead.
+MIN_JIEPP = (1, 4, 0)
+MIN_JIECC = (9, 4, 0)
 TIMEOUT_SEC = 120
-# Number of jiecc runs at the same time in the example conversions. More than 4 concurrent jiepp/jiecc processes
+# Number of jiecc runs at the same time in the example conversions, and the default and the maximum of --jobs for
+# the tests (a test runs jiepp and then jiecc, never both at once). More than 4 concurrent jiepp/jiecc processes
 # are not allowed on the development machines (the antivirus software can take the OS down), and each jiecc
 # starts one jiepp of its own, so 2 jiecc runs make at most 4 processes.
 MAX_PARALLEL_JIECC = 2
@@ -204,6 +216,17 @@ def resolve_exe(path):
     if os.path.isfile(path + ".exe"):
         return path + ".exe"
     return None
+
+
+def tool_version(exe, name):
+    """Return (major, minor, patch) from the first line of '<exe> --version' ('<name> X.Y.Z'), or None."""
+    try:
+        _, out, err = run_cmd([exe, "--version"])
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    first = (out + err).strip().split("\n")[0].strip()
+    m = re.match(r"%s (\d+)\.(\d+)\.(\d+)\b" % re.escape(name), first)
+    return tuple(int(g) for g in m.groups()) if m else None
 
 
 def parse_header(text):
@@ -699,21 +722,27 @@ def convert_examples(jiecc, jiepp, examples_dir, tmp, out_dir, predef):
     return failed
 
 
-def run_all(names, tests_dir, jiepp, jiecc, out_dir, jiecunit, examples=None):
-    """Run the tests in names, print PASS / FAIL lines and return (passed, failed)."""
-    passed = failed = 0
-    for name in names:
+def run_all(names, tests_dir, jiepp, jiecc, out_dir, jiecunit, examples=None, jobs=1):
+    """Run the tests in names with jobs workers, print PASS / FAIL lines in the order of names and return
+    (passed, failed). A test writes only the files of its own name, so the tests can run at the same time."""
+
+    def run_named(name):
         try:
-            reason = run_one(os.path.join(tests_dir, name + ".iec"), name, jiepp, jiecc, out_dir,
-                             name.startswith("x_"), jiecunit if is_jiecunit_test(name) else None, examples)
+            return run_one(os.path.join(tests_dir, name + ".iec"), name, jiepp, jiecc, out_dir,
+                           name.startswith("x_"), jiecunit if is_jiecunit_test(name) else None, examples)
         except subprocess.TimeoutExpired:
-            reason = "timeout"
-        if reason is None:
-            passed += 1
-            print("PASS %s" % name)
-        else:
-            failed += 1
-            print("FAIL %s: %s" % (name, reason))
+            return "timeout"
+
+    passed = failed = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, jobs)) as pool:
+        for name, reason in zip(names, pool.map(run_named, names)):
+            if reason is None:
+                passed += 1
+                print("PASS %s" % name)
+            else:
+                failed += 1
+                print("FAIL %s: %s" % (name, reason))
+            sys.stdout.flush()
     return passed, failed
 
 
@@ -729,7 +758,13 @@ def main():
     parser.add_argument("--no-lint", action="store_true", help="do not run the lint before the tests")
     parser.add_argument("--lint-only", action="store_true", help="run only the lint")
     parser.add_argument("--lint-selftest", action="store_true", help="run only the self-test of the lint")
+    parser.add_argument("--jobs", type=int, default=MAX_PARALLEL_JIECC,
+                        help="tests run at the same time, 1 to %d (default %d; the example conversions always use %d)"
+                        % (MAX_PARALLEL_JIECC, MAX_PARALLEL_JIECC, MAX_PARALLEL_JIECC))
     args = parser.parse_args()
+    if not 1 <= args.jobs <= MAX_PARALLEL_JIECC:
+        parser.error("--jobs must be 1 to %d (at most %d jiepp/jiecc processes at a time)"
+                     % (MAX_PARALLEL_JIECC, 2 * MAX_PARALLEL_JIECC))
 
     os.chdir(ROOT)
     tests_dir = os.path.abspath(args.tests_dir)
@@ -753,6 +788,17 @@ def main():
         return 2
     jiepp = os.path.abspath(jiepp)
     jiecc = os.path.abspath(jiecc)
+    for exe, name, minimum in ((jiepp, "jiepp", MIN_JIEPP), (jiecc, "Jiecc", MIN_JIECC)):
+        version = tool_version(exe, name)
+        need = "%s %d.%d.%d" % ((name,) + minimum)
+        if version is None:
+            print("ERROR: '%s --version' does not print '%s X.Y.Z' on its first line (RUNGIEC needs %s or later)"
+                  % (exe, name, need))
+            return 2
+        if version < minimum:
+            print("ERROR: %s %d.%d.%d is too old: RUNGIEC needs %s or later (see the tools section of README.md)"
+                  % ((name,) + version + (need,)))
+            return 2
 
     # The lint looks at every file, so it is skipped with --only (like the XML conversions).
     lint_failed = False
@@ -783,7 +829,7 @@ def main():
                 print("ERROR: 'jiecc --run -E -dM' failed to list the predefined macros: %s" % error)
                 return 2
             jiecunit = (jiecunit_dir, predef)
-        passed, failed = run_all(names, tests_dir, jiepp, jiecc, out_dir, jiecunit, examples_dir)
+        passed, failed = run_all(names, tests_dir, jiepp, jiecc, out_dir, jiecunit, examples_dir, args.jobs)
         if not args.only and os.path.isdir(examples_dir):
             # The same reading of the includes as the check of each x_ test (comments removed, either quote).
             included = set()

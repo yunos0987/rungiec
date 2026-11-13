@@ -42,6 +42,7 @@ python tools/run_tests.py --no-lint              lint を実行せずにテス�
 python tools/run_tests.py --only "t0*"           名前で絞り込み（例題の確認 x_* も名前で選ぶ。lint と例題の XML 変換は実行しない）
 python tools/run_tests.py --lint-only            lint だけ
 python tools/run_tests.py --lint-selftest        lint の自己検査（各規則が誤りを指摘し、正しい書き方を指摘しないこと）
+python tools/run_tests.py --jobs 1               テストを 1 本ずつ実行（既定は同時に 2 本。例題の変換は常に同時に 2 本まで）
 ```
 
 各テストの先頭の `(* @expect ... *)` が期待の種類を表す。`pass`（t / x。jiecunit のテストが通る）、`pp-error`（e。jiepp の診断）、`residual`（r。展開後 ST に残る名前）、`run-error`（f。`jiecc --run` の出力）の 4 つ。
@@ -66,11 +67,13 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  START["python tools/run_tests.py"] --> L{"--only か --no-lint があるか"}
+  START["python tools/run_tests.py"] --> VER{"jiepp 1.4.0 と Jiecc 9.4.0 以上か（--version の 1 行目）"}
+  VER -->|"いいえ"| ENV["エラー、終了コード 2"]
+  VER -->|"はい"| L{"--only か --no-lint があるか"}
   L -->|"ない"| LINT["lint（tools/lint_rungiec.py）"]
   L -->|"ある"| PRE
   LINT --> PRE["t / x があれば jiecc --run -E -dM で定義済みの macro の一覧を作る"]
-  PRE --> EACH["tests/*.iec を 1 本ずつ"]
+  PRE --> EACH["tests/*.iec を同時に 2 本まで（--jobs）。PASS / FAIL の行は名前の順"]
   EACH --> CHK["ヘッダと静的検査（@expect、@cycles、t / x の jiecunit の形、x の例題の形）"]
   CHK --> PP["jiepp -P -Werror=undef"]
   PP --> K{"@expect の種類"}
@@ -156,7 +159,7 @@ LD ROUNDTRIP: 9 of 9 examples passed, 3 in LD_ROUNDTRIP_SKIP
 | `parts_counter` | xml2rungiec が `ST_EXEC` の `InlineST` を、両側が同じネットワークの要素と読んで飛ばす |
 
 - LD モードの `e` テスト（`e060`〜`e068`、`e073`）は、`{#include 'rungiec.iec'}` の前に `{#define RUNGIEC_LD 1}` を書く（`e059` の `{#define _OMRON true}` と同じ形）。本体を直接 include する誤りを試す `e069`（`rungiec_st.iec`）と `e070`（`{#define RUNGIEC_LD 1}` の後の `rungiec_ld.iec`）は、`rungiec.iec` の代わりに本体を include する。PP91 のメッセージの中の設定の名前は値に置き換わる（`RUNGIEC LD: nesting exceeds 16`）ので、`(* @expect pp-error ... *)` のパターンも値で書く。t / x のテストは ST モードだけで実行する。
-- LD モードには、`__xmlattr` などのビルトインのある jiepp（jiepp 1.4.0。Jiecc 9.4.0 の配布アーカイブの jiepp も同じ）が必要である。それより古い版では、ST モードのテストも LD モードの変換も全部失敗する（`rungiec.iec` の条件式の `&&` / `||` / `!` が PP51 になる。ランナーは版を確かめず、飛ばさない）。
+- LD モードには、`__xmlattr` などのビルトインのある jiepp（jiepp 1.4.0。Jiecc 9.4.0 の配布アーカイブの jiepp も同じ）が必要である。それより古い版では、ST モードのテストも LD モードの変換も全部失敗する（`rungiec.iec` の条件式の `&&` / `||` / `!` が PP51 になる）。そのためランナーは起動時に `jiepp --version` と `jiecc --version` の 1 行目を読み、jiepp 1.4.0 / Jiecc 9.4.0 より古いか版が読めなければ、テストを始めずにエラーを出して終了コード 2 で終わる（`--lint-only` / `--lint-selftest` はツールを使わないので確かめない）。
 
 ## ツールの置き場所
 
