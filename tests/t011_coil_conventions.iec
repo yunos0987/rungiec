@@ -1,6 +1,6 @@
 (* @expect pass *)
 (* @cycles 8 *)
-(* Purpose: The four coil convention diagrams of the requirement. *)
+(* Purpose: The four coil convention diagrams: series, merge coil, fork coil and branch coils. *)
 {#include 'rungiec.iec'}
 {#include 't_jiecunit.iec'}
 DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(t011_coil_conventions))
