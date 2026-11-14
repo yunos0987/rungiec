@@ -100,6 +100,7 @@ import ld_xml_roundtrip  # noqa: E402
 import lint_rungiec  # noqa: E402
 import xml2rungiec  # noqa: E402
 from ld_xml import compare as ld_compare  # noqa: E402
+from ld_xml.common import write_text  # noqa: E402
 from ld_xml.omron_reader import NS as IEC10_NS, XSI_TYPE  # noqa: E402
 
 # Without a suffix so that Linux finds tools/jiepp and Windows finds tools/jiepp.exe (resolve_exe adds .exe).
@@ -132,6 +133,10 @@ INTERNAL_ANY_RE = re.compile(r"\b_RUNGIEC_\w+")
 # A jiepp diagnostic line. An e-test pattern is matched only against these lines: on PP91 jiepp may also print
 # the expanded text, and the @expect comment of the test itself would match its own pattern.
 DIAG_RE = re.compile(r"\b(?:error|warning): PP\d+")
+# An error or warning line of jiepp or jiecc in an example conversion: 'path:15.0: error: PP91: ...',
+# ':0.0: error: 0x80000000: ...', 'warning: --type-rules is used only with --run; ignored.' (the word followed by a
+# colon, so that a path such as examples/error_latch.iec is not one).
+TOOL_DIAG_RE = re.compile(r"(?:error|warning):", re.IGNORECASE)
 FAIL_PATTERNS = ("error:", "InterpreterFault", "Traceback", "ir-audit: [ERROR]")
 # jiecunit summary lines (gtest style).
 JU_RAN = "[========] 1 tests ran."
@@ -179,11 +184,6 @@ ST_INIT_RE = re.compile(r"\s*".join(re.escape(token) for token in re.findall(
     r"\w+|:=|;", "RungiecEn := true; RungiecIn := true; RungiecAcc := true; RungiecVal := true; RungiecTmp := false; "
                  "RungiecRail := true; RungiecSp := 0;")))
 ST_POU_END_RE = re.compile(r"\bend_(?:function_block|program|function)\b", re.IGNORECASE)
-
-
-def write_text(path, text):
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(text)
 
 
 # The repository root as jiepp and jiecc print it in a diagnostic ('C:/.../rungiec/tests/e041_....iec:15.0: error: ...'):
@@ -447,7 +447,7 @@ def convert_example(jiecc, path, stem, target, xml_path):
         if os.path.isfile(xml_path):
             return "jiecc failed but wrote an XML"
         return None
-    if rc != 0 or re.search(r"error|warning", text, flags=re.IGNORECASE):
+    if rc != 0 or TOOL_DIAG_RE.search(text):
         return "jiecc rc=%d: %s" % (rc, text[:300])
     if not os.path.isfile(xml_path):
         return "no XML written"
@@ -516,7 +516,7 @@ def convert_example_ld(jiecc, path, stem, target, xml_path, xsd):
     except subprocess.TimeoutExpired:
         return "timeout", None
     text = (err + out).strip()
-    if rc != 0 or re.search(r"error|warning", text, flags=re.IGNORECASE):
+    if rc != 0 or TOOL_DIAG_RE.search(text):
         return "jiecc rc=%d: %s" % (rc, text[:300]), None
     if not os.path.isfile(xml_path):
         return "no XML written", None

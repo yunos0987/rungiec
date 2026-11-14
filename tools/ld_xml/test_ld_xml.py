@@ -24,7 +24,8 @@ if TOOLS not in sys.path:
 
 import rungiec2xml  # noqa: E402
 import xml2rungiec  # noqa: E402
-from ld_xml import ascii_art, compare, model, omron_reader, rungiec_reader, st_text, to_rungiec  # noqa: E402
+from ld_xml import ascii_art, common, compare, model, omron_reader, rungiec_reader, st_text, to_rungiec  # noqa: E402
+from ld_xml import std_writer  # noqa: E402
 from ld_xml.model import Arg, Element  # noqa: E402
 
 HEAD = ('<?xml version="1.0"?>\n<Project xmlns:smcext="https://www.ia.omron.com/Smc" '
@@ -977,6 +978,57 @@ class MacroNames(unittest.TestCase):
         # Each name is defined in one file only: the entry file, the ST body and the LD body.
         for name in ("_RUNGIEC_IS_NODE_00", "_RUNGIEC_SERIES_1", "_RUNGIEC_LD_CHECK"):
             self.assertIn(name, st_text.MACRO_NAMES)
+
+
+class SharedHelpers(unittest.TestCase):
+    """NS, MC_MAX, safe_name and write_text are defined once, in ld_xml/common.py, and imported by their users."""
+
+    USERS = ("ld_xml/omron_reader.py", "ld_xml/std_writer.py", "ld_xml/rungiec_reader.py", "ld_xml/to_rungiec.py",
+             "rungiec2xml.py", "xml2rungiec.py", "run_tests.py")
+
+    def test_defined_once(self):
+        own = re.compile(r"^(?:(?:NS|MC_MAX)\s*=|def (?:safe_name|write_text)\b)", re.MULTILINE)
+        for rel in self.USERS:
+            with open(os.path.join(TOOLS, rel), encoding="utf-8") as f:
+                self.assertIsNone(own.search(f.read()), rel)
+
+    def test_users_take_the_shared_objects(self):
+        self.assertIs(omron_reader.NS, common.NS)
+        self.assertIs(std_writer.NS, common.NS)
+        self.assertEqual((rungiec_reader.MC_MAX, to_rungiec.MC_MAX, common.MC_MAX), (15, 15, 15))
+        for mod in (rungiec2xml, xml2rungiec):
+            self.assertIs(mod.safe_name, common.safe_name)
+            self.assertIs(mod.write_text, common.write_text)
+
+    def test_safe_name_and_write_text(self):
+        self.assertEqual(common.safe_name("Main Prog-1"), "Main_Prog_1")
+        self.assertEqual(common.safe_name(""), "_")
+        self.assertEqual(common.safe_name(None), "_")
+        tmp = tempfile.mkdtemp(prefix="ldxml_test_")
+        try:
+            path = os.path.join(tmp, "t.txt")
+            common.write_text(path, "a\nb\n")
+            with open(path, "rb") as f:
+                self.assertEqual(f.read(), b"a\nb\n")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+class NoWriteOnlyFields(unittest.TestCase):
+    """The reader objects keep only the fields that are read (no rungs / pou_kind / source / label / pos / line)."""
+
+    def test_slots(self):
+        self.assertEqual(omron_reader.BodyInfo.__slots__, ("ordinal", "pou", "section", "btype", "is_ld"))
+        self.assertEqual(rungiec_reader.Node.__slots__, ("name", "args", "kids"))
+        self.assertEqual(rungiec_reader.Unit.__slots__, ("ordinal", "comments", "statements", "label_only"))
+
+    def test_fragment(self):
+        text = ("(* @rungiec-fragment *)\n(* @source in.xml *)\n(* @body 1 P main *)\n(* @rung 1 *)\n"
+                "RUNG(CONTACT(A), COIL(Y))\n")
+        frag = rungiec_reader.read_fragment(text, "f")
+        self.assertFalse(hasattr(frag, "label") or hasattr(frag, "source"), vars(frag))
+        self.assertEqual((frag.body, frag.pou, frag.section), (1, "P", "main"))
+        self.assertEqual([(u.ordinal, [s.name for s in u.statements]) for u in frag.units], [(1, ["RUNG"])])
 
 
 class AsciiArt(unittest.TestCase):

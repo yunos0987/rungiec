@@ -9,8 +9,8 @@ FB_BOX / FBT_BOX pass the power on from their output pin.
 from xml.sax.saxutils import escape, quoteattr
 
 from . import model
+from .common import NS
 
-NS = "www.iec.ch/public/TC65SC65BWG7TF10"
 XSI = "http://www.w3.org/2001/XMLSchema-instance"
 
 

@@ -24,26 +24,17 @@ import argparse  # noqa: E402
 import glob  # noqa: E402
 import json  # noqa: E402
 import os  # noqa: E402
-import re  # noqa: E402
 import time  # noqa: E402
 import xml.etree.ElementTree as ET  # noqa: E402
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ld_xml import omron_reader, to_rungiec  # noqa: E402
-
-
-def safe_name(text):
-    return re.sub(r"[^A-Za-z0-9_]", "_", text or "") or "_"
+from ld_xml.common import safe_name, write_text  # noqa: E402
 
 
 def fragment_name(body):
     return "%04d_%s_%s.iec" % (body.ordinal, safe_name(body.pou), safe_name(body.section))
-
-
-def write_text(path, text):
-    with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(text)
 
 
 def write_json(path, data):

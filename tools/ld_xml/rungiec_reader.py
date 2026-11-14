@@ -16,6 +16,7 @@ from . import TOOLS_DIR  # noqa: F401
 import lint_rungiec
 
 from . import ascii_art, model
+from .common import MC_MAX
 from .model import Arg, Element
 
 MARKER_RE = re.compile(r"\(\*\s*@(rungiec-fragment|source|body|instance|rung|label|skipped)\b(.*?)\*\)", re.DOTALL)
@@ -39,25 +40,23 @@ class Unsupported(Exception):
 
 class Node(object):
     """A parsed call: name, argument texts (original text) and argument nodes (for combinators)."""
-    __slots__ = ("name", "args", "kids", "pos")
+    __slots__ = ("name", "args", "kids")
 
-    def __init__(self, name, args, kids, pos):
-        self.name, self.args, self.kids, self.pos = name, args, kids, pos
+    def __init__(self, name, args, kids):
+        self.name, self.args, self.kids = name, args, kids
 
 
 class Unit(object):
-    __slots__ = ("ordinal", "comments", "statements", "line", "label_only")
+    __slots__ = ("ordinal", "comments", "statements", "label_only")
 
-    def __init__(self, ordinal, line, label_only=False):
-        self.ordinal, self.line, self.label_only = ordinal, line, label_only
+    def __init__(self, ordinal, label_only=False):
+        self.ordinal, self.label_only = ordinal, label_only
         self.comments = []
         self.statements = []
 
 
 class Fragment(object):
-    def __init__(self, label):
-        self.label = label
-        self.source = None
+    def __init__(self):
         self.body = None
         self.pou = None
         self.section = None
@@ -88,12 +87,12 @@ def parse_call(src, start):
         for a, b in spans:
             if code[a:b].strip():
                 kids.append(parse_call(src, a)[0])
-    return Node(name, args, kids, m.start(1)), close + 1
+    return Node(name, args, kids), close + 1
 
 
 def read_fragment(text, label):
     src = lint_rungiec.Source(label, text.replace("\r\n", "\n"))
-    frag = Fragment(label)
+    frag = Fragment()
     calls = [c for c in lint_rungiec.dsl_calls(src) if c.parent is None]
     events = []
     for c in calls:
@@ -116,9 +115,8 @@ def read_fragment(text, label):
             mk = MARKER_RE.match(obj.group(0))
             if mk:
                 what, rest = mk.group(1), mk.group(2).strip()
-                if what == "source":
-                    frag.source = rest
-                elif what == "body":
+                # The rungiec-fragment and source markers are only skipped.
+                if what == "body":
                     parts = rest.split(None, 2)
                     frag.body = int(parts[0]) if parts and parts[0].isdigit() else None
                     frag.pou = parts[1] if len(parts) > 1 else ""
@@ -127,7 +125,7 @@ def read_fragment(text, label):
                     name, _, typ = rest.rpartition(":")
                     frag.instances[name.strip()] = typ.strip()
                 elif what in ("rung", "label"):
-                    unit = Unit(int(rest), src.line(pos), label_only=what == "label")
+                    unit = Unit(int(rest), label_only=what == "label")
                     frag.units.append(unit)
                 elif what == "skipped":
                     parts = rest.split(None, 1)
@@ -255,9 +253,6 @@ def unit_label(unit):
     if len(unit.statements) != 1 or unit.statements[0].name != "LABEL":
         raise Unsupported("unsupported-form", "a @label marker is not followed by exactly one LABEL")
     return label_arg(unit.statements[0])
-
-
-MC_MAX = 15  # Omron MC nesting depth (to_rungiec.MC_MAX)
 
 
 def mc_rung(node, frag):

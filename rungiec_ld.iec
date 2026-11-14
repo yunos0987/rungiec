@@ -86,7 +86,7 @@
 {#define END_RUNGIEC() _RUNGIEC_END() ${end$}}
 (* RUNG: a Rung with the left power rail, the series of the children and the right power rail on the output set. *)
 {#define RUNG(...) __assert(__counter_peek(rungiec_net) = 0, RUNGIEC RUNG inside BEGIN_NET and END_NET)_RUNGIEC_ARITY_CHECK(RUNG, __VA_ARGC__)_RUNGIEC_LD_RUNG_I(__counter(_rungiec_ld_id), __VA_ARGS__)}
-{#define _RUNGIEC_LD_RUNG_I(id, ...) <Rung evaluationOrder=__xmlattr(__counter(_rungiec_ld_rung))>$n<LdObject xsi:type="LeftPowerRail"><ConnectionPointOut connectionPointOutId=__xmlattr(id)/></LdObject>_RUNGIEC_LD_ONE(_rungiec_ld_i0, id)_RUNGIEC_LD_EV0(_RUNGIEC_LD_SER_T (__VA_ARGS__))_RUNGIEC_LD_RAIL(_rungiec_ld_o0)$n</Rung>}
+{#define _RUNGIEC_LD_RUNG_I(id, ...) _RUNGIEC_LD_HEAD(id)_RUNGIEC_LD_ONE(_rungiec_ld_i0, id)_RUNGIEC_LD_EV0(_RUNGIEC_LD_SER_T (__VA_ARGS__))_RUNGIEC_LD_RAIL(_rungiec_ld_o0)$n</Rung>}
 {#define SERIES(...) _RUNGIEC_ARITY_CHECK(SERIES, __VA_ARGC__)_RUNGIEC_LD_SER_T (__VA_ARGS__)}
 {#define PARALLEL(...) _RUNGIEC_ARITY_CHECK(PARALLEL, __VA_ARGC__)_RUNGIEC_LD_PAR_T (__VA_ARGS__)}
 (* An operand or a label is written into an XML attribute, so an empty one is checked when the element is written. *)

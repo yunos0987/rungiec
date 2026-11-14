@@ -7,9 +7,9 @@ body; the result is either an SP tree (with the unpowered elements and the comme
 import xml.etree.ElementTree as ET
 
 from . import model, st_text
+from .common import NS
 from .model import Arg, Element
 
-NS = "www.iec.ch/public/TC65SC65BWG7TF10"
 SMC = "https://www.ia.omron.com/Smc"
 XSI_TYPE = "{http://www.w3.org/2001/XMLSchema-instance}type"
 POU_TAGS = ("Program", "FunctionBlock", "Function")
@@ -54,12 +54,11 @@ def pick(issues):
 
 
 class BodyInfo(object):
-    __slots__ = ("ordinal", "pou", "pou_kind", "section", "btype", "is_ld", "rungs")
+    __slots__ = ("ordinal", "pou", "section", "btype", "is_ld")
 
-    def __init__(self, ordinal, pou, pou_kind, section, btype):
-        self.ordinal, self.pou, self.pou_kind, self.section, self.btype = ordinal, pou, pou_kind, section, btype
+    def __init__(self, ordinal, pou, section, btype):
+        self.ordinal, self.pou, self.section, self.btype = ordinal, pou, section, btype
         self.is_ld = btype in LD_BODY_TYPES
-        self.rungs = 0
 
 
 class RungResult(object):
@@ -672,12 +671,12 @@ def iter_rungs(path):
         tag = local(el.tag)
         if event == "start":
             if tag in POU_TAGS and el.tag.startswith("{%s}" % NS):
-                pou_stack.append((el.get("name"), tag))
+                pou_stack.append(el.get("name"))
             elif tag == "BodyContent":
                 body_count += 1
-                pou, kind = pou_stack[-1] if pou_stack else ("", "")
+                pou = pou_stack[-1] if pou_stack else ""
                 section = el.get("name") or ("main" if el.get(XSI_TYPE) == "LD" else "")
-                body = BodyInfo(body_count, pou, kind, section, el.get(XSI_TYPE) or "")
+                body = BodyInfo(body_count, pou, section, el.get(XSI_TYPE) or "")
                 rung_ordinal = 0
                 yield ("body", body)
             elif tag == "Rung":
@@ -687,7 +686,6 @@ def iter_rungs(path):
             depth_rung -= 1
             if body is not None and body.is_ld:
                 rung_ordinal += 1
-                body.rungs += 1
                 yield ("rung", body, parse_rung(el, body, rung_ordinal))
             el.clear()
         elif tag in POU_TAGS and el.tag.startswith("{%s}" % NS):

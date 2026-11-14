@@ -20,11 +20,11 @@ looked at.
 import re
 
 from . import ascii_art, model, st_text
+from .common import MC_MAX
 from .model import Element
 
 ARITY_MAX = 16  # RUNGIEC_ARITY_MAX default
 NEST_MAX = 16   # RUNGIEC_NEST_MAX default
-MC_MAX = 15     # RUNGIEC_MC_MAX default
 BODY_SKIPS = ("mc-body", "loop-body", "jump-body")  # reasons of the rungs of a body skipped whole (convert_body)
 
 

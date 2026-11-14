@@ -14,7 +14,8 @@ The arity table (the ST mode, rungiec_st.iec) holds one real define per N = 1..m
 PARALLEL (no {#if} and no trap; the arity limit is checked by _RUNGIEC_ARITY_CHECK in rungiec.iec). The block starts at
 the _RUNGIEC_SERIES_1 define and ends at the _RUNGIEC_PARALLEL_<max> define. The macro bodies
 come from arity_body() below; to change the form of the table, change arity_body() and
-generate the table again. --max applies to the arity table only.
+generate the table again. --max applies to the arity table only; --check always compares the full
+table (N = 1..32), and --check with a --max other than 32 is an error (exit code 2).
 
 The node table (the entry file rungiec.iec, read by the WIRE checks of both modes) holds one define
 _RUNGIEC_IS_NODE_<K>0 per node number K = 0..64. WIRE pastes
@@ -308,7 +309,7 @@ def check(max_n):
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--max", type=int, default=32, dest="max_n",
-                        help="largest N in the arity table (1..32, default 32)")
+                        help="largest N in the arity table (1..32, default 32; only 32 with --check)")
     parser.add_argument("--nodes", action="store_true", help="print the node table instead of the arity table")
     parser.add_argument("--ld", action="store_true", help="print the generated part of rungiec_ld.iec instead")
     parser.add_argument("--check", action="store_true",
@@ -317,6 +318,10 @@ def main():
     args = parser.parse_args()
     if not 1 <= args.max_n <= ARITY_HARD_MAX:
         parser.error("--max must be 1..%d" % ARITY_HARD_MAX)
+    if args.check and args.max_n != ARITY_HARD_MAX:
+        # rungiec_st.iec holds the full table; a check of its first rows only would print OK for a partial compare.
+        parser.error("--check compares the full table (N = 1..%d); do not combine it with --max %d"
+                     % (ARITY_HARD_MAX, args.max_n))
     if args.check:
         return check(args.max_n)
     if args.ld:
