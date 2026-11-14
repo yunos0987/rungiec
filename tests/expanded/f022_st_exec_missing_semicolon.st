@@ -1,4 +1,4 @@
-(* @expect run-error INVALID_SYNTAX *)
+(* @expect run-error .M.; INVALID_SYNTAX *)
 (* @cycles 1 *)
 (* Purpose: A ';' missing between two statements of ST_EXEC is a jiecc syntax error. The ';' after the last statement may be left out (t096), because ST_EXEC adds one. *)
 (* rungiec.iec - ladder diagram DSL that jiepp expands to IEC 61131-3 ST (or, in the LD mode, to IEC 61131-10 LD XML). This is the entry file: it defines the common part (version, settings, checks, token pasting, node table) and includes the body of the mode at its end (rungiec_st.iec or rungiec_ld.iec); only the bodies define the public macros. Include this file, not a body. *)

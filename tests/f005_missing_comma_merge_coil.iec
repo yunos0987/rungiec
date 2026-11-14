@@ -1,4 +1,4 @@
-(* @expect run-error INVALID_SYNTAX *)
+(* @expect run-error .Y.; INVALID_SYNTAX *)
 (* @cycles 1 *)
 (* Purpose: A combinator followed by a coil without a comma is a jiecc syntax error. *)
 {#include 'rungiec.iec'}

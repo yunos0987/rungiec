@@ -1,4 +1,4 @@
-(* @expect run-error INVALID_SYNTAX *)
+(* @expect run-error .RungiecStIn.; INVALID_SYNTAX *)
 (* @cycles 1 *)
 (* Purpose: A top-level network written without RUNG (a bare SERIES) and directly followed by a RUNG is a jiecc syntax error. *)
 (* @lint-allow LN10 *)

@@ -20,6 +20,14 @@
 - `tools/gen_arity_table.py --check` に 32 以外の `--max` を付けると、引数の誤り（終了コード 2）にしました。今までは表の一部だけを比べて OK と出していました。
 - 内部の整理（動作と出力は変わりません）: `tools/ld_xml` の変換器とツールで重複していた定数と関数（`NS`、`MC_MAX`、`safe_name`、`write_text`）を `tools/ld_xml/common.py` にまとめ、書くだけで読まれていない欄を消しました。`rungiec_ld.iec` の `_RUNGIEC_LD_RUNG_I` は、Rung の始まりを `_RUNGIEC_LD_HEAD` で書きます。
 
+### テスト / Tests
+
+- タイマの代用品 `tests/support/t_stdfb.iec` は、1 回の呼び出しで進む時間を、include の前の `{#define T_STDFB_STEP ...}` で変えられるようにしました（定義しなければ今までどおり 100 ms）。経過時間を 4 s までの表で数えるのをやめたので、4 s を超える PT も満了します（24 h で数えるのを止めます）。PT が 4 s 以下のときの動作は変わりません。自分で `TON` を定義していた `t057`、`x_on_delay_timer`、`x_automatic_door`、`x_traffic_light` は、この代用品を使うようにしました。`t057` と `x_on_delay_timer` は、`IN` が立ち上がったスキャンを ET = 0 と数えるので、期待の表を作り直しました（PT = T#1s は 250 ms 刻みで 5 スキャン目に満了します）。
+- `e002_series_17_terms` は `RUNG` の 17 項を試していたので、名前を `e002_rung_17_terms` に変えました。`SERIES` の 17 項は新しい `e074_series_17_terms` で試します。
+- ほかのテストと同じことしか確かめていなかった `t016_shared_contact_two_coils`（`t011` に含まれる）と `t022_edge_first_scan_false`（`t020` に含まれる）を消しました。`x_contact_coil` の、`y_follows_x` と重なる 2 つの確認も消しました。
+- `t056_jump_label_positions` のジャンプが結果に表れるようにしました。`WIRE` からのジャンプは `END_NET()` の後のラングを飛び越し、MC 領域の中の後ろ向きのジャンプは領域が ON の間に領域を 3 回実行します。どちらも回数を確認します。
+- `f004`〜`f007` と `f022` の期待に、jiecc が `INVALID_SYNTAX` を出す字句（`'RungiecTmp'` など）を加えました。行番号は書きません。
+
 ### 文書 / Documentation
 
 - Jiecc 9.4.0 が必要な理由を直しました。jiecc の前処理は同じ版の jiepp と同じで、`rungiec.iec` の条件式の `&&` / `||` / `!` には jiepp 1.4.0（Jiecc 9.4.0 の前処理）が要ります。テストの jiecunit v7.0.0 も Jiecc 9.4.0 を要ります。

@@ -281,7 +281,7 @@ flowchart TD
 | `tools/xml2rungiec.py` / `tools/rungiec2xml.py` | ラダー図の XML と RUNGIEC の変換器。`xml2rungiec.py` は IEC 61131-10 の XML（プログラムを XML で交換する規格。Omron の Sysmac Studio（https://www.ia.omron.com/sysmac/ ）の書き出しも読める）のラダー図を RUNGIEC の断片（`.iec`）にし、`rungiec2xml.py` は断片を標準の IEC 61131-10 の LD XML に戻す。ラングごとに前のコメントとしてラダー図のアスキーアートを付ける。変換できないラングは `(* @skipped N 理由 *)` のコメントを残して数える。ジャンプは `JMP()` / `LABEL()` になり、`jiecc -t omron` / `-t keyence` / `-t mitsubishi` では前処理エラー PP91 になる（この変換器の標準 XML の書き出しは jiecc を使わない）。使い方は各ファイルの先頭の説明（開発者向け） |
 | `tools/ld_xml_roundtrip.py` | XML → RUNGIEC → 標準 XML の往復と検査（XSD、ラング数、比較、jiepp での展開と lint）。`docs/TESTING.md` の「LD XML 変換器のテスト」（開発者向け） |
 | `tools/ld_xml/` | 変換器の本体（Python のパッケージ）と単体テスト（`test_ld_xml.py`） |
-| `tests/` | テスト、`tests/support/t_jiecunit.iec` は jiecunit を使うテスト（t / x）の補助（`T_BEGIN()` / `T_EXPECT_IDLE()`）、`tests/support/t_stdfb.iec` は標準タイマ（`TON` / `TOF` / `TP`）と積算タイマ（`TONR`）の決定論的な代用品（1 回の呼び出しが 100 ms。カウンタとエッジは jiecc の組み込みを使う） |
+| `tests/` | テスト、`tests/support/t_jiecunit.iec` は jiecunit を使うテスト（t / x）の補助（`T_BEGIN()` / `T_EXPECT_IDLE()`）、`tests/support/t_stdfb.iec` は標準タイマ（`TON` / `TOF` / `TP`）と積算タイマ（`TONR`）の決定論的な代用品（1 回の呼び出しが 100 ms。include の前に `T_STDFB_STEP` を定義すると変えられる。カウンタとエッジは jiecc の組み込みを使う） |
 | `examples/` | 例題（利用者が書くコードだけ。1 本が同名の FUNCTION_BLOCK 1 つ。確認は `tests/x_*.iec`） |
 | `vendor/jiecunit` | jiecunit（git submodule、v7.0.0）。t / x のテストが使う |
 | `AGENTS.md` | マクロの記述規則とテストの書き方（AI と人の開発者が従う） |

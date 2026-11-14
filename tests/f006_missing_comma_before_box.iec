@@ -1,4 +1,4 @@
-(* @expect run-error INVALID_SYNTAX *)
+(* @expect run-error .RungiecTmp.; INVALID_SYNTAX *)
 (* @cycles 1 *)
 (* Purpose: An element followed by a box without a comma is a jiecc syntax error (every element starts with an assignment, not with if). *)
 {#include 'rungiec.iec'}

@@ -90,7 +90,7 @@ flowchart TD
   LDX --> RES["RESULT 行。失敗か lint の指摘があれば終了コード 1"]
 ```
 
-- テストは 220 本（`tests/` の t 117、e 69、f 20、r 2 の 208 本と、例題の確認 x 12 本）。
+- テストは 219 本（`tests/` の t 115、e 70、f 20、r 2 の 207 本と、例題の確認 x 12 本）。
 - `--only` が無いとき、ランナーは全例題を LD モードでも 4 ターゲットで変換する（`jiecc examples/<名前>.iec -I . -D RUNGIEC_LD -P -nC -t <t> -o <xml>`。ST モードの変換と同じく同時に 2 本まで）。確認すること: (1) 終了コード 0 で error / warning の行が無い、(2) `xml.etree` で読める、(3) 本文が LD だけ（`<BodyContent xsi:type="LD">` が 1 個。keyence は jiecc が END / ENDH のラングの本文を追加するので 2 個で、比べるのは最初の 1 個）で、`<FunctionBlock name="<名前>">` があり、作業変数の ST（`RungiecAcc`）が無い、(4) 最初の LD の本文が期待値ファイル `tests/expanded/<名前>.ld.xml`（omron の XML。Git で追跡する）の本文と同じで、ほかの 3 ターゲットの本文も omron と同じ（`ContentHeader` の `creationDateTime` は比べない）、(5) 環境変数 `RUNGIEC_IEC10_XSD` に XSD のパスがあり lxml が入っていれば XSD に合う（`ST_EXEC` を使う例題は `smcext:InlineST` が XSD に無いので外し、`XSD SKIP` の行を出す。検査しないときは `XSD NOT RUN (...)` の行を出し、合否に数えない）、(6) `tools/xml2rungiec.py` で omron の XML を断片に戻し、断片と例題を ST モードで展開した、`BEGIN_RUNGIEC()` の初期化文の後から POU の終わりまでが、コメントを除き空白をまとめて同じ。xml2rungiec が全部を断片にできない例題は、理由を付けて `tools/run_tests.py` の `LD_ROUNDTRIP_SKIP` に並べる（並べた例題が全部を断片にできたとき、並べていない例題ができなかったときは失敗）。結果は `LD XML: 48 of 48 ...` と `LD ROUNDTRIP: ...` の行に出る（失敗は failed に数える）。
 - ランナーは期待値ファイル `tests/expanded/<名前>.ld.xml` を書き換えない。本文が違うとき・ファイルが無いときは、omron の XML を `tests/expanded/<名前>.ld.xml.new`（Git で追跡しない）に書いて失敗にする。中身を確認してから `<名前>.ld.xml` に置き換える。一致すると `.new` を消す。
 - jiepp に LD モードの組み込み（`__xmlattr` など）が無いと、LD モードの変換は `rungiec.iec` のエラー `RUNGIEC LD mode needs a jiepp with the XML and argument built-ins ...` で全部失敗する。

@@ -795,7 +795,7 @@ flowchart LR
 | R16 接点ごとに前値 | POU ごとのカウンタ `rungiec_edge`（D32） | `t023`, `t090` |
 | R17 前値は静的、FUNCTION では不可 | `RUNGIEC_VAR` / `RUNGIEC_VAR_TEMP` / `RUNGIEC_VAR_NOEDGE`（D12、D37） | `t026`, `t037`, `t043`, `f002` |
 | R18 宣言方法と上限検出 | D6、D32、D37、D38（POU ごとのスロット、超過は PP91。宣言の付け忘れ・`BEGIN_RUNGIEC()` との対） | `t052`, `t090`, `e017`, `e018`, `e044`, `e045`, `e047`, `e048`, `f012` |
-| R19, R20 初回スキャン | D9 | `t021`, `t022` |
+| R19, R20 初回スキャン | D9 | `t021`, `t020` |
 | R21 NOT_RISE / NOT_FALL は DSL の拡張（三菱の LDPI / LDFI 相当） | 文書 | `t020` |
 | R22 b 接点（NOT_CONTACT） | 接点の展開 | `t003` |
 | R23 オペランドは BOOL 変数・比較接点 | D10 | `t040` |
@@ -981,7 +981,7 @@ LD モード（D41）の XML は接続のグラフで、実行のしかたは取
 
 ## テスト対応表
 
-`tests/` にあるテストは 208 本（t 117、e 69、f 20、r 2）。例題の確認 x 12 本を加えて、ランナーの合計は 220 本。
+`tests/` にあるテストは 207 本（t 115、e 70、f 20、r 2）。例題の確認 x 12 本を加えて、ランナーの合計は 219 本。
 
 ### テストの仕組み
 
@@ -991,7 +991,7 @@ LD モード（D41）の XML は接続のグラフで、実行のしかたは取
 - 前処理の出力（`.pp.txt`）は `pp-error` を期待するテストだけ保存する（成功時の前処理出力は空で意味がない）。
 - ランナーは `.exe` の有無を自動で吸収し、見出しに解決後の絶対パスを出す。`--lint-only` / `--lint-selftest` ではバイナリは不要である。
 - ランナーは jiepp と jiecc の出力のパスからリポジトリルートを除いてから、`.pp.txt` / `.run.txt` に書き、`@expect` を照合する（診断は `tests/e041_wire_variable_node.iec:15.0: error: ...` や `tests/expanded/f012_missing_rungiec_var.st:57.0: error: ...` の形になる）。区切りの `/` と `\` を区別せず、Windows では大文字と小文字も区別しない。保存する出力が clone した場所に依らないようにするため。ほかの正規化はしない（Release ビルドの jiecc はエラー行に出所情報の接尾部を付けない）。
-- タイマの FB（`TON` / `TOF` / `TP`）は `tests/support/t_stdfb.iec` の代用品を `{#include 't_stdfb.iec'}` で使う。jiecc の標準タイマは実時間で進んで結果が実行速度に左右され、`--run` に仮想クロック（1 スキャンの経過時間を固定する指定）が無いので、1 回の呼び出しを 100 ms とする決定論的な代用品にした。代用品の動作は IEC 61131-3 の表 47 と図 17 に合わせた。`TON` / `TOF` / `TP` は図 18 の推奨実装を、時計の代わりに呼び出し回数で書き写したもので、入力が変化したスキャンを ET = 0 と数え（`PT = T#300ms` の `TON` は `IN` が TRUE の 4 スキャン目に `Q`）、ET は PT で止まる。標準との違い（100 ms 刻み、4 s まで）はファイル先頭のコメントに書いた。積算タイマ `TONR` は IEC 61131-3 に無い（Jiecc 9.4.0 にも無い）ので、Siemens S7-1200 / S7-1500 の TONR の入出力（IN、R、PT、Q、ET）で同じ書き方の代用品を置いた（`t102`）。
+- タイマの FB（`TON` / `TOF` / `TP`）は `tests/support/t_stdfb.iec` の代用品を `{#include 't_stdfb.iec'}` で使う。jiecc の標準タイマは実時間で進んで結果が実行速度に左右され、`--run` に仮想クロック（1 スキャンの経過時間を固定する指定）が無いので、1 回の呼び出しを 100 ms とする決定論的な代用品にした。1 回の呼び出しの時間は、include の前に `{#define T_STDFB_STEP T#250ms}` のように書くと変えられる（例題の PT に合わせる `x_on_delay_timer`（250 ms）、`x_automatic_door` と `x_traffic_light`（1 s）、`t057`（250 ms））。テストの中にタイマの FB を定義しない。代用品の動作は IEC 61131-3 の表 47 と図 17 に合わせた。`TON` / `TOF` / `TP` は図 18 の推奨実装を、時計の代わりに呼び出しごとに 1 刻みを足す形で書き写したもので、入力が変化したスキャンを ET = 0 と数え（`PT = T#300ms` の `TON` は `IN` が TRUE の 4 スキャン目に `Q`）、ET は PT で止まる。標準との違い（呼び出しごとの刻み、経過時間は 24 h で数えるのを止める）はファイル先頭のコメントに書いた。積算タイマ `TONR` は IEC 61131-3 に無い（Jiecc 9.4.0 にも無い）ので、Siemens S7-1200 / S7-1500 の TONR の入出力（IN、R、PT、Q、ET）で同じ書き方の代用品を置いた（`t102`）。
 - カウンタとエッジの FB（`CTU` / `CTD` / `CTUD` / `R_TRIG` / `F_TRIG`）は jiecc の組み込みを include なしで使う。組み込みの `CTU` / `CTD` / `CTUD` は表 46 どおり PV や 0 で止まらない（素の名前は PV / CV が INT。`CTU_DINT` などもある）。
 - ラダー図の代表的な使い方をそのまま書いたユースケースのテスト `t059`〜`t085` と `t101`〜`t106`（表の末尾。カテゴリは基本回路 / タイマ・カウンタ / シーケンス / 安全・異常 / 基本パターン）は、先頭に出典（IEC 61131-3、メーカーのマニュアルなど）を `(* Source: ... *)` で書く。出典が教科書的な定番回路しかないものは `common textbook pattern` と書く。
 - LD モードの `e` テスト（`e060`〜`e068`、`e073`）は、`{#include 'rungiec.iec'}` の前に `{#define RUNGIEC_LD 1}` を書く（`e059` の `{#define _OMRON true}` と同じ形）。本体を直接 include する誤りを試す `e069`（`rungiec_st.iec`）と `e070`（`{#define RUNGIEC_LD 1}` の後の `rungiec_ld.iec`）は、`rungiec.iec` の代わりに本体を include する。jiecc の版の検査を試す `e071` は、include の前に `{#define _JIECC_FULL_VER ...}` で 90400 未満の値（Jiecc 9.4.0 より古い jiecc の値）を書く。PP91 のメッセージの中の設定の名前は値に置き換わる（`RUNGIEC LD: nesting exceeds 16`）ので、`@expect` のパターンも値で書く。t / x のテストは ST モードだけで実行する（jiecunit の ST の文をラダーの間に書くため）。
@@ -1051,7 +1051,7 @@ sequenceDiagram
 | `f001_nest_depth_17` | `array index 17 out of bounds` | ネスト超過 |
 | `e001_series_0_terms` | `RUNG(SERIES())` → PP91 `RUNGIEC SERIES has 0 elements, allowed 1 to 16` | 0 項のエラー、D32 |
 | `e016_rung_0_terms` | `RUNG()` → PP91 `RUNGIEC RUNG has 0 elements, allowed 1 to 16`（`RUNG` が自分の項数を検査する） | 0 項のエラー（RUNG）、D32 |
-| `e002_series_17_terms` | `RUNG` の 17 項 → PP91 `RUNGIEC RUNG has 17 elements, allowed 1 to 16` | 既定の上限超過、D32 |
+| `e002_rung_17_terms` | `RUNG` の 17 項 → PP91 `RUNGIEC RUNG has 17 elements, allowed 1 to 16` | 既定の上限超過、D32 |
 | `e003_parallel_0_terms` | `PARALLEL()` → PP91 `RUNGIEC PARALLEL has 0 elements, allowed 1 to 16` | 0 項のエラー、D32 |
 | `e004_parallel_17_terms` | PARALLEL 17 項 → PP91 `RUNGIEC PARALLEL has 17 elements, allowed 1 to 16` | 既定の上限超過、D32 |
 | `e005_empty_child` | `SERIES(CONTACT(A), )` → PP91 `RUNGIEC empty element` | 空の子、D32 |
@@ -1059,16 +1059,14 @@ sequenceDiagram
 | `e019_rung_33_terms` | 33 項の `RUNG` → PP91 `RUNGIEC RUNG has 33 elements, allowed 1 to 16`（表の大きさ 32 を超える項数も同じ検査） | 項数の上限超過、D32 |
 | `r001_arity_33` | `{#ignore PP91}` で項数の検査を抑制すると、33 項で `_RUNGIEC_SERIES_33(` が残る | 振り分け先のない項数、X1 |
 | `t010_coil_power_table` | パワー ON/OFF × COIL / NOT_COIL / SET_COIL / RESET_COIL と事前値（SET / RESET の保持） | 否定・セット・リセットコイル |
-| `t011_coil_conventions` | コイル規約図 4 つ | コイル規約 |
+| `t011_coil_conventions` | コイル規約図 4 つ（直列、合流コイル、二股コイル、共有接点の後の分岐コイル） | コイル規約、二股コイル |
 | `t012_coil_passthrough` | コイルだけの PARALLEL の後の `COIL(Y3) = A`。中間コイル | D2 |
 | `t013_self_hold` | 起動 → 保持 → 停止優先 → 停止。Y の初期値は FALSE | 自己保持 |
 | `t014_set_reset_hold` | SET_COIL / RESET_COIL の保持。RESET を後に置いてリセット優先 | セット・リセット |
 | `t015_interlock` | 正転中の逆転起動は無視、停止、逆転起動、同時起動は先の rung が勝つ | インターロック |
-| `t016_shared_contact_two_coils` | 共有接点の二股コイル 2 種 | 二股コイル |
 | `t017_double_coil_last_wins` | 同じ変数への 2 コイルは後勝ち | R30 |
-| `t020_edge_truth_table` | x = F,T,T,F,F,T,F の 7 サイクルで RISE / FALL / NOT_RISE / NOT_FALL の全値 | 4 種のエッジ接点 |
+| `t020_edge_truth_table` | x = F,T,T,F,F,T,F の 7 サイクルで RISE / FALL / NOT_RISE / NOT_FALL の全値。初回 x=F では偽のエッジが出ない | 4 種のエッジ接点、D9 |
 | `t021_edge_first_scan_true` | 初回 x=T: RISE=T、FALL=F、NOT_RISE=F、NOT_FALL=T | D9 |
-| `t022_edge_first_scan_false` | 初回 x=F: 偽のエッジが出ない | D9 |
 | `t023_edge_prev_per_contact` | 同じ A の RISE_CONTACT 3 個（同一 rung と別 rung）がそれぞれ別の前値を持つ | R16 |
 | `t024_edge_power_off_updates_prev` | パワー OFF の間に立ち上がり、その後パワー ON でも RISE が成立しない | R15 |
 | `t025_edge_operand_once` | `Probe` のカウントが接点 1 個につき 1 スキャン +1 | R12 |
@@ -1126,7 +1124,7 @@ sequenceDiagram
 | `t053_rung_forms` | `RUNG` の書き方: `RUNG(PARALLEL(A,B), COIL(Y))`、`RUNG(A, COIL)`、`RUNG(SERIES(A, COIL))`、`RUNG(SERIES(COIL))`、`RUNG(COIL)`、`RUNG(A, PARALLEL(SERIES(B, COIL), SERIES(C, COIL)))` の真理値表（3 入力 8 サイクル）と idle | D20 |
 | `t054_fb_scan` | `FB_SCAN`: パワーにも左レールにも関係なく毎スキャン呼ぶ（領域の中でも外でも、パワー OFF / ON でもカウンタが毎スキャン増える）、引数は毎スキャン評価され出力が引数に従う、後段のパワーは前段のまま（後ろのコイルが接点に従う）、引数 0 個の `FB_SCAN(Z0)` | D26、D30 |
 | `t055_boxes_rail_off` | 8 種類のボックス。OFF の MC 領域では、パワーで呼び分ける 6 種（`FB_EXEC` / `FB_ENO` / `FUN_EXEC` / `FUN_EXEC_RET` / `FUN_ENO` / `FUN_ENO_RET`）は呼ばれず（カウンタが増えない、`FUN_*_RET` の `dst` が前回値のまま）、`FB_SCAN` と `FB_IN` はどの置き場所でも毎スキャン呼ばれる。後段のパワーとコイルは OFF。領域 ON ではすべて呼ばれる。置き場所は、`RUNG` の直列の直下、`PARALLEL` の枝、`PARALLEL` の中の `SERIES` で `CONTACT(true)` の後ろ（接点が TRUE でもボックスは再点火されない） | D30 |
-| `t057_timer_in_mc_zone` | 領域の中の `FB_SCAN` のタイマは領域 OFF でも呼ばれ、引数の `IN` に従って進み続ける。接点の後ろの `FB_IN` のタイマは領域 OFF で `IN = FALSE` になり、リセット（`ET` が 0、`Q` が FALSE）される。TON はテストの中に定義した代用品（1 回の呼び出しが 250 ms） | D30、V16 |
+| `t057_timer_in_mc_zone` | 領域の中の `FB_SCAN` のタイマは領域 OFF でも呼ばれ、引数の `IN` に従って進み続ける。接点の後ろの `FB_IN` のタイマは領域 OFF で `IN = FALSE` になり、リセット（`ET` が 0、`Q` が FALSE）される。TON は `t_stdfb.iec` の代用品（`T_STDFB_STEP` で 1 回の呼び出しが 250 ms。`PT = T#1s` は `IN` が TRUE の 5 スキャン目に `Q`） | D30、V16 |
 | `t100_ctu_in_mc_zone` | 領域の中の組み込みの `CTU` で、入力 P を ON のまま領域を OFF → ON にする。接点の後ろの `FB_IN` の `CTU` は領域 OFF で CV を保持し、領域が ON に戻ると `CU` の立ち上がりとして数え直す。`FB_SCAN(Cu2, CU := P, ...)` は CV を保持し、数え直さない。P が新たに立ち上がれば両方とも数える | D30、V16 |
 | `t058_operand_eval_rail_off` | OFF の MC 領域でも、接点・否定接点・比較接点・`PARALLEL` の枝のオペランドに書いた関数の呼び出しは毎スキャン実行される。同じ領域のパワーで呼び分けるボックス（`FB_EXEC(Box)`）は呼ばれず、コイルは OFF | D30 |
 | `t088_mc_nested` | `RUNGIEC_MC_MAX` を 3 にして 3 段の入れ子（ちょうど上限）。内側は外側との AND、内側の `END_MC()` の後は外側だけ、条件 2 個の直列と `PARALLEL` の条件。最も内側の領域 OFF で `NOT_COIL` は FALSE、`SET_COIL` は保持、`FB_EXEC` は呼ばない、`FB_SCAN` は呼ぶ、`RISE_COIL` は領域が ON になるときパルスを書く。最も外側の `END_MC()` の後は左レールが ON | D29、D31 |
@@ -1175,13 +1173,13 @@ sequenceDiagram
 | `e049_st_exec_empty` | `ST_EXEC()` → PP91 `RUNGIEC ST_EXEC has no statements` | D39 |
 | `e050_st_exec_directive` | 文の中の `{#if 1}` … `{#endif}` → jiepp の PP02 `control directive inside macro argument` | U-13、X40 |
 | `f021_st_exec_nested_rung` | `RUNG(CONTACT(A), ST_EXEC(RUNG(COIL(Y))))`（A は TRUE で開始）→ 入れ子のトラップで `array index 0 out of bounds` | D32、U-13 |
-| `f022_st_exec_missing_semicolon` | `ST_EXEC(N := 1 M := 2;)`（文の間の `;` の書き忘れ）→ jiecc の `INVALID_SYNTAX` | U-13 |
+| `f022_st_exec_missing_semicolon` | `ST_EXEC(N := 1 M := 2;)`（文の間の `;` の書き忘れ）→ jiecc の `'M'; INVALID_SYNTAX` | U-13 |
 | `t018_jump_forward_skip` | `RUNG(CONTACT(Mode), JMP(Skip))` の前向きのジャンプ。飛ばしたラングのコイルは前回の値のまま（6 サイクルの期待配列）、ラベルの後のラングは毎スキャン実行。ラベルの直後とネットワークの後で `T_EXPECT_IDLE` | D23、U-14、I1 |
 | `t019_jump_backward_loop` | `LABEL(Again)` と `RUNG(LT_CONTACT(N, Lim), JMP(Again))` の後ろ向きのジャンプ。1 スキャンの中で `Lim` 回（0 なら 1 回）繰り返し、ループの後は idle | D23、U-14 |
 | `t027_jump_wire_and_mc` | 一般形のネットワークの最後の `WIRE(1, 3, CONTACT(J1), JMP(Out1))` で一般形のネットワークの外のラベルへ飛ぶ（前の `WIRE` のコイル `N1` は飛ぶスキャンでも書かれ、ラベルの前の `RUNG` のコイルは保持）。MC 領域の中の `JMP()` は領域 ON で飛び、OFF では飛ばずにコイルが FALSE。`END_MC()` の後は左レールが ON | D23、U-14、D29 |
 | `t028_jump_edge_skipped` | 飛ばしたラングの `RISE_CONTACT` は前値が更新されず、飛ばしている間の立ち上がりを次に実行したスキャンで見る。`RISE_COIL` は飛ばしている間 TRUE のまま | D23、U-14、R15 |
 | `t029_jump_in_function_and_fb` | FUNCTION（`RUNGIEC_VAR_NOEDGE()`、`END_RUNGIEC()` の直前のラベル）と FB（ラベルの後の `RETURN()`）と、テストの PROGRAM で同じラベル名 `Done` を使う | D23、U-14、D17 |
-| `t056_jump_label_positions` | `T_BEGIN()` の直後（最初のネットワークの前）・ラベルの直後・`END_NET()` / `BEGIN_MC` / `END_MC()` の直後の `LABEL()`。2 つ並んだラベルの 2 つ目へ飛ぶ、`WIRE` から `END_NET()` の直後のラベルへ飛ぶ | D23、U-14 |
+| `t056_jump_label_positions` | `T_BEGIN()` の直後（最初のネットワークの前）・ラベルの直後・`END_NET()` / ラング / `BEGIN_MC` / `END_MC()` の直後の `LABEL()`。2 つ並んだラベルの 2 つ目へ飛ぶ。`WIRE` から `END_NET()` の後のラングを飛び越して次のラベルへ飛ぶ（飛ぶスキャンはラングの加算が起きない）。MC 領域の中の後ろ向きの `JMP(InZone)` で領域 ON の間は 1 スキャンに領域を 3 回実行し、OFF では飛ばない | D23、U-14 |
 | `e051_jump_forward_across_begin_mc` | `JMP(Skip)` の後に `BEGIN_MC`、その中に `LABEL(Skip)` → PP91 `RUNGIEC JMP to Skip goes forward across BEGIN_MC or END_MC` | D23 |
 | `e052_jump_back_across_end_mc` | MC 領域の中の `LABEL(Again)`、`END_MC()` の後の `JMP(Again)` → PP91 `RUNGIEC JMP to Again goes back across BEGIN_MC or END_MC` | D23 |
 | `e053_jump_over_mc_zone` | MC 領域を丸ごと飛び越す `JMP(Skip)` → PP91 `RUNGIEC JMP to Skip goes forward across BEGIN_MC or END_MC` | D23 |
@@ -1205,15 +1203,16 @@ sequenceDiagram
 | `e071_jiecc_version_too_old` | include の前の `{#define _JIECC_FULL_VER ...}` の 90400 未満の値（Jiecc 9.4.0 より古い jiecc の代わり）→ PP91 `RUNGIEC needs Jiecc 9.4.0 or later` | D37 |
 | `e072_fbt_box_missing_out_pin` | `FBT_BOX(Tm, TON, IN)`（出力ピンが無い）→ PP34 `FBT_BOX: expected 4, ...`（jiepp がマクロ名を出す） | D52、D33 |
 | `e073_ld_fbt_box_empty_type` | LD モードで型名が空の `FBT_BOX(Tm, , IN, Q, PT := T#1s)` → PP91 `RUNGIEC LD: FBT_BOX has an empty name before its call arguments` | D48、D52 |
+| `e074_series_17_terms` | `RUNG` の中の `SERIES` の 17 項 → PP91 `RUNGIEC SERIES has 17 elements, allowed 1 to 16` | 既定の上限超過、D32 |
 | `f023_jump_undefined_label` | POU に無いラベルへの `JMP(Skip)` → jiecc の `Skip; UNDEFINED_SYMBOL` | D23、U-14 |
 | `f024_label_nested_in_rung` | `RUNG(CONTACT(A), LABEL(Skip), COIL(Y))` → ラベルの後の入れ子のトラップで `array index 0 out of bounds` | D23、D32 |
 | `f025_fb_box_in_pin_not_bool` | `FB_BOX(Tm, PT, Q)`（入力ピンが TIME の `PT`）→ `jiecc --run` の実行前の型検査の `'type mismatch in __main__: expected TIME but got BOOL'; TYPE_ERROR` | D52 |
 | `f026_fbt_box_out_pin_not_bool` | `FBT_BOX(Tm, TON, IN, ET, PT := T#1s)`（出力ピンが TIME の `ET`）→ `jiecc --run` の実行前の型検査の `'operator AND in __main__: no applicable signature for (BOOL, TIME)'; TYPE_ERROR`（`RungiecRail and Tm.ET`） | D52 |
 | `t052_edge_max_exact` | `RUNGIEC_EDGE_MAX` 3 でエッジ接点 2 個と遷移コイル 1 個がちょうど収まる（スロット 1〜3） | D6、D15 |
-| `f004_missing_comma_contacts` | 接点 2 個の間のカンマ忘れ → `INVALID_SYNTAX` | D14、X17 |
-| `f005_missing_comma_merge_coil` | 結合子とコイルの間のカンマ忘れ → `INVALID_SYNTAX` | D14 |
-| `f006_missing_comma_before_box` | 要素と `FB_EXEC` の間のカンマ忘れ → `INVALID_SYNTAX`（全要素が代入で始まる効果） | D14 |
-| `f007_missing_rung` | `RUNG` を忘れた最上位の `SERIES(...)` の直後に `RUNG(...)` が続く → `INVALID_SYNTAX`。`@lint-allow LN10` | D20、X24 |
+| `f004_missing_comma_contacts` | 接点 2 個の間のカンマ忘れ → 後の接点の代入の `'RungiecTmp'; INVALID_SYNTAX` | D14、X17 |
+| `f005_missing_comma_merge_coil` | 結合子とコイルの間のカンマ忘れ → コイルの代入の `'Y'; INVALID_SYNTAX` | D14 |
+| `f006_missing_comma_before_box` | 要素と `FB_EXEC` の間のカンマ忘れ → ボックスの代入の `'RungiecTmp'; INVALID_SYNTAX`（全要素が代入で始まる効果） | D14 |
+| `f007_missing_rung` | `RUNG` を忘れた最上位の `SERIES(...)` の直後に `RUNG(...)` が続く → `RUNG` のトラップの `'RungiecStIn'; INVALID_SYNTAX`。`@lint-allow LN10` | D20、X24 |
 | `t059_set_reset_priority` | 同じ入力でセット優先とリセット優先のラッチ。同時 ON では後ろの rung が勝つ（SET → RESET はリセット優先、RESET → SET はセット優先）、片方だけなら保持 | ユースケース（基本回路）。IEC 表 44 の SR / RS、Siemens LAD 1.10 / 1.11（Siemens の RS / SR は IEC と名前が逆） |
 | `t060_latest_input_priority` | 後入れ優先の正転・逆転。運転中に反対のボタンで切り替わる、同時押しで両方 OFF、停止で両方 OFF、常に排他。出力インタロックが無く同じスキャンで正転から逆転に切り替わる。実機では出力インタロック、補助接点のハードインタロック、反転待ちタイマを使う旨を注記（回路は変えない） | ユースケース（基本回路）。`t015` の先入れ優先の対 |
 | `t061_toggle_flip_function` | 1 ボタンの交互動作を FF 命令の形（立ち上がり接点 + 出力を反転する関数）で書く。押し続けても 1 回だけ反転、離しても保持 | ユースケース（基本回路）。三菱 FF 命令 |
@@ -1250,14 +1249,14 @@ sequenceDiagram
 
 ### 例題（`examples/`）
 
-12 本。名前は例題の目的を表す。ファイルには利用者が書くコード（ラダーを入れた同名の FUNCTION_BLOCK）だけがあり、入力を与えて確認する jiecunit のテスト `TEST_M(x_<名前>)` は `tests/x_<名前>.iec`（すべて `(* @expect pass *)`）にある（D19、D40）。出力は `tests/expanded/x_<名前>.*`。`on_delay_timer`、`traffic_light`、`automatic_door` の疑似 TON は確認ファイル側で `TON` という名前の FUNCTION_BLOCK として定義し、例題は標準の `TON` を呼ぶ形で書く（`on_delay_timer` は 1 回の呼び出しで 250 ms、`traffic_light` と `automatic_door` は 1 s 進める）。
+12 本。名前は例題の目的を表す。ファイルには利用者が書くコード（ラダーを入れた同名の FUNCTION_BLOCK）だけがあり、入力を与えて確認する jiecunit のテスト `TEST_M(x_<名前>)` は `tests/x_<名前>.iec`（すべて `(* @expect pass *)`）にある（D19、D40）。出力は `tests/expanded/x_<名前>.*`。`on_delay_timer`、`traffic_light`、`automatic_door` の疑似 TON は、確認ファイルが include する `tests/support/t_stdfb.iec` の代用品で、例題は標準の `TON` を呼ぶ形で書く。確認ファイルは include の前に `T_STDFB_STEP` を定義して、1 回の呼び出しの時間を例題の PT に合わせる（`on_delay_timer` は 250 ms、`traffic_light` と `automatic_door` は 1 s）。
 
 | 例題 | 内容 | 使う機能 |
 |---|---|---|
 | `contact_coil` | 最も単純なネットワーク。X が TRUE の間だけ Y が TRUE | `CONTACT`、`COIL` |
 | `self_hold` | 起動・自己保持・停止優先・過負荷停止 | `PARALLEL`、`NOT_CONTACT`、`COIL` |
 | `interlock` | 正転・逆転のインターロック。停止 | 相互の `NOT_CONTACT` |
-| `on_delay_timer` | 疑似 TON（X21）を使うオンディレイ。4 スキャン後に ON、Start を切ると戻り、再び 4 スキャン待つ。パワー ON のときだけ呼ぶ `FB_EXEC` ではタイマがリセットされない誤りをコメントで示す | `FBT_BOX`（タイマを毎スキャン呼び、`IN` にパワーを渡し、後段は `Q`。LD モードの `typeName` は `TON`）、`COIL` |
+| `on_delay_timer` | 疑似 TON（X21）を使うオンディレイ。Start が TRUE の 5 スキャン目に ON（確認ファイルの 250 ms 刻み）、Start を切ると戻り、再び 5 スキャン目まで待つ。パワー ON のときだけ呼ぶ `FB_EXEC` ではタイマがリセットされない誤りをコメントで示す | `FBT_BOX`（タイマを毎スキャン呼び、`IN` にパワーを渡し、後段は `Q`。LD モードの `typeName` は `TON`）、`COIL` |
 | `parts_counter` | 立ち上がりで加算、3 個で満杯、リセット。加算と 0 クリアを ST の文で書く | `RISE_CONTACT`、`ST_EXEC`、`GE_CONTACT` |
 | `master_control` | OFF の領域でコイルと `NOT_COIL` が OFF・SET 保持、`END_MC()` の後は影響なし | `BEGIN_MC` / `END_MC`、`NOT_COIL` |
 | `conditional_return` | 保守中は後ろのネットワークを飛ばし出力は前回値 | `RETURN()` |

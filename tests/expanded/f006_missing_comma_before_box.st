@@ -1,4 +1,4 @@
-(* @expect run-error INVALID_SYNTAX *)
+(* @expect run-error .RungiecTmp.; INVALID_SYNTAX *)
 (* @cycles 1 *)
 (* Purpose: An element followed by a box without a comma is a jiecc syntax error (every element starts with an assignment, not with if). *)
 (* rungiec.iec - ladder diagram DSL that jiepp expands to IEC 61131-3 ST (or, in the LD mode, to IEC 61131-10 LD XML). This is the entry file: it defines the common part (version, settings, checks, token pasting, node table) and includes the body of the mode at its end (rungiec_st.iec or rungiec_ld.iec); only the bodies define the public macros. Include this file, not a body. *)

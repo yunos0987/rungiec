@@ -15,6 +15,4 @@ T_BEGIN()
 X := InX[Cyc];
 Cc(X := X);
 EXPECT_TRUE(Cc.Y = InX[Cyc], 'y_follows_x');
-EXPECT_TRUE((Cyc <> 1) or (not Cc.Y), 'y_off_when_x_off');
-EXPECT_TRUE((Cyc <> 2) or Cc.Y, 'y_on_when_x_on');
 END_TEST_M

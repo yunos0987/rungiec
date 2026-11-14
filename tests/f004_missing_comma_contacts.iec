@@ -1,4 +1,4 @@
-(* @expect run-error INVALID_SYNTAX *)
+(* @expect run-error .RungiecTmp.; INVALID_SYNTAX *)
 (* @cycles 1 *)
 (* Purpose: Two contacts written without a comma between them are a jiecc syntax error. *)
 {#include 'rungiec.iec'}

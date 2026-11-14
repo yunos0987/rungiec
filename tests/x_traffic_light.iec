@@ -6,21 +6,10 @@
 (* Run FALSE at scans 29-30 turns everything off, and Run TRUE again starts from red with Request cleared. *)
 {#include 't_jiecunit.iec'}
 DEFINE_CONFIGURATION(_JIEC_TESTNAMES_LIST_(x_traffic_light))
-(* Stand-in for the standard TON (the built-in timers of jiecc run on wall-clock time): the call where IN rises is ET = 0 and each *)
-(* further call with IN TRUE adds 1 s, so PT = T#3s gives Q on the 4th call with IN TRUE, whatever the speed of the machine. *)
-function_block TON
-var_input IN: bool; PT: time; end_var
-var_output Q: bool; ET: time; end_var
-var Last: bool; end_var
-if not IN then
-    ET := T#0s;
-elsif Last and (ET < PT) then
-    ET := ET + T#1s;
-end_if;
-if ET > PT then ET := PT; end_if;
-Q := IN and (ET >= PT);
-Last := IN;
-end_function_block
+(* The TON of t_stdfb.iec with a step of 1 s per call: the call where IN rises is ET = 0, so PT = T#3s gives Q on the 4th *)
+(* call with IN TRUE. *)
+{#define T_STDFB_STEP T#1s}
+{#include 't_stdfb.iec'}
 {#include 'traffic_light.iec'}
 TEST_M(x_traffic_light)
 var
