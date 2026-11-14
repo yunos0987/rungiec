@@ -32,6 +32,9 @@
 
 - Jiecc 9.4.0 が必要な理由を直しました。jiecc の前処理は同じ版の jiepp と同じで、`rungiec.iec` の条件式の `&&` / `||` / `!` には jiepp 1.4.0（Jiecc 9.4.0 の前処理）が要ります。テストの jiecunit v7.0.0 も Jiecc 9.4.0 を要ります。
 - jiepp 1.4.0 より古い jiepp では ST モードも展開できないことを、README・AGENTS.md・`docs/DESIGN.md` に書きました。
+- `WIRE`・`ST_EXEC`・ジャンプの規則は `docs/REFERENCE.md` にまとめました。`docs/DESIGN.md` の U-10 / U-13 / U-14 は、REFERENCE の節へのリンクと、テストと lint の番号だけにしました。DESIGN だけに書いてあったこと（`ST_EXEC` の文の中の `{#include}` / `{#error}` の扱いなど、`LABEL()` を書ける位置、後ろ向きのジャンプの間のエッジ接点など）は REFERENCE に移しました。
+- ツール（jiepp・jiecc・jiecunit）の説明と、例題 `automatic_door` の LD モードの XML の取り込みを確認した範囲は、README の「目的」だけに書き、ほかの文書と README のほかの箇所からはそこへリンクするようにしました。
+- `docs/EXAMPLES.md` の `on_delay_timer` の抜粋に、例題のファイルにある `(* Wrong: ... *)` の行を加えました。
 
 ## 0.4.0 (2026-11-09)
 

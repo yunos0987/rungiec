@@ -2,11 +2,7 @@
 
 このリポジトリのテストと lint の実行のしかたと、判定の決まりをまとめる。RUNGIEC を使うだけなら読まなくてよい。
 
-この文書に出てくるツール:
-
-- jiepp: IEC 61131-3 向けのプリプロセッサ。`{#define}` / `{#include}` / `{#if}` などのディレクティブを処理する。RUNGIEC を使うのに必要なのはこれだけ。https://github.com/yunos0987/jiepp （Windows と Linux の実行ファイルは https://github.com/yunos0987/jiepp/releases ）
-- jiecc: IEC 61131-3 のテキストと IEC 61131-10 XML を相互に変換する無料のコマンドラインツール。IEC 61131-10 は PLC のプログラムを XML でやり取りするための規格。ST をインタプリタで実行する jier（`jiecc --run`）も含み、配布アーカイブには jiepp も入っている。利用者には必須ではなく、このリポジトリのテストの実行に必要である。https://www.graviness.com/iec_61131-3/jiecc.html
-- jiecunit: IEC 61131-3 のテキストで書く単体テストの枠組み。このリポジトリのテストが git submodule として使う。https://github.com/yunos0987/jiecunit
+この文書に出てくるツール（jiepp: プリプロセッサ、jiecc: IEC 61131-10 XML への変換と `jiecc --run` での ST の実行、jiecunit: 単体テストの枠組み）は [README の「目的」](../README.md#目的)で説明する。
 
 この文書に出てくる番号と記号:
 

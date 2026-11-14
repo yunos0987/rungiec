@@ -62,7 +62,7 @@ flowchart LR
 | モード | 出力 | 指定 | 使い道 |
 |---|---|---|---|
 | ST モード（既定） | POU の本体に直接並ぶ ST の文。作業変数 `Rungiec*` でパワーを計算する文の並び | なし | ST を扱うツール・処理系。jiecc で ST の本文を持つ IEC 61131-10 XML にする。このリポジトリのテストは `jiecc --run` で実行する |
-| LD モード | `{ld}` から `{end}` までの、IEC 61131-10 の LD XML の `<Rung>` の並び（ラダー図そのもの） | `-D RUNGIEC_LD`（jiepp / jiecc）か、ソースの `{#include 'rungiec.iec'}` の前の `{#define RUNGIEC_LD 1}` | jiecc で `<BodyContent xsi:type="LD">` の IEC 61131-10 XML にし、各社のツールにラダー図として取り込む（例題 `automatic_door` の LD モードの XML を 1 つのツールで読み込めることを確認した。ほかの例題とツールは確認していない） |
+| LD モード | `{ld}` から `{end}` までの、IEC 61131-10 の LD XML の `<Rung>` の並び（ラダー図そのもの） | `-D RUNGIEC_LD`（jiepp / jiecc）か、ソースの `{#include 'rungiec.iec'}` の前の `{#define RUNGIEC_LD 1}` | jiecc で `<BodyContent xsi:type="LD">` の IEC 61131-10 XML にし、各社のツールにラダー図として取り込む（取り込みを確認した範囲は[「目的」](#目的)） |
 
 ```mermaid
 flowchart LR
@@ -163,7 +163,7 @@ var_output Run: bool; end_var
 
 その後に、`RUNGIEC_VAR()` を展開した作業変数の `var` ブロック、`BEGIN_RUNGIEC()` を展開した初期化文、ラダーのコメント、`RUNG(...)` を展開した 1 行の ST、`end_function_block` が続く（`END_RUNGIEC()` は何も出さない）。自分の `.iec` も、先頭に `{#include 'rungiec.iec'}` を書き、`-I` に `rungiec.iec` のあるフォルダを渡せば同じように展開できる。
 
-jiecc を使うと、例題を IEC 61131-10 XML に変換できる（[`docs/EXAMPLES.md` の「例題」](docs/EXAMPLES.md#例題)。LD モードのコマンドは上の「2 つのモード」。例題 `automatic_door` の LD モードの XML を 1 つのツールで読み込めることを確認した。ほかの例題とツールは確認していない）。テストの実行のしかたは [`docs/TESTING.md`](docs/TESTING.md) にある。
+jiecc を使うと、例題を IEC 61131-10 XML に変換できる（[`docs/EXAMPLES.md` の「例題」](docs/EXAMPLES.md#例題)。LD モードのコマンドは上の「2 つのモード」。取り込みを確認した範囲は[「目的」](#目的)）。テストの実行のしかたは [`docs/TESTING.md`](docs/TESTING.md) にある。
 
 ## 書き方
 

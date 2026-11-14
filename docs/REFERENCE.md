@@ -2,10 +2,7 @@
 
 RUNGIEC の公開マクロの形と意味、LD モードで出す XML の形、意味論、設定パラメータ、上限とエラー、IEC との差異、バージョン、予約名をまとめる。
 
-この文書に出てくるツール:
-
-- jiepp: IEC 61131-3 向けのプリプロセッサ。`{#define}` / `{#include}` / `{#if}` などのディレクティブを処理する。RUNGIEC を使うのに必要なのはこれだけ。https://github.com/yunos0987/jiepp （Windows と Linux の実行ファイルは https://github.com/yunos0987/jiepp/releases ）
-- jiecc: IEC 61131-3 のテキストと IEC 61131-10 XML を相互に変換する無料のコマンドラインツール。IEC 61131-10 は PLC のプログラムを XML でやり取りするための規格。ST をインタプリタで実行する jier（`jiecc --run`）も含み、配布アーカイブには jiepp も入っている。利用者には必須ではなく、このリポジトリのテストの実行に必要である。https://www.graviness.com/iec_61131-3/jiecc.html
+この文書に出てくるツール（jiepp: プリプロセッサ、jiecc: IEC 61131-10 XML への変換と `jiecc --run` での ST の実行）は [README の「目的」](../README.md#目的)で説明する。
 
 この文書に出てくる番号と記号:
 
@@ -155,7 +152,7 @@ END_NET()
 - `WIRE(from, to, c1, …)` は、節点 `from` のパワーから要素を直列に評価し、結果を節点 `to` に OR で合流させる。要素は 1 個以上で、中に `SERIES` / `PARALLEL` を置ける。
 - 節点の値は、その節点に入る `WIRE` の出力の OR。パワーは左から右へ一方向に流れる（`from` から `to` へ）。
 - 節点番号の規則（4 つ）:
-  - 節点番号は 0〜64 の整数リテラルで、0 以上 `RUNGIEC_NODE_MAX`（既定 16、最大 64）以下。`from < to`。変数や式（`K`、`1 + 1`、`1 + K`）は PP91 `RUNGIEC WIRE from node K is not an integer literal from 0 to 64`（`e041`、`e042`、`e046`）。`{#define N 3}` のようなマクロは結果的に通るが、保証しない。
+  - 節点番号は 0〜64 の整数リテラルで、0 以上 `RUNGIEC_NODE_MAX`（既定 16、最大 64）以下。`from < to`。変数や式（`K`、`1 + 1`、`1 + K`）は PP91 `RUNGIEC WIRE from node K is not an integer literal from 0 to 64`（`e041`、`e042`、`e046`）。`{#define N 3}` のようなマクロは引数が先に展開されるので結果的に通るが、保証しない。
   - `to` は直前の `WIRE` の `to` 以上（`BEGIN_NET()` の直後は 0 と比べる）。
   - 番号は飛ばしてよい。
   - どの `WIRE` も書かない節点（節点 0 を除く）は FALSE。`BEGIN_NET()` が一般形のネットワークごと・スキャンごとに節点 1 以上を FALSE にする。
@@ -439,13 +436,13 @@ RUNG(CONTACT(En), ST_EXEC(Over := Pos > Lim;), CONTACT(Over), COIL(Y))
 
 - `RUNG` / `SERIES` / `PARALLEL` / `WIRE` / `BEGIN_MC` の子のどこにでも置ける。
 - 文の結果は後段のパワーにしない。後段に渡すときは変数に入れ、次の接点で読む（上の 2 つ目の例。`tests/t098_st_exec_result_contact.iec`）。
-- 文の中の裸のカンマはそのまま書ける（`ST_EXEC(case N of 1, 2: K := 1; 3..4, 6: K := 2; end_case;)`。`tests/t099_st_exec_case_labels.iec`）。jiepp のビルトイン `__nosplit` が、文の中のカンマを外側のマクロの引数の区切りにしない。
+- 文の中の裸のカンマはそのまま書ける（`ST_EXEC(case N of 1, 2: K := 1; 3..4, 6: K := 2; end_case;)`。`tests/t099_st_exec_case_labels.iec`）。jiepp のビルトイン `__nosplit` が、文の中のカンマを外側のマクロの引数の区切りにしない。最上位の `RUNG` の先頭・途中・末尾、`PARALLEL` の中の `SERIES`、`PARALLEL` の直下、`WIRE`、`BEGIN_MC` の条件で確認した。
 - 最後の文の後の `;` は書いても書かなくてもよい。文と文の間の `;` は省けない（jiecc の `INVALID_SYNTAX`。`f022`）。`ST_EXEC()` は PP91 `RUNGIEC ST_EXEC has no statements`（`e049`）。
-- 文の中に書かないもの:
-  - DSL のマクロ。`RUNG` などの文マクロは実行時に `InterpreterFault: array index 0 out of bounds`（`f021`）。`COIL` などの要素、エッジ接点、遷移コイルは検出されずエラーにならずに通る
+- 文の中に書かないもの（コメント以外は lint の LN17、コメントは LN18 が検出する）:
+  - DSL のマクロ。`RUNG` などの文マクロは実行時に `InterpreterFault: array index 0 out of bounds`（`f021`）。`COIL` などの要素、エッジ接点、遷移コイルは検出されずエラーにならずに通る（エッジ接点と遷移コイルはエッジのスロットを取り、文を実行しないスキャンは前値が更新されない）
   - `return`（`RETURN()` を使う）
-  - `goto` / `jmp` とラベル（`JMP()` と `LABEL()` を使う）
-  - ディレクティブ（`{#if}` などは PP02。`e050`。`{#define}` などはエラーにならずその場で処理される）
+  - `goto` / `jmp` とラベル（`JMP()` と `LABEL()` を使う。文は `if` の中に入るので、外から文の中のラベルへは飛べない）
+  - ディレクティブ（`{#if}` などの制御ディレクティブと `{#include}` / `{#line}` / `{#string}` は PP02。`e050`。`{#error}` はそのメッセージの PP91。`{#define}` / `{#undef}` / `{#pragma}` はエラーにならずその場で処理される）
   - コメント（引数の中のコメントは、位置によって消えたり残ったりする）
   - `Rungiec*` の名前（作業変数を書き換えると回路が壊れる）
 
@@ -540,9 +537,11 @@ flowchart TD
 ```
 
 - `JMP()` と `LABEL()` は同じ MC 区間（`BEGIN_RUNGIEC()` / `BEGIN_MC` / `END_MC` で区切った範囲）に置く。間に `BEGIN_MC` / `END_MC` があると PP91（前向き `RUNGIEC JMP to L goes forward across BEGIN_MC or END_MC`、後ろ向き `RUNGIEC JMP to L goes back across BEGIN_MC or END_MC`。`e051`〜`e053`、`e056`）。OFF の MC 領域の中の `JMP()` はパワーが来ないので飛ばない。
-- `WIRE` の最後の子の `JMP()` は一般形のネットワークの外のラベルへ飛べる（`tests/t027_jump_wire_and_mc.iec`）。その `WIRE` は `END_NET()` の直前の最後の `WIRE` にする。一般形のネットワークの前の `WIRE` は飛ぶスキャンでも実行され、IEC 61131-3 のようにネットワークを評価し終えてから飛ぶ。後ろに `WIRE` があると、飛んだスキャンでその `WIRE` が実行されないので PP91 `RUNGIEC WIRE after a WIRE that jumps or returns, write that WIRE last before END_NET`（`e057`）。一般形のネットワークの中には `LABEL()` を書けない（PP91。`e055`）。
-- 後ろ向きのジャンプ（`LABEL(L)` より後ろの `JMP(L)`）は、間のネットワークを同じスキャンの中で繰り返す（`tests/t019_jump_backward_loop.iec`）。条件が FALSE にならないとスキャンが終わらない。
-- ラベルは POU の中で 1 回（2 回は PP91 `RUNGIEC LABEL L is defined twice in this POU`。`e054`）。別の POU では同じ名前を使える。POU に無いラベルへの `JMP()` は jiecc の `UNDEFINED_SYMBOL`（`f023`）。
+- `WIRE` の最後の子の `JMP()` は一般形のネットワークの外のラベルへ飛べる（`tests/t027_jump_wire_and_mc.iec`）。その `WIRE` は `END_NET()` の直前の最後の `WIRE` にする。一般形のネットワークの前の `WIRE` は飛ぶスキャンでも実行され、IEC 61131-3 のようにネットワークを評価し終えてから飛ぶ。後ろに `WIRE` があると、飛んだスキャンでその `WIRE` が実行されないので PP91 `RUNGIEC WIRE after a WIRE that jumps or returns, write that WIRE last before END_NET`（`e057`。lint の LN13 も検出する）。一般形のネットワークの中には `LABEL()` を書けない（PP91。`e055`）。
+- `JMP()` を `RUNG` の途中、`PARALLEL` の枝の中、`BEGIN_MC` の条件に置くと、飛んだ時点で後ろの要素を警告なしに飛ばす（lint の LN13 が検出する）。
+- `LABEL()` は `BEGIN_RUNGIEC()` の直後、ネットワークの後（`END_NET()` の直後を含む）、`BEGIN_MC` / `END_MC()` の直後、ラベルの直後、`END_RUNGIEC()` の直前に書ける（`tests/t056_jump_label_positions.iec`、`tests/t029_jump_in_function_and_fb.iec`）。
+- 後ろ向きのジャンプ（`LABEL(L)` より後ろの `JMP(L)`）は、間のネットワークを同じスキャンの中で繰り返す（`tests/t019_jump_backward_loop.iec`）。条件が FALSE にならないとスキャンが終わらない（jiecc の `--max-cycles` でも止まらない）。間のネットワークは 1 スキャンに何回も評価されるので、エッジ接点と遷移コイルを置かない（lint の LN23 が検出する）。
+- ラベルは POU の中で 1 回（2 回は PP91 `RUNGIEC LABEL L is defined twice in this POU`。`e054`）。別の POU では同じ名前を使える。POU に無いラベルへの `JMP()` は jiecc の `UNDEFINED_SYMBOL`（`f023`）。`Rungiec` で始まるラベルは使わない（lint の LN22 が検出する）。
 - ラベルの大文字小文字は `JMP()` と `LABEL()` でそろえる（jiecc は区別しないが、前処理の検査は区別する。lint の LN22 が検出する）。
 - 飛ばしたネットワークのコイルは前回の値のまま、エッジ接点と遷移コイルの前値は更新されない（`tests/t028_jump_edge_skipped.iec`。[「ジャンプ」](GUIDE.md#ジャンプ)）。
 

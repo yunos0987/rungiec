@@ -2,10 +2,7 @@
 
 RUNGIEC でラダーを書くときの規則と、前処理やコンパイルで検出されない書き間違いへの注意をまとめる。マクロ 1 個ずつの仕様は [`REFERENCE.md`](REFERENCE.md) にある。
 
-この文書に出てくるツール:
-
-- jiepp: IEC 61131-3 向けのプリプロセッサ。`{#define}` / `{#include}` / `{#if}` などのディレクティブを処理する。RUNGIEC を使うのに必要なのはこれだけ。https://github.com/yunos0987/jiepp （Windows と Linux の実行ファイルは https://github.com/yunos0987/jiepp/releases ）
-- jiecc: IEC 61131-3 のテキストと IEC 61131-10 XML を相互に変換する無料のコマンドラインツール。IEC 61131-10 は PLC のプログラムを XML でやり取りするための規格。ST をインタプリタで実行する jier（`jiecc --run`）も含み、配布アーカイブには jiepp も入っている。利用者には必須ではなく、このリポジトリのテストの実行に必要である。https://www.graviness.com/iec_61131-3/jiecc.html
+この文書に出てくるツール（jiepp: プリプロセッサ、jiecc: IEC 61131-10 XML への変換と `jiecc --run` での ST の実行）は [README の「目的」](../README.md#目的)で説明する。
 
 この文書に出てくる番号と記号:
 
@@ -243,7 +240,7 @@ LABEL(Skip)
 
 ## LD モード
 
-同じソースから、ST の代わりに IEC 61131-10 の LD XML（ラダー図を XML で表したもの。`<Rung>` の並び）を出すモード。各社のツールにラダー図として取り込むためのもので、マクロはそのまま使い、変換のときに `-D RUNGIEC_LD` を付けて切り替える（例題 `automatic_door` の LD モードの XML を 1 つのツールで読み込めることを確認した。ほかの例題とツールは確認していない）。jiepp 1.4.0 と Jiecc 9.4.0 が必要である（[README の「必要なツール」](../README.md#必要なツール)）。マクロごとの XML の形は[仕様の「LD モード」](REFERENCE.md#ld-モード)にある。
+同じソースから、ST の代わりに IEC 61131-10 の LD XML（ラダー図を XML で表したもの。`<Rung>` の並び）を出すモード。各社のツールにラダー図として取り込むためのもので、マクロはそのまま使い、変換のときに `-D RUNGIEC_LD` を付けて切り替える（取り込みを確認した範囲は [README の「目的」](../README.md#目的)）。jiepp 1.4.0 と Jiecc 9.4.0 が必要である（[README の「必要なツール」](../README.md#必要なツール)）。マクロごとの XML の形は[仕様の「LD モード」](REFERENCE.md#ld-モード)にある。
 
 ### 変換のしかた
 

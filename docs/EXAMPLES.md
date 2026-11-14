@@ -2,11 +2,7 @@
 
 RUNGIEC で書いたラダーが何に展開されて、どう動くかの例と、`examples/` の例題の一覧と各例題のラダー、XML（ST モードと LD モード）への変換をまとめる。
 
-この文書に出てくるツール:
-
-- jiepp: IEC 61131-3 向けのプリプロセッサ。`{#define}` / `{#include}` / `{#if}` などのディレクティブを処理する。RUNGIEC を使うのに必要なのはこれだけ。https://github.com/yunos0987/jiepp （Windows と Linux の実行ファイルは https://github.com/yunos0987/jiepp/releases ）
-- jiecc: IEC 61131-3 のテキストと IEC 61131-10 XML を相互に変換する無料のコマンドラインツール。IEC 61131-10 は PLC のプログラムを XML でやり取りするための規格。ST をインタプリタで実行する jier（`jiecc --run`）も含み、配布アーカイブには jiepp も入っている。利用者には必須ではなく、このリポジトリのテストの実行に必要である。https://www.graviness.com/iec_61131-3/jiecc.html
-- jiecunit: IEC 61131-3 のテキストで書く単体テストの枠組み。このリポジトリのテストが git submodule として使う。https://github.com/yunos0987/jiecunit
+この文書に出てくるツール（jiepp: プリプロセッサ、jiecc: IEC 61131-10 XML への変換と `jiecc --run` での ST の実行、jiecunit: 単体テストの枠組み）は [README の「目的」](../README.md#目的)で説明する。
 
 この文書に出てくる番号と記号:
 
@@ -97,7 +93,7 @@ tools\jiecc.exe --run tests/expanded/x_contact_coil.st --max-cycles 6
 1. `{#include 'rungiec.iec'}`、短いコメント。
 2. ラダーを書いた FUNCTION_BLOCK。入力は `var_input`、出力は `var_output` に書く。
 
-大域変数と configuration は書かず、DSL のマクロのほかに `{#define}` を使わない。各社のツールに取り込むときは、FB を利用者のプログラムから呼ぶ形を想定している（例題 `automatic_door` の LD モードの XML を 1 つのツールで読み込めることを確認した。ほかの例題とツールは確認していない）。
+大域変数と configuration は書かず、DSL のマクロのほかに `{#define}` を使わない。各社のツールに取り込むときは、FB を利用者のプログラムから呼ぶ形を想定している（取り込みを確認した範囲は [README の「目的」](../README.md#目的)）。
 
 ```
 {#include 'rungiec.iec'}
@@ -255,6 +251,7 @@ RUNG(PARALLEL(CONTACT(Rev), CONTACT(RunR)), NOT_CONTACT(Stop), NOT_CONTACT(RunF)
 ```
 (*  |--| Start |--[ Tm:TON(PT := T#1s) IN Q ]--( Lamp )--|   FBT_BOX calls the timer on every scan, so it sees IN = FALSE and resets  *)
 RUNG(CONTACT(Start), FBT_BOX(Tm, TON, IN, Q, PT := T#1s), COIL(Lamp))
+(* Wrong: RUNG(CONTACT(Start), FB_EXEC(Tm, IN := Start, PT := T#1s)); the box is not executed while Start is OFF, so the timer never sees IN = FALSE and never resets. *)
 ```
 
 `examples/parts_counter.iec`:
