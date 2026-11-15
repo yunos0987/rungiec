@@ -87,7 +87,7 @@ flowchart TD
 ```
 
 - テストは 219 本（`tests/` の t 115、e 70、f 20、r 2 の 207 本と、例題の確認 x 12 本）。
-- `--only` が無いとき、ランナーは全例題を LD モードでも 4 ターゲットで変換する（`jiecc examples/<名前>.iec -I . -D RUNGIEC_LD -P -nC -t <t> -o <xml>`。ST モードの変換と同じく同時に 2 本まで）。確認すること: (1) 終了コード 0 で error / warning の行が無い、(2) `xml.etree` で読める、(3) 本文が LD だけ（`<BodyContent xsi:type="LD">` が 1 個。keyence は jiecc が END / ENDH のラングの本文を追加するので 2 個で、比べるのは最初の 1 個）で、`<FunctionBlock name="<名前>">` があり、作業変数の ST（`RungiecAcc`）が無い、(4) 最初の LD の本文が期待値ファイル `tests/expanded/<名前>.ld.xml`（omron の XML。Git で追跡する）の本文と同じで、ほかの 3 ターゲットの本文も omron と同じ（`ContentHeader` の `creationDateTime` は比べない）、(5) 環境変数 `RUNGIEC_IEC10_XSD` に XSD のパスがあり lxml が入っていれば XSD に合う（`ST_EXEC` を使う例題は `smcext:InlineST` が XSD に無いので外し、`XSD SKIP` の行を出す。検査しないときは `XSD NOT RUN (...)` の行を出し、合否に数えない）、(6) `tools/xml2rungiec.py` で omron の XML を断片に戻し、断片と例題を ST モードで展開した、`BEGIN_RUNGIEC()` の初期化文の後から POU の終わりまでが、コメントを除き空白をまとめて同じ。xml2rungiec が全部を断片にできない例題は、理由を付けて `tools/run_tests.py` の `LD_ROUNDTRIP_SKIP` に並べる（並べた例題が全部を断片にできたとき、並べていない例題ができなかったときは失敗）。結果は `LD XML: 48 of 48 ...` と `LD ROUNDTRIP: ...` の行に出る（失敗は failed に数える）。
+- `--only` が無いとき、ランナーは全例題を LD モードでも 4 ターゲットで変換する（`jiecc examples/<名前>.iec -I . -D RUNGIEC_LD -P -nC -t <t> -o <xml>`。ST モードの変換と同じく同時に 2 本まで）。確認すること: (1) 終了コード 0 で error / warning の行が無い、(2) `xml.etree` で読める、(3) 本文が LD だけ（`<BodyContent xsi:type="LD">` が 1 個。keyence は jiecc が END / ENDH のラングの本文を追加するので 2 個で、比べるのは最初の 1 個）で、`<FunctionBlock name="<名前>">` があり、作業変数の ST（`RungiecAcc`）が無い、(4) 最初の LD の本文が期待値ファイル `tests/expanded/<名前>.ld.xml`（omron の XML。Git で追跡する）の本文と同じで、ほかの 3 ターゲットの本文も omron と同じ（`ContentHeader` の `creationDateTime` は比べない）、(5) IEC 61131-10 の XSD があり lxml が入っていれば XSD に合う（XSD は環境変数 `RUNGIEC_IEC10_XSD` のパス、無ければ `tools/IEC61131_10_Ed1_0.xsd`。`ST_EXEC` を使う例題は `smcext:InlineST` が XSD に無いので外し、`XSD SKIP` の行を出す。検査しないときは `XSD NOT RUN (...)` の行を出し、合否に数えない）、(6) `tools/xml2rungiec.py` で omron の XML を断片に戻し、断片と例題を ST モードで展開した、`BEGIN_RUNGIEC()` の初期化文の後から POU の終わりまでが、コメントを除き空白をまとめて同じ。xml2rungiec が全部を断片にできない例題は、理由を付けて `tools/run_tests.py` の `LD_ROUNDTRIP_SKIP` に並べる（並べた例題が全部を断片にできたとき、並べていない例題ができなかったときは失敗）。結果は `LD XML: 48 of 48 ...` と `LD ROUNDTRIP: ...` の行に出る（失敗は failed に数える）。
 - ランナーは期待値ファイル `tests/expanded/<名前>.ld.xml` を書き換えない。本文が違うとき・ファイルが無いときは、omron の XML を `tests/expanded/<名前>.ld.xml.new`（Git で追跡しない）に書いて失敗にする。中身を確認してから `<名前>.ld.xml` に置き換える。一致すると `.new` を消す。
 - jiepp に LD モードの組み込み（`__xmlattr` など）が無いと、LD モードの変換は `rungiec.iec` のエラー `RUNGIEC LD mode needs a jiepp with the XML and argument built-ins ...` で全部失敗する。
 - GitHub Actions の CI（`.github/workflows/ci.yml`）は Linux と Windows で、ホームページから最新の jiecc / jiepp を取得し、版の表示が `Jiecc 9.` と `jiepp 1.` で始まること（このリポジトリが確認しているメジャー版）を確認してから、`python tools/gen_arity_table.py --check`、`python -m unittest discover -s tools/ld_xml -p "test_*.py"`（LD XML 変換器の単体テスト。lxml は入れないので XSD の検査は飛ぶ）、`python tools/run_tests.py --lint-selftest`、`python tools/run_tests.py`（lint を含む）を実行する。main への push と pull request のほか、ツールはこのリポジトリと別に更新されるので毎週も実行する。
@@ -134,14 +134,15 @@ flowchart TD
 2. `xml.etree` で XML として読める。
 3. 本文が LD だけ。`<BodyContent xsi:type="LD">` が 1 個（keyence は 2 個。jiecc が END と ENDH のラングを入れた本文を追加するので、比べるのは最初の 1 個。`tools/run_tests.py` の `LD_BODY_COUNTS`）、`<FunctionBlock name="<名前>">` があり、ST モードの作業変数（`RungiecAcc`）が無い。
 4. omron の最初の LD の本文が、期待値ファイル `tests/expanded/<名前>.ld.xml` の本文と同じ（`xml.etree` が書き出した `<BodyContent>` の文字列どうしで比べる。`ContentHeader` の `creationDateTime` は比べない）。ほかの 3 ターゲットの本文も omron と同じ。
-5. 環境変数 `RUNGIEC_IEC10_XSD` に IEC 61131-10 の XSD のパスがあり、lxml が入っていれば、XSD に合う。`ST_EXEC` を使う例題（ソースのコメントを除いた `ST_EXEC(` で見分ける。今は `parts_counter`）は、`smcext:InlineST` が XSD に無いので外し、`XSD SKIP examples/<名前>.iec: ...` の行を出す。どちらかが無ければ `XSD NOT RUN (...)` の行を 1 行出し、合否に数えない。
+5. IEC 61131-10 の XSD があり、lxml が入っていれば、XSD に合う。XSD は環境変数 `RUNGIEC_IEC10_XSD` のパスで、無ければ `tools/IEC61131_10_Ed1_0.xsd`（入手は [README の「ツールの入手」](../README.md#ツールの入手)）。`ST_EXEC` を使う例題（ソースのコメントを除いた `ST_EXEC(` で見分ける。今は `parts_counter`）は、`smcext:InlineST` が XSD に無いので外し、`XSD SKIP examples/<名前>.iec: ...` の行を出す。どちらかが無ければ `XSD NOT RUN (...)` の行を 1 行出し、合否に数えない。
 6. 往復: `tools/xml2rungiec.py` で omron の XML を RUNGIEC の断片に戻し、`tools/ld_xml_roundtrip.py` の `wrap()` で POU に包む。断片と例題を jiepp（`-P -nC -Werror=undef`、t / x と同じ定義済みの macro の `-include`）で ST モードに展開し、`BEGIN_RUNGIEC()` の初期化文（7 つの代入の並び。ちょうど 1 つ）の後から最初の `end_function_block` / `end_program` / `end_function` までを、コメントを除き空白をまとめて比べる。切り出しが作業変数 `RungiecAcc` を含まなければ失敗にする（両方が空で一致するのを防ぐ）。
 
 結果の行（失敗は `FAIL examples/<名前>.iec -t <ターゲット> (LD): ...` / `FAIL examples/<名前>.iec (LD ROUNDTRIP): ...` の行に出て、failed に数える）:
 
 ```
 LD XML: 48 of 48 example conversions passed (omron, keyence, codesys, mitsubishi)
-XSD NOT RUN (RUNGIEC_IEC10_XSD is not set): the LD XML is not checked against the XSD
+XSD SKIP examples/parts_counter.iec: it uses ST_EXEC (smcext:InlineST is not in the XSD)
+XSD: the LD XML of 11 examples checked with tools/IEC61131_10_Ed1_0.xsd
 LD ROUNDTRIP: 9 of 9 examples passed, 3 in LD_ROUNDTRIP_SKIP
 ```
 
@@ -163,6 +164,7 @@ jiepp と jiecc の入手と版は [README の「必要なツール」](../READM
 
 - テストランナーは既定で `tools/jiepp` / `tools/jiecc` を探し、無ければ `.exe` を付けた名前を使う。PATH 上の `jiepp` は古い版のことがあるので使わない。
 - 別の場所のバイナリを使うときは `--jiepp` / `--jiecc` か、環境変数 `RUNGIEC_JIEPP` / `RUNGIEC_JIECC` で指定する。
+- XSD の検査に使う IEC 61131-10 の XSD は `tools/IEC61131_10_Ed1_0.xsd` に置く（任意。Git では追跡しない。入手は [README の「ツールの入手」](../README.md#ツールの入手)）。別の場所の XSD は環境変数 `RUNGIEC_IEC10_XSD` で指定する（こちらが優先）。
 - テストランナーは jiepp に `-Werror=undef` を付ける（`{#if}` と `__assert` の条件の中の未定義の名前が前処理エラー PP54 になる。設定パラメータに名前を書いた誤りがこれでエラーになる）。`WIRE` の節点番号に変数や式を書いた誤りは、`-Werror=undef` が無くても RUNGIEC の検査（PP91）でエラーになる。
 - RUNGIEC は jiepp のビルトイン `__assert` と名前付きカウンタ（`__counter` / `__counter_peek` / `__counter_set`）と、カンマを引数の区切りにしない `__nosplit`（`ST_EXEC` が使う）を使う。`rungiec.iec` は `__has_builtin` でこれらを確認し、`__has_builtin` や `__nosplit` の無い jiepp や、`-D __assert=` / `-U __assert` / `{#define __assert}` などでビルトインを無効にした jiepp では、PP91 `RUNGIEC needs a jiepp with the built-in assert, named counters and comma protection, ...` になる（代わりの動作は無い）。LD モードでは、入口 `rungiec.iec` が LD モードの本体 `rungiec_ld.iec` を include する前に、さらに `__xmlattr` / `__xmltext` / `__arg_lhs` / `__arg_rhs` / `__arg_dir` を確認し、無ければ PP91 `RUNGIEC LD mode needs a jiepp with the XML and argument built-ins; ...` になる（上の「LD モードの変換の検査」）。
 - `tools/*.py` は Python 3.7 以上と、その標準ライブラリだけを前提にする。例外は lxml（任意）で、`tools/ld_xml` の XSD 検査にだけ使い、入っていなければその検査を飛ばす（構文は 3.4 の範囲で、`subprocess.run` は 3.5 から。3.7 は `dict` が挿入順を保つと決まった版）。実行して確認した版は 3.10 と 3.12〜3.15。
@@ -177,13 +179,13 @@ jiepp と jiecc の入手と版は [README の「必要なツール」](../READM
 python -m unittest discover -s tools/ld_xml -p "test_*.py"
 ```
 
-- 環境変数 `RUNGIEC_IEC10_XSD` に `IEC61131_10_Ed1_0.xsd` のパスを入れ、lxml が入っていれば、書き出した XML を XSD で検査するテストも動く。どちらかが無ければそのテストだけを飛ばす（結果の行に `skipped=1` と出る）。CI は lxml を入れないので飛ばす。
+- IEC 61131-10 の XSD（環境変数 `RUNGIEC_IEC10_XSD` のパス、無ければ `tools/IEC61131_10_Ed1_0.xsd`）があり、lxml が入っていれば、書き出した XML を XSD で検査するテストも動く。どちらかが無ければそのテストだけを飛ばす（結果の行に `skipped=1` と出る）。`RUNGIEC_IEC10_XSD` がファイルでないパスを指すときは、飛ばさずに失敗にする。CI は XSD も lxml も入れないので飛ばす。
 - ラダー図のアスキーアートの記号は AGENTS.md の「図の書き方」と同じで、列の検査（`ascii_art.alignment_problems`）が分岐の縦線と接点の縦線を区別して揃いを確認する。オペランドの名前は XML のまま写すので、日本語の名前は全角として列を数える。
 
 実際の XML での往復の検査は `tools/ld_xml_roundtrip.py` で行う（lxml と XSD が必要）。
 
 ```
-python tools/ld_xml_roundtrip.py IN.xml --out DIR --xsd IEC61131_10_Ed1_0.xsd --jiepp tools/jiepp.exe
+python tools/ld_xml_roundtrip.py IN.xml --out DIR --xsd tools/IEC61131_10_Ed1_0.xsd --jiepp tools/jiepp.exe
 ```
 
 - XML を RUNGIEC の断片にして標準の XML に戻し、次を確認する: 戻した XML が XSD に合い、IEC の名前空間の外の要素や `AddData` が無いこと、断片にしたラングを戻して読み直した形が元と同じこと、元の XML のラング数と変換の数が合うこと、`(* @skipped N 理由 *)` のコメントが変換しなかったラングと合うこと。`--jiepp` を付けると、断片を jiepp で展開して診断・`{#` の残り・`_RUNGIEC_` の残りが無く、lint の指摘も無いことを確認する。

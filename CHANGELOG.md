@@ -16,6 +16,7 @@
 - `tools/run_tests.py` は起動時に jiepp と jiecc の版を確かめ、jiepp 1.4.0 / Jiecc 9.4.0 より古いか版が読めなければ、テストを始めずに終了コード 2 で終わります（古いツールでは全テストが個別に失敗していました）。
 - `tools/run_tests.py` はテストを同時に 2 本まで実行します（`--jobs 1` で 1 本ずつ）。結果の行は今までどおり名前の順に出ます。全体の時間は、開発機で 640 秒から 400 秒になりました。
 - XSD の検査（環境変数 `RUNGIEC_IEC10_XSD`）は、XSD を 1 回だけ読みます。
+- XSD の検査は、環境変数 `RUNGIEC_IEC10_XSD` が無いとき `tools/IEC61131_10_Ed1_0.xsd` を使います（テストランナーと `tools/ld_xml` の単体テスト）。XSD（PLCopen の配布物）と lxml の入手の手順を README の「ツールの入手」に書きました。XSD は Git で追跡しません。
 - 例題の変換の検査で、jiecc の出力を `error:` / `warning:` の形の診断の行だけで判定するようにしました。今までは出力のどこかに error か warning の語があれば失敗にしたので、`examples/error_latch.iec` のようなパスが出ただけで失敗になりました。
 - `tools/gen_arity_table.py --check` に 32 以外の `--max` を付けると、引数の誤り（終了コード 2）にしました。今までは表の一部だけを比べて OK と出していました。
 - 内部の整理（動作と出力は変わりません）: `tools/ld_xml` の変換器とツールで重複していた定数と関数（`NS`、`MC_MAX`、`safe_name`、`write_text`）を `tools/ld_xml/common.py` にまとめ、書くだけで読まれていない欄を消しました。`rungiec_ld.iec` の `_RUNGIEC_LD_RUNG_I` は、Rung の始まりを `_RUNGIEC_LD_HEAD` で書きます。

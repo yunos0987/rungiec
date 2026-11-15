@@ -1,7 +1,8 @@
 """Unit tests of the LD XML <-> RUNGIEC converter on small hand-made rungs.
 
 Run from the repository root: python -m unittest discover -s tools/ld_xml -p "test_*.py" -v
-The xsd test needs lxml and the environment variable RUNGIEC_IEC10_XSD (path of IEC61131_10_Ed1_0.xsd).
+The xsd test needs lxml and the IEC 61131-10 XSD: the environment variable RUNGIEC_IEC10_XSD, else
+tools/IEC61131_10_Ed1_0.xsd (ld_xml.common.find_xsd). Without both it is skipped; a variable naming no file fails it.
 """
 
 import sys
@@ -584,8 +585,10 @@ class Forward(Base):
             self.assertIs(json.load(f)["complete"], False)
         self.assertEqual(os.listdir(os.path.join(out, "rungiec")), [])
 
-    @unittest.skipUnless(os.environ.get("RUNGIEC_IEC10_XSD"), "RUNGIEC_IEC10_XSD is not set")
+    @unittest.skipUnless(common.find_xsd()[0] or os.environ.get(common.XSD_ENV), common.find_xsd()[1])
     def test_17_xsd(self):
+        xsd, reason = common.find_xsd()
+        self.assertIsNotNone(xsd, reason)
         try:
             import lxml  # noqa: F401
         except ImportError:
@@ -601,7 +604,6 @@ class Forward(Base):
         canon, rev, regen, result, _ = self.round_trip([r, simple("B", "Z"), jump_rung("L1", "A"),
                                                         labelled(simple("C", "W"), "L0"), labelled(empty, "L1")])
         xml_path = os.path.join(self.tmp, "std.xml")
-        xsd = os.environ["RUNGIEC_IEC10_XSD"]
         self.assertEqual(compare.validate_xsd(xml_path, xsd)[0], 0)
         self.assertEqual(compare.namespace_checks(xml_path), {"foreign_elements": 0, "add_data": 0, "smcext": 0})
         self.assertEqual(result["mismatches"], 0)

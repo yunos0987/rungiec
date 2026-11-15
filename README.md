@@ -97,7 +97,8 @@ RUNGIEC を使うのに必要なのは jiepp だけ（入手は下の「ツー�
 |---|---|---|
 | jiepp | 展開（必須） | jiepp 1.4.0。Windows は `tools/jiepp.exe`、Linux は `tools/jiepp`（`__has_builtin` と `-Werror=undef` と `__nosplit` のある版。どちらのモードにもこの版が必要） |
 | jiecc | テストの実行、XML への変換 | Jiecc 9.4.0。Windows は `tools/jiecc.exe`、Linux は `tools/jiecc` |
-| Python | テストランナー、lint、表の生成（`tools/*.py`） | 3.7 以上（標準ライブラリのみ。`tools/ld_xml` の XSD 検査にだけ lxml が使え、無ければその検査を飛ばす） |
+| Python | テストランナー、lint、表の生成（`tools/*.py`） | 3.7 以上（標準ライブラリのみ。XSD の検査にだけ lxml が使え、無ければその検査を飛ばす） |
+| IEC 61131-10 の XSD | テストの XSD の検査（任意） | `tools/IEC61131_10_Ed1_0.xsd`（PLCopen の配布物。Git では追跡しない。入手は下の「ツールの入手」） |
 
 テストを実行するときは、2 つの実行ファイルをリポジトリの `tools/` に置く（Git では追跡しない）。テストランナーがツールを探す場所と、jiepp に付ける `-Werror=undef` は [`docs/TESTING.md` の「ツールの置き場所」](docs/TESTING.md#ツールの置き場所)にある。
 
@@ -122,6 +123,30 @@ jiecc（テストの実行と XML への変換に使う）は、jiecc のホー�
 |---|---|---|
 | Windows | https://www.graviness.com/iec_61131-3/jiecc.zip | `jiecc.exe`、`jiepp.exe` |
 | Linux | https://www.graviness.com/iec_61131-3/jiecc.tgz | `jiecc`、`jiepp`（実行権限を付ける） |
+
+テストの XSD の検査（LD モードで変換した例題の XML が、IEC 61131-10 の XML の形を定めた XSD に合うかの検査。[`docs/TESTING.md` の「LD モードの変換の検査」](docs/TESTING.md#ld-モードの変換の検査)）には、XSD と lxml（Python の XML のライブラリ）が要る。どちらも無くてもテストは実行でき、そのときランナーは `XSD NOT RUN (...)` の行を出してこの検査を飛ばす。
+
+- XSD は、PLCopen の配布物の zip（https://www.plcopen.org/download_file/force/0df46fd9-5dc4-40a9-9bcf-bee135b1c253/342/ ）の中の `IEC61131_10_Ed1_0.xsd`。`tools/` に置く。zip には再配布の条件が書かれていないので、XSD はリポジトリに入れず、各自が取得する（`tools/*.xsd` は Git で追跡しない）。
+- テストランナーと `tools/ld_xml` の単体テストは、環境変数 `RUNGIEC_IEC10_XSD` があればそのパスの XSD を、無ければ `tools/IEC61131_10_Ed1_0.xsd` を使う。
+- lxml は pip で入れる（Linux では、ディストリビューションのパッケージ（Ubuntu の `python3-lxml` など）でもよい）。
+
+Windows（コマンドプロンプト。リポジトリルートで実行する。ダウンロードした zip は `out/` に置く）:
+
+```
+mkdir out
+curl -fL -o out\iec61131_10_xsd.zip https://www.plcopen.org/download_file/force/0df46fd9-5dc4-40a9-9bcf-bee135b1c253/342/
+tar -xf out\iec61131_10_xsd.zip -C tools IEC61131_10_Ed1_0.xsd
+python -m pip install lxml
+```
+
+Linux（bash。`unzip` を使う）:
+
+```
+mkdir -p out
+curl -fL -o out/iec61131_10_xsd.zip https://www.plcopen.org/download_file/force/0df46fd9-5dc4-40a9-9bcf-bee135b1c253/342/
+unzip -o out/iec61131_10_xsd.zip IEC61131_10_Ed1_0.xsd -d tools
+python3 -m pip install lxml
+```
 
 ## クイックスタート
 

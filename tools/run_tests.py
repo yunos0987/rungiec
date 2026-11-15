@@ -35,8 +35,9 @@ body of the expected file tests/expanded/<stem>.ld.xml (the omron XML, tracked b
 xml.etree serializes it, the ContentHeader with its creationDateTime is not), and the other targets give the body of
 omron. On a difference or a missing expected file the runner writes the omron XML to
 tests/expanded/<stem>.ld.xml.new (ignored by Git); review it and rename it to <stem>.ld.xml. (5) With lxml and the
-environment variable RUNGIEC_IEC10_XSD naming the IEC 61131-10 XSD, each XML is validated against the XSD, except for
-the examples that use ST_EXEC (smcext:InlineST is not in the XSD); otherwise one 'XSD NOT RUN' line is printed and
+IEC 61131-10 XSD (the environment variable RUNGIEC_IEC10_XSD, else tools/IEC61131_10_Ed1_0.xsd when it exists,
+README.md "ツールの入手"), each XML is validated against the XSD, except for the examples that use ST_EXEC
+(smcext:InlineST is not in the XSD); otherwise one 'XSD NOT RUN' line is printed and
 the check is not counted. (6) Round trip: tools/xml2rungiec.py converts the omron XML back to a RUNGIEC fragment; the
 fragment (wrapped as tools/ld_xml_roundtrip.py does) and the example are expanded in the ST mode with jiepp and the
 ST after the init statements of BEGIN_RUNGIEC() up to the end of the POU must be the same without comments and
@@ -100,7 +101,7 @@ import ld_xml_roundtrip  # noqa: E402
 import lint_rungiec  # noqa: E402
 import xml2rungiec  # noqa: E402
 from ld_xml import compare as ld_compare  # noqa: E402
-from ld_xml.common import write_text  # noqa: E402
+from ld_xml.common import XSD_DEFAULT, XSD_NAME, find_xsd, write_text  # noqa: E402
 from ld_xml.omron_reader import NS as IEC10_NS, XSI_TYPE  # noqa: E402
 
 # Without a suffix so that Linux finds tools/jiepp and Windows finds tools/jiepp.exe (resolve_exe adds .exe).
@@ -164,8 +165,6 @@ LD_EXPECTED_TARGET = "omron"
 # with the END and ENDH rungs (append-epilogue-pou-body). Only the first LD body is compared (docs/DESIGN.md X42 and
 # "テストの仕組み").
 LD_BODY_COUNTS = {"keyence": 2}
-# The environment variable with the path of the IEC 61131-10 XSD for the XSD check of the LD XML (lxml is needed).
-XSD_ENV = "RUNGIEC_IEC10_XSD"
 # The examples whose omron LD XML tools/xml2rungiec.py does not convert back to a full fragment, with the reason
 # (measured with the LD XML of the examples; the reason codes are those of xml2rungiec.json). The runner fails when a
 # listed example converts fully (remove it here) or an unlisted one does not.
@@ -473,11 +472,9 @@ def uses_st_exec(path):
 
 def xsd_path():
     """Return (path of the XSD, None) when the XSD check of the LD XML can run, else (None, reason)."""
-    path = os.environ.get(XSD_ENV)
-    if not path:
-        return None, "%s is not set" % XSD_ENV
-    if not os.path.isfile(path):
-        return None, "%s=%s is not a file" % (XSD_ENV, path)
+    path, reason = find_xsd()
+    if path is None:
+        return None, reason
     try:
         import lxml.etree  # noqa: F401
     except ImportError:
@@ -682,7 +679,8 @@ def convert_examples(jiecc, jiepp, examples_dir, tmp, out_dir, predef):
         if xsd:
             for stem in sorted(st_exec):
                 print("XSD SKIP examples/%s.iec: it uses ST_EXEC (smcext:InlineST is not in the XSD)" % stem)
-            print("XSD: the LD XML of %d examples checked with %s" % (len(stems) - len(st_exec), xsd))
+            print("XSD: the LD XML of %d examples checked with %s" % (
+                len(stems) - len(st_exec), "tools/" + XSD_NAME if xsd == XSD_DEFAULT else xsd))
         else:
             print("XSD NOT RUN (%s): the LD XML is not checked against the XSD" % xsd_reason)
 

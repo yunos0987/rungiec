@@ -15,6 +15,7 @@ IEC 61131-3 のラダー図 (LD) を jiepp マクロで表現し、ST 言語に�
 - 環境変数 `RUNGIEC_JIEPP` / `RUNGIEC_JIECC` または `--jiepp` / `--jiecc` で上書き可能。ランナーは起動時に `--version` の 1 行目で jiepp 1.4.0 以上と Jiecc 9.4.0 以上を確かめ、古いか読めなければ終了コード 2（`tools/run_tests.py` の `MIN_JIEPP` / `MIN_JIECC`。`--lint-only` / `--lint-selftest` は確かめない）。
 - jiecunit（jiecc 用の単体テストの枠組み）は git submodule の `vendor/jiecunit`（https://github.com/yunos0987/jiecunit.git 、v7.0.0 = d50b9c5 に固定）。clone は `git clone --recursive`、済んだ clone では `git submodule update --init`。無ければランナーは「`git submodule update --init` を実行せよ」と出して終了コード 2。`--jiecunit DIR` で別の場所を使える。submodule の中は編集しない。
 - jiecc の `--run` は `_JIER` / `_OMRON` などの対象の macro を定義済みにするが、単体の jiepp は定義しないので、jiecunit の `{#if}` が `-Werror=undef` の PP54 になる。ランナーは起動時に 1 回 `jiecc --run -E -dM`（空のファイル）で定義済みの macro の一覧を作り、t / x のテストの jiepp に `-include` で渡す（jiecc の版に追従する。作れなければ終了コード 2）。
+- 例題の LD モードの XML の XSD の検査は、IEC 61131-10 の XSD と lxml があるときだけ動く（無ければランナーは `XSD NOT RUN (...)` の行を出して飛ばし、合否に数えない）。XSD は PLCopen の配布物の zip の `IEC61131_10_Ed1_0.xsd` を `tools/` に置く（入手の手順は README の「ツールの入手」）。XSD はリポジトリに入れない（`tools/*.xsd` は `.gitignore`。zip に再配布の条件が無いため）。環境変数 `RUNGIEC_IEC10_XSD` があれば、そのパスが `tools/IEC61131_10_Ed1_0.xsd` より優先する（探し方は `tools/ld_xml/common.py` の `find_xsd` の 1 か所）。全件実行の結果に `XSD: the LD XML of N examples checked with ...` の行があることを確かめる。
 
 ## テスト
 
