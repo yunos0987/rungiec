@@ -2,9 +2,9 @@
 
 0.2.0 以降の変更を記録します。0.2.0 は最初の公開版です。
 
-## 0.4.1 (2026-11-13)
+## 0.6.0 (2026-11-15)
 
-`RUNGIEC_VERSION` は 401 です。
+`RUNGIEC_VERSION` は 600 です。必要なツールは jiepp 1.4.0 と Jiecc 9.4.0 のままで、Jiecc 9.4.0 と 9.6.0 で全テストが通ることを確認しました。
 
 ### 不具合の修正 / Fixes
 
@@ -12,6 +12,7 @@
 
 ### ツール / Tools
 
+- `tools/run_tests.py` は、jiecunit v8.0.0 が時計の無い `jiecc --run` で所要時間の代わりに出す `(n/a)` を、`(0us)` と同じく取り除いてから結果の行を照合します。
 - `tools/run_tests.py --only` が何のテストにも一致しないとき、終了コード 2 にしました（0 件の成功に見えていました）。
 - `tools/run_tests.py` は起動時に jiepp と jiecc の版を確かめ、jiepp 1.4.0 / Jiecc 9.4.0 より古いか版が読めなければ、テストを始めずに終了コード 2 で終わります（古いツールでは全テストが個別に失敗していました）。
 - `tools/run_tests.py` はテストを同時に 2 本まで実行します（`--jobs 1` で 1 本ずつ）。結果の行は今までどおり名前の順に出ます。全体の時間は、開発機で 640 秒から 400 秒になりました。
@@ -23,6 +24,7 @@
 
 ### テスト / Tests
 
+- テストの枠組み jiecunit（git submodule の `vendor/jiecunit`）を v8.0.0 にしました。jiecunit v8.0.0 にも Jiecc 9.4.0 が必要です。
 - タイマの代用品 `tests/support/t_stdfb.iec` は、1 回の呼び出しで進む時間を、include の前の `{#define T_STDFB_STEP ...}` で変えられるようにしました（定義しなければ今までどおり 100 ms）。経過時間を 4 s までの表で数えるのをやめたので、4 s を超える PT も満了します（24 h で数えるのを止めます）。PT が 4 s 以下のときの動作は変わりません。自分で `TON` を定義していた `t057`、`x_on_delay_timer`、`x_automatic_door`、`x_traffic_light` は、この代用品を使うようにしました。`t057` と `x_on_delay_timer` は、`IN` が立ち上がったスキャンを ET = 0 と数えるので、期待の表を作り直しました（PT = T#1s は 250 ms 刻みで 5 スキャン目に満了します）。
 - `e002_series_17_terms` は `RUNG` の 17 項を試していたので、名前を `e002_rung_17_terms` に変えました。`SERIES` の 17 項は新しい `e074_series_17_terms` で試します。
 - ほかのテストと同じことしか確かめていなかった `t016_shared_contact_two_coils`（`t011` に含まれる）と `t022_edge_first_scan_false`（`t020` に含まれる）を消しました。`x_contact_coil` の、`y_follows_x` と重なる 2 つの確認も消しました。
@@ -31,7 +33,8 @@
 
 ### 文書 / Documentation
 
-- Jiecc 9.4.0 が必要な理由を直しました。jiecc の前処理は同じ版の jiepp と同じで、`rungiec.iec` の条件式の `&&` / `||` / `!` には jiepp 1.4.0（Jiecc 9.4.0 の前処理）が要ります。テストの jiecunit v7.0.0 も Jiecc 9.4.0 を要ります。
+- Jiecc 9.4.0 が必要な理由を直しました。jiecc の前処理は同じ版の jiepp と同じで、`rungiec.iec` の条件式の `&&` / `||` / `!` には jiepp 1.4.0（Jiecc 9.4.0 の前処理）が要ります。テストの jiecunit v8.0.0 も Jiecc 9.4.0 を要ります。
+- 確認した jiecc の版（Jiecc 9.4.0 と 9.6.0）を README・AGENTS.md・`docs/DESIGN.md` に書きました。
 - jiepp 1.4.0 より古い jiepp では ST モードも展開できないことを、README・AGENTS.md・`docs/DESIGN.md` に書きました。
 - `WIRE`・`ST_EXEC`・ジャンプの規則は `docs/REFERENCE.md` にまとめました。`docs/DESIGN.md` の U-10 / U-13 / U-14 は、REFERENCE の節へのリンクと、テストと lint の番号だけにしました。DESIGN だけに書いてあったこと（`ST_EXEC` の文の中の `{#include}` / `{#error}` の扱いなど、`LABEL()` を書ける位置、後ろ向きのジャンプの間のエッジ接点など）は REFERENCE に移しました。
 - ツール（jiepp・jiecc・jiecunit）の説明と、例題 `automatic_door` の LD モードの XML の取り込みを確認した範囲は、README の「目的」だけに書き、ほかの文書と README のほかの箇所からはそこへリンクするようにしました。
@@ -43,7 +46,7 @@
 
 ### 互換性に影響する変更 / Breaking changes
 
-- 必要なツールを jiepp 1.4.0 と Jiecc 9.4.0 に上げました。`rungiec.iec` の版の検査は、`_JIECC_FULL_VER` が 90400 未満なら PP91 `RUNGIEC needs Jiecc 9.4.0 or later` にします（jiepp だけで展開するときは確認しません）。マクロの展開結果と公開マクロは変わりません。Jiecc 9.2.0 は前処理が jiepp 1.2.0 なので、下の条件式が PP51 になり、どちらのモードも展開できません（この版の検査も `&&` を使うため PP91 は出ません。0.4.1 で直しました）。
+- 必要なツールを jiepp 1.4.0 と Jiecc 9.4.0 に上げました。`rungiec.iec` の版の検査は、`_JIECC_FULL_VER` が 90400 未満なら PP91 `RUNGIEC needs Jiecc 9.4.0 or later` にします（jiepp だけで展開するときは確認しません）。マクロの展開結果と公開マクロは変わりません。Jiecc 9.2.0 は前処理が jiepp 1.2.0 なので、下の条件式が PP51 になり、どちらのモードも展開できません（この版の検査も `&&` を使うため PP91 は出ません。0.6.0 で直しました）。
 - テストの枠組み jiecunit（git submodule の `vendor/jiecunit`）を v7.0.0 にしました。jiecunit v7.0.0 には Jiecc 9.4.0 が必要です。`jiecc --run` では、集計の後に `halt` でスキャンを止めて終わります。
 - `rungiec.iec` / `rungiec_st.iec` / `rungiec_ld.iec` の前処理の条件式（`{#if}` / `{#elif}` と `__assert` の条件）を、jiepp 1.4.0 の論理演算子 `&&` / `||` / `!` で書き直しました。jiepp 1.2.0 ではこの表記が PP51 になります。展開結果は変わりません。lint の LN8 は `\and\` / `\or\` / `\not\` も指摘するようになりました（`&&` / `||` / `!` を書く）。
 

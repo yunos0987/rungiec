@@ -967,14 +967,14 @@ LD モードだけのもの（[GUIDE の「LD モードの制約」](GUIDE.md#ld
 
 ## バージョン
 
-`rungiec.iec` は 4 個のマクロでバージョンを公開する（現在 0.4.1）。
+`rungiec.iec` は 4 個のマクロでバージョンを公開する（現在 0.6.0）。
 
 | マクロ | 値 | 内容 |
 |---|---|---|
 | `RUNGIEC_VERSION_MAJOR` | 0 | メジャー |
-| `RUNGIEC_VERSION_MINOR` | 4 | マイナー |
-| `RUNGIEC_VERSION_REVISION` | 1 | リビジョン |
-| `RUNGIEC_VERSION` | 401 | `MAJOR * 10000 + MINOR * 100 + REVISION`（jiepp の `_JIEPP_FULL_VER` と同じ形式） |
+| `RUNGIEC_VERSION_MINOR` | 6 | マイナー |
+| `RUNGIEC_VERSION_REVISION` | 0 | リビジョン |
+| `RUNGIEC_VERSION` | 600 | `MAJOR * 10000 + MINOR * 100 + REVISION`（jiepp の `_JIEPP_FULL_VER` と同じ形式） |
 
 利用側のファイルで `{#if}` を使い、必要なバージョンを確認できる（`tests/t051_version_macros.iec`）。
 

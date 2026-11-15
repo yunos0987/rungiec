@@ -109,7 +109,7 @@ DEFAULT_JIEPP = os.path.join(ROOT, "tools", "jiepp")
 DEFAULT_JIECC = os.path.join(ROOT, "tools", "jiecc")
 DEFAULT_JIECUNIT = os.path.join(ROOT, "vendor", "jiecunit")
 # The oldest tools RUNGIEC works with: rungiec.iec needs the && / || / ! of jiepp 1.4.0, jiecc preprocesses as the
-# jiepp of its release (Jiecc 9.4.0 has jiepp 1.4.0), and jiecunit v7.0.0 needs Jiecc 9.4.0. With older tools every
+# jiepp of its release (Jiecc 9.4.0 has jiepp 1.4.0), and jiecunit v8.0.0 needs Jiecc 9.4.0. With older tools every
 # test would fail on its own; the runner stops at the start instead.
 MIN_JIEPP = (1, 4, 0)
 MIN_JIECC = (9, 4, 0)
@@ -402,8 +402,9 @@ def run_one(path, name, jiepp, jiecc, out_dir, example=False, jiecunit=None, exa
         return None
     if kind != "pass":
         return "unknown @expect kind: %s" % kind
-    # jiecunit appends the elapsed time to some lines ('[     OK ] t001 (0us)'); drop it before comparing.
-    lines = [re.sub(r" \(\d+(?:\.\d+)?\s*[a-z]+\)$", "", ln.rstrip()) for ln in text.split("\n")]
+    # jiecunit appends the elapsed time to some lines ('[     OK ] t001 (0us)'; jiecunit v8.0.0 prints '(n/a)' on
+    # targets without a clock, such as jiecc --run); drop it before comparing.
+    lines = [re.sub(r" \((?:\d+(?:\.\d+)?\s*[a-z]+|n/a)\)$", "", ln.rstrip()) for ln in text.split("\n")]
     bad =[ln for ln in lines if ln.startswith(JU_BAD)]
     if bad:
         # The jiecunit failure detail: 'Expected ...', 'Actual ...', '<stem>:<line>@<cycle> <message>'.

@@ -72,8 +72,8 @@ end_function_block
 ```
 [========] Running 1 tests.
 [ RUN    ] x_contact_coil
-[     OK ] x_contact_coil (0us)
-[========] 1 tests ran. (0us)
+[     OK ] x_contact_coil (n/a)
+[========] 1 tests ran. (n/a)
 [ PASSED ] 1 tests.
 ```
 

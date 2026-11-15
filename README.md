@@ -8,7 +8,7 @@ IEC 61131-3 のラダー図 (LD) を ST 言語に展開する DSL。同じソー
 
 RUNGIEC lets you write IEC 61131-3 ladder diagrams (LD) as text with jiepp macros and expands them to plain IEC 61131-3 Structured Text (ST).
 The same source can also be written out as the IEC 61131-10 LD XML of the ladder (the LD mode).
-RUNGIEC is checked only with jiepp 1.4.0 and Jiecc 9.4.0 (the expanded ST is run with `jiecc --run`); both modes need these versions (an older jiepp stops at the conditions of `rungiec.iec` with preprocessing errors).
+RUNGIEC is checked only with jiepp 1.4.0, Jiecc 9.4.0 and Jiecc 9.6.0 (the expanded ST is run with `jiecc --run`); both modes need jiepp 1.4.0 and Jiecc 9.4.0 or later (an older jiepp stops at the conditions of `rungiec.iec` with preprocessing errors).
 The documents are written in Japanese.
 
 ## 目次
@@ -27,7 +27,7 @@ The documents are written in Japanese.
 
 ラダー図 (LD) を、IEC 61131-3 のソースの中にテキスト（jiepp マクロ）で書けるようにする DSL。ラダーがテキストになるので、ST のソースと同じように差分を取り、レビューし、Git で版を管理できる。jiepp で展開すると通常の ST になる。
 
-ST モード（下の「2 つのモード」）の動作を確認しているのは jiepp 1.4.0 と Jiecc 9.4.0 だけ（jiepp で展開した ST を Jiecc 9.4.0 のインタプリタ `jiecc --run` で実行して確認し、例題は jiecc で XML に変換できることも確認する）。展開後の ST の文は POU の本体に直接並ぶ（`{st}` / `{end}` で囲まない。Jiecc 9.4.0 はこの形を読む）。ほかのツールや処理系で展開後の ST を使えるかは確認していない。各社のツールに取り込むときは、jiecc で IEC 61131-10 XML に変換できる（jiecc は必須ではない。例題 `automatic_door` の LD モードの XML を 1 つのツールで読み込めることを確認した。ほかの例題とツールは確認していない）。jiepp と jiecc は下の「この README に出てくるツール」で説明する。
+ST モード（下の「2 つのモード」）の動作を確認しているのは jiepp 1.4.0 と、Jiecc 9.4.0・Jiecc 9.6.0 だけ（jiepp で展開した ST を Jiecc 9.4.0 と 9.6.0 のインタプリタ `jiecc --run` で実行して確認し、例題は jiecc で XML に変換できることも確認する）。展開後の ST の文は POU の本体に直接並ぶ（`{st}` / `{end}` で囲まない。Jiecc 9.4.0 と 9.6.0 はこの形を読む）。ほかのツールや処理系で展開後の ST を使えるかは確認していない。各社のツールに取り込むときは、jiecc で IEC 61131-10 XML に変換できる（jiecc は必須ではない。例題 `automatic_door` の LD モードの XML を 1 つのツールで読み込めることを確認した。ほかの例題とツールは確認していない）。jiepp と jiecc は下の「この README に出てくるツール」で説明する。
 
 - ネットワーク (`RUNG`)・直列 (`SERIES`)・並列 (`PARALLEL`)・各種接点・コイル・関数/FB 呼び出し・インライン ST (`ST_EXEC`)・実行制御 (`BEGIN_MC(条件...)` / `END_MC()` / `RETURN()` / `JMP()` / `LABEL()`) をマクロで書く
 - 直並列で書けない回路（ブリッジ回路など）は、節点と配線で書く一般形のネットワーク（`BEGIN_NET` / `WIRE` / `END_NET`）で書く
@@ -96,7 +96,7 @@ RUNGIEC を使うのに必要なのは jiepp だけ（入手は下の「ツー�
 | ツール | 用途 | 版とパス |
 |---|---|---|
 | jiepp | 展開（必須） | jiepp 1.4.0。Windows は `tools/jiepp.exe`、Linux は `tools/jiepp`（`__has_builtin` と `-Werror=undef` と `__nosplit` のある版。どちらのモードにもこの版が必要） |
-| jiecc | テストの実行、XML への変換 | Jiecc 9.4.0。Windows は `tools/jiecc.exe`、Linux は `tools/jiecc` |
+| jiecc | テストの実行、XML への変換 | Jiecc 9.4.0 以上（9.4.0 と 9.6.0 で確認）。Windows は `tools/jiecc.exe`、Linux は `tools/jiecc` |
 | Python | テストランナー、lint、表の生成（`tools/*.py`） | 3.7 以上（標準ライブラリのみ。XSD の検査にだけ lxml が使え、無ければその検査を飛ばす） |
 | IEC 61131-10 の XSD | テストの XSD の検査（任意） | `tools/IEC61131_10_Ed1_0.xsd`（PLCopen の配布物。Git では追跡しない。入手は下の「ツールの入手」） |
 
@@ -106,7 +106,7 @@ RUNGIEC を使うのに必要なのは jiepp だけ（入手は下の「ツー�
 
 LD モードは、さらに jiepp のビルトイン `__xmlattr` / `__xmltext`（XML の属性値と本文のエスケープ）と `__arg_lhs` / `__arg_rhs` / `__arg_dir`（`IN := Start` のような引数の分解）を使う。この 5 つは jiepp 1.4.0（と Jiecc 9.4.0 の配布アーカイブの jiepp）にある。この 5 つが無い（または無効にした）jiepp では、LD モードの変換は `rungiec.iec` のエラー PP91 `RUNGIEC LD mode needs a jiepp with the XML and argument built-ins; use the jiepp version named in README.md` になる。jiepp 1.4.0 より古い jiepp では、どちらのモードも展開できない（`rungiec.iec` の条件式の `&&` / `||` / `!` が前処理エラー PP51 になる）。
 
-どちらのモードも Jiecc 9.4.0 が必要である。jiecc の前処理は同じ版の jiepp と同じで、Jiecc 9.4.0 の前処理は jiepp 1.4.0 である（jiecc が定義する `_JIEPP_FULL_VER` が 10400）。上の条件式の `&&` / `||` / `!` にこの版が要る。テストの枠組み jiecunit v7.0.0 も Jiecc 9.4.0 を要る。それより古い jiecc では、変換と実行が `rungiec.iec` のエラー PP91 `RUNGIEC needs Jiecc 9.4.0 or later` になる（jiecc が定義する版の macro で確認する。jiepp だけで展開するときは確認しない。Jiecc 9.2.0 では、その前後に条件式の PP51 / PP52 も並ぶ）。
+どちらのモードも Jiecc 9.4.0 が必要である。jiecc の前処理は同じ版の jiepp と同じで、Jiecc 9.4.0 の前処理は jiepp 1.4.0 である（jiecc が定義する `_JIEPP_FULL_VER` が 10400）。上の条件式の `&&` / `||` / `!` にこの版が要る。テストの枠組み jiecunit v8.0.0 も Jiecc 9.4.0 を要る。それより古い jiecc では、変換と実行が `rungiec.iec` のエラー PP91 `RUNGIEC needs Jiecc 9.4.0 or later` になる（jiecc が定義する版の macro で確認する。jiepp だけで展開するときは確認しない。Jiecc 9.2.0 では、その前後に条件式の PP51 / PP52 も並ぶ）。
 
 ### ツールの入手
 
@@ -308,7 +308,7 @@ flowchart TD
 | `tools/ld_xml/` | 変換器の本体（Python のパッケージ）と単体テスト（`test_ld_xml.py`） |
 | `tests/` | テスト、`tests/support/t_jiecunit.iec` は jiecunit を使うテスト（t / x）の補助（`T_BEGIN()` / `T_EXPECT_IDLE()`）、`tests/support/t_stdfb.iec` は標準タイマ（`TON` / `TOF` / `TP`）と積算タイマ（`TONR`）の決定論的な代用品（1 回の呼び出しが 100 ms。include の前に `T_STDFB_STEP` を定義すると変えられる。カウンタとエッジは jiecc の組み込みを使う） |
 | `examples/` | 例題（利用者が書くコードだけ。1 本が同名の FUNCTION_BLOCK 1 つ。確認は `tests/x_*.iec`） |
-| `vendor/jiecunit` | jiecunit（git submodule、v7.0.0）。t / x のテストが使う |
+| `vendor/jiecunit` | jiecunit（git submodule、v8.0.0）。t / x のテストが使う |
 | `AGENTS.md` | マクロの記述規則とテストの書き方（AI と人の開発者が従う） |
 | `CHANGELOG.md` / `CONTRIBUTING.md` / `SECURITY.md` | 変更履歴、開発への参加の手引き、脆弱性の報告方法 |
 | `.github/` | CI（`workflows/ci.yml`）と Dependabot の設定 |
